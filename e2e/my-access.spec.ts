@@ -4,5 +4,5 @@ test("unauthenticated visitors are redirected to sign in", async ({ request }) =
   const response = await request.get("/my-access", { maxRedirects: 0 });
 
   expect(response.status()).toBe(307);
-  expect(response.headers()["location"]).toBe("/api/auth/signin/pocketid");
+  expect(response.headers()["location"]).toBe("/?callbackUrl=%2Fmy-access");
 });

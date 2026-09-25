@@ -42,6 +42,7 @@ export default defineConfig({
         "src/app/my-access/**",
         "src/app/admin/**",
         "src/app/apps/**",
+        "src/app/auth/**",
       ],
       thresholds: {
         lines: 80,

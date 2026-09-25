@@ -78,7 +78,7 @@ function OutcomeNotice({
 }
 
 export default async function AppsPage() {
-  const session = await requireUser();
+  const session = await requireUser("/apps");
   const requestsEnabled = readAccessRequestsEnabled();
   const reasonMode = readAccessRequestReason();
 

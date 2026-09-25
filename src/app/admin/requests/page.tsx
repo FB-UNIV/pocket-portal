@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminRequestsPage() {
-  await requireAdmin();
+  await requireAdmin("/admin/requests");
 
   const db = getDb();
   // The catalog decides which rows can be approved at all. Fetched even

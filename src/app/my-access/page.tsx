@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { signInUrl } from "@/lib/auth/sign-in-redirect";
 
 export const metadata: Metadata = {
   title: "My Access",
@@ -15,7 +16,7 @@ export default async function MyAccessPage() {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/api/auth/signin/pocketid");
+    redirect(signInUrl("/my-access"));
   }
 
   const groups = session.user.groups;

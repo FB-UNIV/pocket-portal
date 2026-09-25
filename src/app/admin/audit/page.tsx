@@ -69,7 +69,7 @@ export default async function AdminAuditPage({
 }) {
   // Hidden by FEATURE_AUDIT_LOG_PAGE; events are still written.
   if (!readAuditLogPageEnabled()) notFound();
-  await requireAdmin();
+  await requireAdmin("/admin/audit");
 
   const params = await searchParams;
   // Query params are user input. An unknown action or a malformed cursor is
