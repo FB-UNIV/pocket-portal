@@ -115,3 +115,19 @@ describe("PocketID listers", () => {
     await expect(list(config)).rejects.toThrow(`PocketID list ${what} failed: 502 Bad Gateway`);
   });
 });
+
+// PocketID before 2.15.0 lists clients with allowedUserGroupsCount instead
+// of allowedUserGroups; reading that as a group list crashed /apps with a
+// TypeError. Say what's wrong instead.
+describe("listPocketIdOidcClients on PocketID before 2.15.0", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fails with the minimum version, not a TypeError", async () => {
+    const oldClient = { id: "c1", name: "App", isGroupRestricted: true, allowedUserGroupsCount: 1 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([oldClient], 1, 1)));
+
+    await expect(listPocketIdOidcClients(config)).rejects.toThrow(/PocketID 2\.15\.0 or later/);
+  });
+});
