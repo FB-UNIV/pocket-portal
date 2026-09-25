@@ -4,6 +4,7 @@ import { warnIfOriginNotPinned } from "@/lib/auth/origin";
 import { nonDefaultFlags, validateConfig } from "@/lib/config";
 import { logger, syncLogLevel } from "@/lib/observability/logger";
 import { warnIfPocketIdSecretsReadable } from "@/lib/pocketid/secret-exposure";
+import { warnIfPocketIdTooOld } from "@/lib/pocketid/version";
 
 export async function register() {
   const nodejs = process.env.NEXT_RUNTIME === "nodejs";
@@ -42,4 +43,5 @@ export async function register() {
   logMetricsStatus();
   // Fire-and-forget so a slow PocketID never delays startup.
   warnIfPocketIdSecretsReadable().catch(() => {});
+  warnIfPocketIdTooOld().catch(() => {});
 }

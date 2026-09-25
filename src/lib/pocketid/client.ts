@@ -1,3 +1,4 @@
+import { MIN_POCKETID_VERSION } from "./version";
 import { readPocketIdApi } from "@/lib/config";
 
 // PocketID API client. Reference: https://pocket-id.org/docs/api
@@ -122,10 +123,18 @@ export interface PocketIdOidcClient {
 // already carries
 // name/description/launchURL/logo/allowedUserGroups — see
 // docs/adr/0007-pocketid-live-catalog.md.
-export function listPocketIdOidcClients(
+export async function listPocketIdOidcClients(
   config: PocketIdConfig,
 ): Promise<PocketIdOidcClient[]> {
-  return listAllPages(config, "/api/oidc/clients", "OIDC clients");
+  const clients = await listAllPages<PocketIdOidcClient>(config, "/api/oidc/clients", "OIDC clients");
+  // PocketID before 2.15.0 sends allowedUserGroupsCount instead: without the
+  // groups, access can't be decided, so say why rather than crash later.
+  if (clients.some((client) => !Array.isArray(client.allowedUserGroups))) {
+    throw new Error(
+      `PocketID's OIDC client list has no allowedUserGroups: the portal needs PocketID ${MIN_POCKETID_VERSION} or later.`,
+    );
+  }
+  return clients;
 }
 
 /* v8 ignore start -- exercised by the integration suite (real container), not unit mocks */

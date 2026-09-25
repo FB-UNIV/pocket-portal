@@ -97,10 +97,12 @@ describe("PocketID listers", () => {
   ];
 
   it.each(listers)("%s pages through %s with the API key", async (_name, list, path) => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(page(["x"], 1, 1));
+    // Shaped like an OIDC client, which the client lister checks.
+    const item = { id: "x", allowedUserGroups: [] };
+    const fetchMock = vi.fn().mockResolvedValueOnce(page([item], 1, 1));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(list(config)).resolves.toEqual(["x"]);
+    await expect(list(config)).resolves.toEqual([item]);
     const [url, init] = fetchMock.mock.calls[0];
     expect(new URL(url).pathname).toBe(path);
     expect(init.headers).toEqual({ "X-API-KEY": "k" });
@@ -113,5 +115,21 @@ describe("PocketID listers", () => {
     );
 
     await expect(list(config)).rejects.toThrow(`PocketID list ${what} failed: 502 Bad Gateway`);
+  });
+});
+
+// PocketID before 2.15.0 lists clients with allowedUserGroupsCount instead
+// of allowedUserGroups; reading that as a group list crashed /apps with a
+// TypeError. Say what's wrong instead.
+describe("listPocketIdOidcClients on PocketID before 2.15.0", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fails with the minimum version, not a TypeError", async () => {
+    const oldClient = { id: "c1", name: "App", isGroupRestricted: true, allowedUserGroupsCount: 1 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(page([oldClient], 1, 1)));
+
+    await expect(listPocketIdOidcClients(config)).rejects.toThrow(/PocketID 2\.15\.0 or later/);
   });
 });
