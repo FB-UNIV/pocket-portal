@@ -62,6 +62,7 @@ describe("requestLogEntry", () => {
     ["the outer bubble span", span({ "next.span_type": "BaseServer.handleRequest", "next.bubble": true, "http.target": "/apps", "http.status_code": 200 })],
     ["a middleware span", span({ "next.span_type": "Middleware.execute", "http.target": "/apps" })],
     ["an outgoing fetch", span({ "http.url": "http://id.example.test/api/users", "http.status_code": 200 })],
+    ["a request span with no matched route", span({ "next.span_type": "BaseServer.handleRequest", "http.target": "/apps", "http.status_code": 200 })],
   ])("ignores %s", (_what, s) => {
     expect(requestLogEntry(s)).toBeNull();
   });
@@ -80,5 +81,25 @@ describe("RequestLogProcessor", () => {
       { method: "GET", path: "/apps", route: "/apps", status: 200, durationMs: 29 },
       "GET /apps 200 29ms",
     );
+  });
+});
+
+describe("requestLogEntry defaults", () => {
+  it("assumes GET and the route when the span lacks method and target", () => {
+    const entry = requestLogEntry(
+      span({ "next.span_type": "BaseServer.handleRequest", "http.route": "/apps", "http.status_code": 200 }),
+    );
+
+    expect(entry?.fields).toMatchObject({ method: "GET", path: "/apps" });
+  });
+});
+
+describe("RequestLogProcessor lifecycle", () => {
+  it("has nothing to start, flush or shut down", async () => {
+    const processor = new RequestLogProcessor({ info: vi.fn(), debug: vi.fn(), warn: vi.fn() } as never);
+
+    expect(processor.onStart()).toBeUndefined();
+    await expect(processor.forceFlush()).resolves.toBeUndefined();
+    await expect(processor.shutdown()).resolves.toBeUndefined();
   });
 });

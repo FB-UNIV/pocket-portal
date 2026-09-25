@@ -51,6 +51,8 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "AUTH_URL", required: false, secret: false, yaml: "auth.url" },
   { name: "METRICS_TOKEN", required: false, secret: true, yaml: "metrics.token" },
   { name: "LOG_LEVEL", required: false, secret: false, yaml: "log.level" },
+  { name: "LOG_FORMAT", required: false, secret: false, yaml: "log.format" },
+  { name: "LOG_REQUESTS", required: false, secret: false, yaml: "log.requests" },
   { name: "OTEL_SERVICE_NAME", required: false, secret: false, yaml: "otel.serviceName" },
   { name: "PORTAL_NAME", required: false, secret: false, yaml: "branding.name" },
   { name: "SMTP_HOST", required: false, secret: false, yaml: "smtp.host" },
@@ -155,6 +157,25 @@ export function readLogLevel(source: ConfigSource = configSource()): LogLevel {
     throw new Error(`LOG_LEVEL must be one of ${LOG_LEVELS.join(", ")}, not "${level}"`);
   }
   return level as LogLevel;
+}
+
+const LOG_FORMATS = ["json", "pretty"] as const;
+export type LogFormat = (typeof LOG_FORMATS)[number];
+
+// json for log collectors; pretty is one readable line per entry, for
+// `docker logs` and a terminal.
+export function readLogFormat(source: ConfigSource = configSource()): LogFormat {
+  const format = optional(source, "LOG_FORMAT") ?? "json";
+  if (!(LOG_FORMATS as readonly string[]).includes(format)) {
+    throw new Error(`LOG_FORMAT must be one of ${LOG_FORMATS.join(", ")}, not "${format}"`);
+  }
+  return format as LogFormat;
+}
+
+// A log line per request (method, path, status, duration), from the same
+// span that tracing exports.
+export function readLogRequests(source: ConfigSource = configSource()): boolean {
+  return readBoolean(source, "LOG_REQUESTS", true);
 }
 
 // The portal's own SMTP settings. Deliberately not PocketID's: it can't
@@ -392,6 +413,7 @@ export function validateConfig(source: ConfigSource = configSource()): string[] 
     () => required(source, "AUTH_SECRET"),
     () => readDatabaseUrl(source),
     () => readLogLevel(source),
+    () => readLogFormat(source),
   ];
 
   const problems: string[] = [];

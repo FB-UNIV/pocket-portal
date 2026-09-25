@@ -8,12 +8,28 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Added
+- Server errors are logged, with their stack, the route and the *digest* a
+  user's error page shows. Before, a crash left only Next's bare default
+  output.
+- A log line per request (method, path, status, duration), from the same
+  span tracing exports; health checks at `debug`. `LOG_REQUESTS=false`
+  turns it off.
+- `LOG_FORMAT=pretty`: one readable line per entry, with stacks underneath.
+
+### Changed
+- JSON logs name their level (`"level":"error"`, not `50`) and use ISO
+  timestamps.
+
 ### Fixed
 - The app list crashed with a `TypeError` on PocketID before 2.15.0, which
   lists OIDC clients without their allowed groups. The portal now needs
   **PocketID 2.15.0 or later**: it logs an error at startup naming both
   versions when PocketID is older, and fails with that message instead of
   crashing.
+- Signed out, opening a page such as `/apps` showed Auth.js's unstyled
+  error page with a 500. It now goes to the portal's sign-in and back to
+  that page afterwards; sign-in errors get a portal page too.
 
 ## [1.0.0-rc.1] - 2026-09-25
 

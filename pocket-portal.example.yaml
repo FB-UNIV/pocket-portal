@@ -12,6 +12,10 @@ auth:
 
 log:
   level: info
+  # json, or pretty for one readable line per entry.
+  format: json
+  # A line per request; false leaves requests to traces.
+  requests: true
 
 # otel:
 #   serviceName: pocket-portal
