@@ -132,7 +132,9 @@ Before going live:
 
 ## Requirements
 
-- **PocketID** — an existing instance you control.
+- **PocketID 2.15.0 or later** — an existing instance you control (CI
+  tests with 2.16.0). Older versions don't send the data the app list
+  needs; the portal names the problem in its startup log.
 - **Docker** with Compose v2, **Kubernetes** with Helm, or any runtime that
   can run `ghcr.io/fb-univ/pocket-portal` and reach a Postgres.
 - **Postgres**: bundled in the compose file and (for trying it out) the

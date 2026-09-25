@@ -96,6 +96,14 @@ Two that matter across replicas:
   callback origin registered in PocketID. The portal logs a warning at
   startup when it is unset in production.
 
+### PocketID: version 2.15.0 or later
+
+Earlier versions list OIDC clients without their allowed groups (only a
+count), which the portal needs to decide who can open what: the app list
+and access requests fail. At startup the portal reads PocketID's version
+(`/api/version/current`, with its API key) and logs an error naming both
+versions if PocketID is too old. CI tests against PocketID 2.16.0.
+
 ### PocketID: set `UI_CONFIG_DISABLED=true`
 
 Set on **PocketID**, not the portal.

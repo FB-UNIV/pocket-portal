@@ -97,10 +97,12 @@ describe("PocketID listers", () => {
   ];
 
   it.each(listers)("%s pages through %s with the API key", async (_name, list, path) => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(page(["x"], 1, 1));
+    // Shaped like an OIDC client, which the client lister checks.
+    const item = { id: "x", allowedUserGroups: [] };
+    const fetchMock = vi.fn().mockResolvedValueOnce(page([item], 1, 1));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(list(config)).resolves.toEqual(["x"]);
+    await expect(list(config)).resolves.toEqual([item]);
     const [url, init] = fetchMock.mock.calls[0];
     expect(new URL(url).pathname).toBe(path);
     expect(init.headers).toEqual({ "X-API-KEY": "k" });

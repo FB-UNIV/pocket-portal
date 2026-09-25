@@ -8,7 +8,9 @@ name: pocket-portal-test
 
 services:
   pocket-id:
-    image: pocketid/pocket-id:v2
+    # Pinned: CI should test the PocketID the docs name (README
+    # "Requirements"; the portal needs 2.15.0 or later). Bump deliberately.
+    image: pocketid/pocket-id:v2.16.0
     env_file: .env.test
     ports:
       - "1411:1411"

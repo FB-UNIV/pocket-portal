@@ -8,6 +8,13 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Fixed
+- The app list crashed with a `TypeError` on PocketID before 2.15.0, which
+  lists OIDC clients without their allowed groups. The portal now needs
+  **PocketID 2.15.0 or later**: it logs an error at startup naming both
+  versions when PocketID is older, and fails with that message instead of
+  crashing.
+
 ## [1.0.0-rc.1] - 2026-09-25
 
 > **Upgrading:** the project is now **pocket-portal**. The image moves to
