@@ -22,7 +22,7 @@ describe("MyAccessPage", () => {
   it("redirects to sign-in when there is no session", async () => {
     mockAuth.mockResolvedValue(null);
 
-    await expect(MyAccessPage()).rejects.toThrow("REDIRECT:/api/auth/signin/pocketid");
+    await expect(MyAccessPage()).rejects.toThrow("REDIRECT:/?callbackUrl=%2Fmy-access");
   });
 
   it("shows an empty state when the user has no groups", async () => {

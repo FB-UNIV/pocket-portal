@@ -45,7 +45,25 @@ describe("Home", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Sign in with PocketID" }));
 
-    expect(mockSignIn).toHaveBeenCalledWith("pocketid");
+    expect(mockSignIn).toHaveBeenCalledWith("pocketid", { redirectTo: "/" });
+  });
+
+  it("signs in back to the page the visitor was headed for", async () => {
+    mockAuth.mockResolvedValue(null);
+    render(await Home({ searchParams: Promise.resolve({ callbackUrl: "/apps" }) }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with PocketID" }));
+
+    expect(mockSignIn).toHaveBeenCalledWith("pocketid", { redirectTo: "/apps" });
+  });
+
+  it("ignores a return path that leaves the portal", async () => {
+    mockAuth.mockResolvedValue(null);
+    render(await Home({ searchParams: Promise.resolve({ callbackUrl: "//evil.test" }) }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign in with PocketID" }));
+
+    expect(mockSignIn).toHaveBeenCalledWith("pocketid", { redirectTo: "/" });
   });
 
   it("shows the signed-in user and links on to the portal's two entry points", async () => {

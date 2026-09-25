@@ -25,7 +25,7 @@ describe("requireAdmin", () => {
   it("redirects to sign-in when there is no session", async () => {
     mockAuth.mockResolvedValue(null);
 
-    await expect(requireAdmin()).rejects.toThrow("REDIRECT:/api/auth/signin/pocketid");
+    await expect(requireAdmin("/admin/apps")).rejects.toThrow("REDIRECT:/?callbackUrl=%2Fadmin%2Fapps");
   });
 
   it("redirects home when the signed-in user is not an admin", async () => {

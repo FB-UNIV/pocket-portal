@@ -21,13 +21,19 @@ describe("requireUser", () => {
   it("redirects to sign-in when there is no session", async () => {
     mockAuth.mockResolvedValue(null);
 
-    await expect(requireUser()).rejects.toThrow("REDIRECT:/api/auth/signin/pocketid");
+    await expect(requireUser("/apps")).rejects.toThrow("REDIRECT:/?callbackUrl=%2Fapps");
   });
 
   it("redirects to sign-in when the session predates session.user.id (pre-rollout JWT)", async () => {
     mockAuth.mockResolvedValue({ user: { groups: [] }, expires: "" } as never);
 
-    await expect(requireUser()).rejects.toThrow("REDIRECT:/api/auth/signin/pocketid");
+    await expect(requireUser("/apps")).rejects.toThrow("REDIRECT:/?callbackUrl=%2Fapps");
+  });
+
+  it("sends to the home page's sign-in when no return path is given", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    await expect(requireUser()).rejects.toThrow(/^REDIRECT:\/$/);
   });
 
   it("returns the session when signed in with an id", async () => {
