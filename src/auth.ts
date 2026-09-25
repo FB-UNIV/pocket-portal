@@ -23,6 +23,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     // instead of the Host header. See src/lib/auth/origin.ts, which warns at
     // startup when the fallback is in use in production.
     trustHost: true,
+    // The portal's own pages rather than Auth.js's unstyled defaults.
+    pages: { signIn: "/", error: "/auth/error" },
     providers: [
       {
         id: "pocketid",

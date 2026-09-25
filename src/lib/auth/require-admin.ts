@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signInUrl } from "@/lib/auth/sign-in-redirect";
 import { auth } from "@/auth";
 import type { Session } from "next-auth";
 
@@ -7,11 +8,11 @@ import type { Session } from "next-auth";
 // next/navigation's forbidden() would be the more precise 403, but it's
 // gated behind the experimental `authInterrupts` config flag, not worth
 // enabling for this.
-export async function requireAdmin(): Promise<Session> {
+export async function requireAdmin(returnTo?: string): Promise<Session> {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/api/auth/signin/pocketid");
+    redirect(signInUrl(returnTo));
   }
 
   if (!session.user.isAdmin) {

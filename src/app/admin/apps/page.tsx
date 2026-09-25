@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminAppsPage() {
-  await requireAdmin();
+  await requireAdmin("/admin/apps");
 
   const apps = await listAdminCatalogApps(getPocketIdConfig(), getDb());
 

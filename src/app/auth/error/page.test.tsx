@@ -16,7 +16,7 @@ describe("AuthErrorPage", () => {
   it("explains a server misconfiguration and points operators at the logs", async () => {
     render(await renderWith("Configuration"));
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign-in didn't work");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Sign-in didn’t work");
     expect(screen.getByText(/problem with the portal's setup/)).toBeInTheDocument();
     expect(screen.getByText(/logs/)).toBeInTheDocument();
   });

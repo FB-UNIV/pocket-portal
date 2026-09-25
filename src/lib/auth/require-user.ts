@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { signInUrl } from "@/lib/auth/sign-in-redirect";
 import { auth } from "@/auth";
 import type { Session } from "next-auth";
 
@@ -7,15 +8,15 @@ import type { Session } from "next-auth";
 // session.user.id existed (src/lib/auth/callbacks.ts) won't have it, so
 // this forces a fresh sign-in rather than letting a caller proceed with a
 // missing requester identity.
-export async function requireUser(): Promise<Session> {
+export async function requireUser(returnTo?: string): Promise<Session> {
   const session = await auth();
 
   if (!session?.user) {
-    redirect("/api/auth/signin/pocketid");
+    redirect(signInUrl(returnTo));
   }
 
   if (!session.user.id) {
-    redirect("/api/auth/signin/pocketid");
+    redirect(signInUrl(returnTo));
   }
 
   return session;

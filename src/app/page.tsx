@@ -1,12 +1,20 @@
 import Link from "next/link";
 import { auth, signIn } from "@/auth";
 import { getPortalName } from "@/lib/pocketid/branding";
+import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
 
 // No `metadata` export: this page is the root layout's own segment, where
 // `title.template` deliberately doesn't apply, so it takes the layout's
 // `title.default` (the portal's name) rather than a suffixed one.
-export default async function Home() {
-  const [session, name] = await Promise.all([auth(), getPortalName()]);
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ callbackUrl?: string | string[] }>;
+} = {}) {
+  const [session, name, params] = await Promise.all([auth(), getPortalName(), searchParams]);
+  // Where a signed-out visitor was headed (requireUser adds it); validated,
+  // so the portal can't be used to bounce someone to another site.
+  const redirectTo = safeCallbackUrl(params?.callbackUrl);
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 dark:bg-black">
@@ -51,7 +59,7 @@ export default async function Home() {
             <form
               action={async () => {
                 "use server";
-                await signIn("pocketid");
+                await signIn("pocketid", { redirectTo });
               }}
             >
               <button
