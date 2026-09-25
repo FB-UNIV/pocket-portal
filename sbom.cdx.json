@@ -17,12 +17,12 @@
       }
     ],
     "component": {
-      "bom-ref": "pocket-portal@0.11.0",
+      "bom-ref": "pocket-portal@1.0.0-rc.1",
       "type": "library",
       "name": "pocket-portal",
-      "version": "0.11.0",
+      "version": "1.0.0-rc.1",
       "scope": "required",
-      "purl": "pkg:npm/pocket-portal@0.11.0",
+      "purl": "pkg:npm/pocket-portal@1.0.0-rc.1",
       "properties": [
         {
           "name": "cdx:npm:package:private",
@@ -21175,7 +21175,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pocket-portal@0.11.0",
+      "ref": "pocket-portal@1.0.0-rc.1",
       "dependsOn": [
         "@opentelemetry/api@1.9.1",
         "@opentelemetry/api-logs@0.222.0",
