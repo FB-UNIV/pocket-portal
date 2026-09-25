@@ -1,0 +1,1 @@
+ALTER TABLE "access_requests" ADD COLUMN "decided_at" timestamp with time zone;

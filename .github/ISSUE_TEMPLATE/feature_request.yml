@@ -1,0 +1,21 @@
+name: Feature request
+description: Something the portal should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you're trying to do, and why it's hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you'd like
+  - type: markdown
+    attributes:
+      value: >
+        The portal is a launcher, not a gateway (docs/adr/0001), and reads
+        PocketID live rather than copying it (docs/adr/0007). Ideas that
+        change either need an ADR.

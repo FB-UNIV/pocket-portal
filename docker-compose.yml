@@ -1,0 +1,104 @@
+# Reference deployment for pocket-portal.
+#
+# A *reference*, not a prescription: there is deliberately no hosting target
+# baked in. It runs as-is with `docker compose up`, and is meant to be
+# copied and adapted.
+#
+# What is here, and what is not:
+#   - the portal and its Postgres — yes.
+#   - PocketID — no, on purpose. Nobody should run their identity provider
+#     as an unbacked side-car of the application that consumes it. Point
+#     POCKETID_BASE_URL at your real instance.
+#   - a reverse proxy — no. The portal is a launcher, not a gateway
+#     (ADR-0001), so it only needs TLS termination for itself. The contract
+#     your proxy must meet is in docs/RUNBOOK.md.
+#
+# On Kubernetes, use the Helm chart instead: https://github.com/FB-UNIV/pocket-portal-helm
+#
+# Copy .env.example to .env and fill it in first. Compose reads .env
+# automatically, and the `:?` variables below fail fast with a named error
+# rather than starting a half-configured portal.
+
+name: pocket-portal
+
+services:
+  portal:
+    # No `:-latest` default, deliberately: an unset tag would mean a
+    # restart silently deploys whatever now owns `latest`, which also
+    # makes rollback non-reproducible. .env.example ships a pinned
+    # release; change it consciously.
+    image: ghcr.io/fb-univ/pocket-portal:${POCKET_PORTAL_TAG:?POCKET_PORTAL_TAG is required - pin a release such as vX.Y.Z rather than deploying a moving tag}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-portal}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-pocket_portal}
+      POCKETID_BASE_URL: ${POCKETID_BASE_URL:?POCKETID_BASE_URL is required - point this at your PocketID instance}
+      POCKETID_API_KEY: ${POCKETID_API_KEY:?POCKETID_API_KEY is required}
+      POCKETID_OIDC_CLIENT_ID: ${POCKETID_OIDC_CLIENT_ID:?POCKETID_OIDC_CLIENT_ID is required}
+      POCKETID_OIDC_CLIENT_SECRET: ${POCKETID_OIDC_CLIENT_SECRET:?POCKETID_OIDC_CLIENT_SECRET is required}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET is required - generate one with openssl rand -base64 32}
+      # Strongly recommended in production: pins the public origin so OIDC
+      # redirects do not depend on the Host header a proxy forwards.
+      AUTH_URL: ${AUTH_URL:-}
+      # Migrations run on start by default. Set false if you apply them out
+      # of band with `docker compose run --rm portal migrate`.
+      MIGRATE_ON_START: ${MIGRATE_ON_START:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # /api/metrics is served only to this bearer token; unset = off.
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      # Access-request emails; unset SMTP_HOST = no email.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_TLS: ${SMTP_TLS:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # Feature flags; see .env.example.
+      FEATURE_ACCESS_REQUESTS: ${FEATURE_ACCESS_REQUESTS:-}
+      ACCESS_REQUEST_REASON: ${ACCESS_REQUEST_REASON:-}
+      FEATURE_EMAIL_NOTIFICATIONS: ${FEATURE_EMAIL_NOTIFICATIONS:-}
+      FEATURE_POCKETID_BRANDING: ${FEATURE_POCKETID_BRANDING:-}
+      PORTAL_NAME: ${PORTAL_NAME:-}
+      FEATURE_AUDIT_LOG_PAGE: ${FEATURE_AUDIT_LOG_PAGE:-}
+      WARN_POCKETID_SECRETS_READABLE: ${WARN_POCKETID_SECRETS_READABLE:-}
+      # Optional YAML config file; mount it with the volume below.
+      CONFIG_FILE: ${CONFIG_FILE:-}
+      # Traces always export over OTLP; unset endpoint = localhost:4318.
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-pocket-portal}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # http/protobuf (default) or http/json; @vercel/otel ignores grpc.
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-}
+    # With CONFIG_FILE=/etc/pocket-portal/config.yaml:
+    # volumes:
+    #   - ./pocket-portal.yaml:/etc/pocket-portal/config.yaml:ro
+    ports:
+      # Bound to loopback by default: put your own TLS-terminating proxy in
+      # front rather than exposing the portal directly. Override
+      # PORTAL_BIND to 0.0.0.0 only if that is genuinely what you want.
+      - "${PORTAL_BIND:-127.0.0.1}:${PORTAL_PORT:-3000}:3000"
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-portal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-pocket_portal}
+    volumes:
+      # Postgres 18+ images manage the "data" subdirectory themselves, so
+      # the volume mounts the parent - not .../data.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+volumes:
+  # The portal keeps no state (docs/ARCHITECTURE.md); at most it mounts a
+  # read-only config file. This is the database's storage, and the only
+  # thing here worth backing up.
+  postgres-data:

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "access_requests_pending_unique" ON "access_requests" USING btree ("requester_subject","pocket_id_client_id","pocket_id_group_id") WHERE "access_requests"."status" = 'pending';

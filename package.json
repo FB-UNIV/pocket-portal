@@ -1,0 +1,66 @@
+{
+  "name": "pocket-portal",
+  "version": "0.11.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "start:standalone": "cp -r .next/static .next/standalone/.next/ && HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test-env:up": "docker compose -f docker-compose.test.yml up -d --wait && node scripts/pocketid-provision-oidc-client.mjs && node scripts/pocketid-seed-catalog.mjs && set -a && . ./.env.test && set +a && npm run db:migrate",
+    "test-env:down": "docker compose -f docker-compose.test.yml down -v",
+    "db:migrate": "node scripts/migrate.mjs",
+    "dev-login": "node scripts/pocketid-dev-login.mjs",
+    "sbom": "node scripts/generate-sbom.mjs",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/api-logs": "^0.222.0",
+    "@opentelemetry/instrumentation": "^0.222.0",
+    "@opentelemetry/sdk-logs": "^0.222.0",
+    "@vercel/otel": "^2.1.3",
+    "drizzle-orm": "^0.45.2",
+    "next": "16.3.5",
+    "next-auth": "^5.0.0-beta.32",
+    "nodemailer": "^10.0.10",
+    "pino": "^10.3.1",
+    "postgres": "^3.4.9",
+    "prom-client": "^15.1.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^26.5.1",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.1",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^6",
+    "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer"
+    }
+  }
+}

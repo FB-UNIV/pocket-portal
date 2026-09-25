@@ -1,0 +1,28 @@
+name: Semgrep
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: semgrep/semgrep@sha256:34ab619bf1391a24bfda3f05debd0d8a6ce3093c2d5f9d39cfc00f83c1397823 # 1.176.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # Pinned rulesets instead of --config auto: auto fetches Semgrep's
+      # ruleset selection over the network at run time (non-deterministic
+      # across runs, plus telemetry) — pin what actually applies to this
+      # stack instead. --metrics=off matches the no-telemetry intent.
+      - run: semgrep scan --config p/typescript --config p/react --config p/security-audit --metrics=off --error

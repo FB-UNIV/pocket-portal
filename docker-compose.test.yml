@@ -1,0 +1,45 @@
+# Ephemeral PocketID + Postgres for tests.
+#
+# Explicitly named so it cannot collide with docker-compose.yml, the
+# reference deployment. Without this both default to the directory name
+# ("pocket-portal"), and bringing up the reference stack would adopt and
+# recreate these containers — silently destroying the seeded test data.
+name: pocket-portal-test
+
+services:
+  pocket-id:
+    image: pocketid/pocket-id:v2
+    env_file: .env.test
+    ports:
+      - "1411:1411"
+    tmpfs:
+      - /app/data
+    healthcheck:
+      test: ["CMD", "/app/pocket-id", "healthcheck"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+
+  postgres:
+    image: postgres:18
+    env_file: .env.test
+    ports:
+      - "5432:5432"
+    tmpfs:
+      # Postgres 18+ images manage the "data" subdirectory themselves
+      # (pg_ctlcluster-compatible layout) — mount the parent, not .../data.
+      - /var/lib/postgresql
+    healthcheck:
+      # Without -d, pg_isready defaults the target database to the
+      # username ("portal"), which doesn't exist (the real one is
+      # POSTGRES_DB="pocket_portal") — confirmed live: this spammed
+      # `FATAL: database "portal" does not exist` every 3s in the
+      # container logs even though the healthcheck itself kept passing
+      # (pg_isready only needs the server to accept connections, not that
+      # specific database to exist).
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+      start_period: 5s

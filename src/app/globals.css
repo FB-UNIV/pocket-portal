@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Primary buttons. The defaults are the portal's own look; the root
+     layout overrides all three from PocketID's accent colour, already
+     contrast-checked (src/lib/pocketid/branding.ts). */
+  --brand: var(--foreground);
+  --on-brand: var(--background);
+  --brand-hover: #383838;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-brand-hover: var(--brand-hover);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --brand-hover: #cccccc;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  /* Was a hardcoded Arial stack left over from create-next-app, which meant
+     the Geist fonts the layout loads were downloaded and then never used
+     outside the subtrees carrying a `font-sans` utility class. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* WCAG 2.2 SC 2.4.7 Focus Visible. The UA default ring is drawn in the
+   button's own colours, which all but disappears on the dark filled
+   buttons; --foreground against the page background is >= 15:1 in both
+   themes, and the offset keeps the ring off the control it outlines. */
+:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}

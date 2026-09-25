@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+coverage
+playwright-report
+test-results
+e2e
+.claude
+.github
+docs
+.env*
+Dockerfile
+.dockerignore
+README.md
+CHANGELOG.md
+AGENTS.md
+sbom.cdx.json

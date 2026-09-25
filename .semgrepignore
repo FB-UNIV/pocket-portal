@@ -1,0 +1,6 @@
+# .env.test holds fixture values for the ephemeral, tmpfs-backed PocketID
+# test container (see its own header comment) — not real secrets, but they
+# match generic API-key patterns. Can't use an inline nosemgrep comment here:
+# this file is parsed as a literal env file by docker-compose and our CI's
+# $GITHUB_ENV loading step, so a trailing comment would corrupt the value.
+.env.test

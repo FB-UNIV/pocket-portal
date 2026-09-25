@@ -1,0 +1,292 @@
+name: Docker build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    # Docs-only changes can't break this job; skip it to save CI minutes.
+    # (Unit tests still run, and they hold the docs' drift checks.)
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/**"
+      - "LICENSE"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # PR-time correctness check: a broken multi-stage build or `next build`
+  # regression used to only surface after landing on main (docker-build ran
+  # push-only). No scan, no push — just prove the image still builds.
+  build-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build (verify only, no push/load)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Every merge to main: build for amd64 and arm64, scan, sign, and tag
+  # `dev-<sha>` plus a moving `dev`. Never `latest` or a version: those
+  # come only from promote-release below, on a release tag.
+  build:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      # Keyless cosign signing: the signature is tied to this workflow's
+      # GitHub OIDC identity, no key to store or leak.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # arm64 is built under emulation: homelab hardware is often ARM.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ghcr.io/${{ github.repository }} is mixed case; registry paths must
+      # be lowercase. metadata-action lowercases its own tags, but anything
+      # built by hand below uses this.
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      # dev-<full sha> first (priority 300), so tags[0] below is the
+      # per-commit tag, pushed before the scan, and never the floating
+      # `dev`. The full sha: a short one can collide across history, and
+      # promote-release looks the image up by it. latest=false: `latest`
+      # means the newest stable release, never a main build.
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          flavor: latest=false
+          tags: |
+            type=sha,prefix=dev-,format=long,priority=300
+            type=raw,value=dev
+
+      # One build, pushed once by its per-commit tag, and scanned by its
+      # registry digest: a separate `load: true` build for scanning can't
+      # carry attestations, so its digest never matches what's published.
+      - name: Build and push (per-commit tag only, not yet `dev`)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan the pushed image (amd64)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+        with:
+          image-ref: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Scan the pushed image (arm64)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          image-ref: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Sign the scanned digest
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # Only once scanned and signed: move `dev` to that exact digest.
+      # `imagetools create` only writes a manifest, no rebuild.
+      - name: Promote the scanned digest to dev
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          SOURCE: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+        run: |
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_args+=(--tag "$tag")
+          done <<< "$TAGS"
+          docker buildx imagetools create "${tag_args[@]}" "$SOURCE"
+
+  # A release: `git tag vX.Y.Z && git push origin vX.Y.Z` (see
+  # .claude/rules/versioning.md), never an ordinary push to main. No
+  # rebuild: it re-scans the tagged commit's `dev-<sha>` image against
+  # today's vulnerability database, then tags that same image:
+  #   stable vX.Y.Z      -> vX.Y.Z, vX.Y, vX, latest
+  #   pre-release        -> only its own tag, e.g. v1.0.0-rc.1
+  # Version tags never move to other content: a version is only ever
+  # created by its own git tag.
+  promote-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    # One release at a time, so two can't both decide they're the newest.
+    # GitHub keeps only one *waiting* job per group: if a third tag lands
+    # meanwhile, the one it replaces is cancelled; re-run it.
+    concurrency:
+      group: promote-release
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      # The `v*` trigger also matches e.g. "vfoo": refuse anything that
+      # isn't a semver release or pre-release before touching the registry.
+      - name: Validate the pushed tag
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          if ! [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$TAG_NAME' isn't vX.Y.Z or vX.Y.Z-<pre-release>; refusing to promote."
+            exit 1
+          fi
+
+      # A floating tag moves only if this is the newest stable release in
+      # its range: a patch to an older line (v1.4.1 after v2.0.0) must not
+      # drag latest, v1 or v1.4 backwards. Pre-releases move none of them.
+      - name: Work out which floating tags move
+        id: float
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          stable=$(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name' \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          newest() { grep -E "^${1//./\\.}" <<< "$stable" | sort -V | tail -n 1; }
+          moves() { [[ "$TAG_NAME" != *-* && "$(newest "$1")" == "$TAG_NAME" ]] && echo true || echo false; }
+          major=${TAG_NAME%%.*}   # v1
+          minor=${TAG_NAME%.*}    # v1.4
+          {
+            echo "latest=$(moves v)"
+            echo "major=$(moves "$major.")"
+            echo "minor=$(moves "$minor.")"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        id: image
+        run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      # dev-<sha> is a tag, and a re-run of `build` could move it mid-job:
+      # resolve it to one digest here, and scan, tag and sign only that.
+      # Tagging before `build` finishes fails here loudly (nothing to find);
+      # re-run this job then.
+      - name: Resolve the commit's image to a digest
+        id: src
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE:dev-$COMMIT_SHA" --format '{{printf "%s" .Manifest.Digest}}')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "ref=$IMAGE@$digest" >> "$GITHUB_OUTPUT"
+
+      # The build job pushes dev-<sha> *before* scanning it, and this job
+      # can't know whether that scan passed: without its own scan, a tag on
+      # a scan-failed commit would publish it.
+      - name: Scan the commit's image (amd64)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/amd64
+        with:
+          image-ref: ${{ steps.src.outputs.ref }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      - name: Scan the commit's image (arm64)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          image-ref: ${{ steps.src.outputs.ref }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+      # {{raw}} keeps the git tag as is (v1.2.3). vX.Y, vX and latest are
+      # switched on or off explicitly (see above), rather than trusting
+      # metadata-action's own pre-release handling.
+      - name: Work out the release tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ${{ steps.image.outputs.name }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{raw}}
+            type=semver,pattern=v{{major}}.{{minor}},enable=${{ steps.float.outputs.minor }}
+            type=semver,pattern=v{{major}},enable=${{ steps.float.outputs.major }}
+            type=raw,value=latest,enable=${{ steps.float.outputs.latest }}
+
+      - name: Tag the scanned image as the release
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          SOURCE: ${{ steps.src.outputs.ref }}
+        run: |
+          tag_args=()
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && tag_args+=(--tag "$tag")
+          done <<< "$TAGS"
+          docker buildx imagetools create "${tag_args[@]}" "$SOURCE"
+
+      # Only if the release tag landed on the scanned digest: signing
+      # anything else would vouch for an image this job never checked.
+      - name: Sign the release
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          TAG_NAME: ${{ github.ref_name }}
+          SCANNED: ${{ steps.src.outputs.digest }}
+        run: |
+          tagged=$(docker buildx imagetools inspect "$IMAGE:$TAG_NAME" --format '{{printf "%s" .Manifest.Digest}}')
+          if [ "$tagged" != "$SCANNED" ]; then
+            echo "::error::$TAG_NAME points at $tagged, not the scanned $SCANNED; not signing."
+            exit 1
+          fi
+          cosign sign --yes "$IMAGE@$SCANNED"

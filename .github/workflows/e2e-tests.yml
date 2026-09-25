@@ -1,0 +1,91 @@
+name: E2E tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # Docs-only changes can't break this job; skip it to save CI minutes.
+    # (Unit tests still run, and they hold the docs' drift checks.)
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/**"
+      - "LICENSE"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Start test environment (PocketID + Postgres)
+        run: npm run test-env:up
+
+      - name: Load test env
+        # $GITHUB_ENV requires bare KEY=VALUE lines; .env.test has comments/blanks.
+        # .env.test.generated holds the OIDC client id/secret minted by
+        # test-env:up against the live PocketID container (not a static
+        # fixture — PocketID only returns the secret once, at creation time).
+        run: |
+          grep -v '^#' .env.test | grep -v '^$' >> "$GITHUB_ENV"
+          cat .env.test.generated >> "$GITHUB_ENV"
+
+      - name: Run integration tests against real PocketID + Postgres
+        run: npm run test:integration
+
+      # From node_modules, not package.json's semver range (CodeRabbit
+      # review): the range (^1.63.0) doesn't change on a patch/minor
+      # bump, so the cache key would silently keep matching a stale cached
+      # browser build after npm ci actually installs a newer Playwright.
+      - name: Read Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      # A cache hit still needs the OS-level shared libraries on a fresh
+      # runner; the cache only saves the browser download.
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright OS dependencies (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright e2e tests
+        run: npm run test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Stop test environment
+        if: always()
+        run: npm run test-env:down

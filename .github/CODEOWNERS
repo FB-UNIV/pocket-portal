@@ -1,0 +1,12 @@
+# Every change needs the maintainer's review.
+* @FB-UNIV
+
+# Called out on purpose: these steer AI agents (Claude Code) working on this
+# repository, so a pull request editing them could inject instructions
+# into a maintainer's agent. Review them as code.
+/CLAUDE.md @FB-UNIV
+/AGENTS.md @FB-UNIV
+/.claude/ @FB-UNIV
+
+# CI and the release pipeline run with repository credentials.
+/.github/ @FB-UNIV

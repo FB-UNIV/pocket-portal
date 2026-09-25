@@ -1,0 +1,37 @@
+# Optional config file for pocket-portal. Point CONFIG_FILE at it.
+# Environment variables override anything here. Secrets (API key, OIDC
+# client secret, AUTH_SECRET, DATABASE_URL, METRICS_TOKEN, SMTP password)
+# are refused: set them in the environment, or as NAME_FILE in the image.
+
+pocketid:
+  baseUrl: https://id.example.test
+  oidcClientId: 00000000-0000-4000-8000-000000000000
+
+auth:
+  url: https://portal.example.test
+
+log:
+  level: info
+
+# otel:
+#   serviceName: pocket-portal
+
+# Shown in the header and page titles. Unset: PocketID's application name,
+# else Pocket Portal.
+# branding:
+#   name: Acme Apps
+
+# smtp:
+#   host: smtp.example.test
+#   from: portal@example.test
+#   port: 587
+#   tls: starttls
+#   user: portal
+
+features:
+  accessRequests: true
+  accessRequestReason: optional
+  emailNotifications: true
+  pocketIdBranding: true
+  auditLogPage: true
+  secretsWarning: true

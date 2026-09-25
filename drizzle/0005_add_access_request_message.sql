@@ -1,0 +1,1 @@
+ALTER TABLE "access_requests" ADD COLUMN "message" text;

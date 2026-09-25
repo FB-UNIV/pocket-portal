@@ -1,0 +1,100 @@
+name: Compose smoke
+
+# Proves the reference deployment in docker-compose.yml actually works
+# Without this the published quickstart is only as correct as the
+# last person who tried it — and a compose file that merely *parses* proves
+# nothing: the migration gap this deployment exists to close would have
+# passed a lint-only check while failing at runtime.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # Docs-only changes can't break this job; skip it to save CI minutes.
+    # (Unit tests still run, and they hold the docs' drift checks.)
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/**"
+      - "LICENSE"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      # Build this commit's image and deploy *that*, rather than whatever
+      # :latest happens to be on the registry — otherwise the job would
+      # test the previous release, not the change under review.
+      - name: Build the image under test
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: ghcr.io/fb-univ/pocket-portal:cismoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # PocketID is deliberately not part of the reference stack, so it is
+      # pointed at an unreachable address here. That is not a gap in the
+      # test: it is what lets the readiness assertion below distinguish
+      # "the database half works" from "everything is down".
+      - name: Write a throwaway .env
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_PASSWORD=ci-smoke-not-a-real-password
+          POCKETID_BASE_URL=http://127.0.0.1:1
+          POCKETID_API_KEY=ci-dummy
+          POCKETID_OIDC_CLIENT_ID=ci-dummy
+          POCKETID_OIDC_CLIENT_SECRET=ci-dummy
+          AUTH_SECRET=ci-smoke-secret-0000000000000000
+          POCKET_PORTAL_TAG=cismoke
+          PORTAL_PORT=3000
+          EOF
+
+      # --wait fails the step if either service never reports healthy, so
+      # the container HEALTHCHECK and the Postgres healthcheck are both
+      # asserted here, not just "did it start".
+      - name: Bring the reference stack up
+        run: docker compose up -d --wait --wait-timeout 240
+
+      - name: Liveness must be 200 with no dependencies reachable
+        run: |
+          code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://127.0.0.1:3000/api/health)
+          cat /tmp/health.json; echo
+          test "$code" = "200"
+
+      # The important assertion: database ok proves migrations ran against
+      # the composed Postgres and the app can query it. pocketid not-ok
+      # proves readiness actually probes its dependencies instead of
+      # reporting a blanket 200.
+      - name: Readiness must report the database up and PocketID down
+        run: |
+          code=$(curl -s -o /tmp/ready.json -w '%{http_code}' http://127.0.0.1:3000/api/ready)
+          cat /tmp/ready.json; echo
+          test "$code" = "503"
+          grep -q '"database":{"ok":true}' /tmp/ready.json
+          grep -q '"pocketid":{"ok":false' /tmp/ready.json
+
+      - name: Migrations must have run on start
+        run: docker compose logs portal | grep -q "migrations up to date"
+
+      - name: Stack logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
