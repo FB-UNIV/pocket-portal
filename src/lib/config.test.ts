@@ -13,7 +13,9 @@ import {
   readSecretsWarningEnabled,
   readAuthUrl,
   readDatabaseUrl,
+  readLogFormat,
   readLogLevel,
+  readLogRequests,
   readMetricsToken,
   readOtelServiceName,
   readPocketIdApi,
@@ -81,6 +83,17 @@ describe("config", () => {
 
   // pino throws on an unknown level, which would take the logger, and with
   // it every module that imports it, down at import time.
+  it("reads the log format: json by default, or pretty", () => {
+    expect(readLogFormat({})).toBe("json");
+    expect(readLogFormat({ LOG_FORMAT: "pretty" })).toBe("pretty");
+    expect(() => readLogFormat({ LOG_FORMAT: "fancy" })).toThrow(/LOG_FORMAT/);
+  });
+
+  it("logs a line per request unless LOG_REQUESTS is false", () => {
+    expect(readLogRequests({})).toBe(true);
+    expect(readLogRequests({ LOG_REQUESTS: "false" })).toBe(false);
+  });
+
   it("accepts pino's levels and refuses anything else", () => {
     expect(readLogLevel({})).toBe("info");
     expect(readLogLevel({ LOG_LEVEL: "debug" })).toBe("debug");
