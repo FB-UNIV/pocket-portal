@@ -8,6 +8,13 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-26
+
+> **The first stable release.** It needs **PocketID 2.15.0 or later**:
+> older versions don't send the data the app list needs, and the portal
+> now says so at startup. Upgrading from 1.0.0-rc.1: nothing else to do.
+> Logs change shape (level names, ISO timestamps) if you parse them.
+
 ### Added
 - Server errors are logged, with their stack, the route and the *digest* a
   user's error page shows. Before, a crash left only Next's bare default
