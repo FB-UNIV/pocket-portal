@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-09-25
+
 > **Upgrading:** the project is now **pocket-portal**. The image moves to
 > `ghcr.io/fb-univ/pocket-portal`, `QUICHE_WORLD_TAG` becomes
 > `POCKET_PORTAL_TAG`, the example config file is
