@@ -70,6 +70,8 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `CONFIG_FILE` | no | | Path to an optional YAML config file (below) |
 | `MIGRATE_ON_START` | no | `true` | Apply DB migrations on start |
 | `LOG_LEVEL` | no | `info` | Log verbosity |
+| `LOG_FORMAT` | no | `json` | `pretty` for one readable line per entry (`docker logs`); `json` for log collectors |
+| `LOG_REQUESTS` | no | `true` | A log line per request (method, path, status, duration); `false` leaves requests to traces |
 | `PORTAL_BIND` | no | `127.0.0.1` | Host interface the port is published on |
 | `PORTAL_PORT` | no | `3000` | Host port |
 | `POSTGRES_USER` | no | `portal` | Database user |

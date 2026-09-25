@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createLogger, syncLogLevel } from "./logger";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { createLogger, formatPretty, syncLogLevel } from "./logger";
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -43,5 +43,130 @@ describe("createLogger", () => {
     process.env.LOG_LEVEL = "debug";
     const log = createLogger("test-service");
     expect(log.level).toBe("debug");
+  });
+});
+
+// Collects what the logger writes, one parsed or raw line per entry.
+function capture() {
+  const lines: string[] = [];
+  return { lines, stream: { write: (line: string) => void lines.push(line) } };
+}
+
+describe("log format", () => {
+  beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  it("writes JSON with level names and ISO timestamps by default", () => {
+    delete process.env.LOG_FORMAT;
+    const { lines, stream } = capture();
+
+    createLogger("test-service", stream).error({ route: "/apps" }, "boom");
+
+    const entry = JSON.parse(lines[0]);
+    expect(entry).toMatchObject({ level: "error", name: "test-service", msg: "boom", route: "/apps" });
+    expect(entry.time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it("writes one readable line per entry with LOG_FORMAT=pretty", () => {
+    process.env.LOG_FORMAT = "pretty";
+    const { lines, stream } = capture();
+
+    createLogger("test-service", stream).info({ route: "/apps", status: 200 }, "GET /apps 200 29ms");
+
+    // route and status are already in the message, so they aren't repeated.
+    expect(lines[0]).toMatch(/^\S+Z INFO  test-service: GET \/apps 200 29ms\n$/);
+  });
+});
+
+describe("formatPretty", () => {
+  it("puts an error's stack under the line", () => {
+    const line = formatPretty({
+      level: "error",
+      time: "2026-09-26T10:00:00.000Z",
+      name: "pocket-portal",
+      msg: "GET /apps failed: boom",
+      digest: "123",
+      err: { type: "TypeError", message: "boom", stack: "TypeError: boom\n    at page (app/apps/page.tsx:1:1)" },
+    });
+
+    expect(line).toBe(
+      "2026-09-26T10:00:00.000Z ERROR pocket-portal: GET /apps failed: boom digest=123\n" +
+        "    TypeError: boom\n" +
+        "        at page (app/apps/page.tsx:1:1)\n",
+    );
+  });
+
+  it("quotes values with spaces and prints objects as JSON", () => {
+    const line = formatPretty({
+      level: "warn",
+      time: "2026-09-26T10:00:00.000Z",
+      msg: "m",
+      reason: "two words",
+      detail: { a: 1 },
+      attempts: 3,
+      retried: false,
+    });
+
+    expect(line).toBe(
+      '2026-09-26T10:00:00.000Z WARN  m reason="two words" detail={"a":1} attempts=3 retried=false\n',
+    );
+  });
+});
+
+describe("log format edge cases", () => {
+  beforeEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+  });
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV };
+    vi.restoreAllMocks();
+  });
+
+  // validateConfig reports the bad value; logging must keep working.
+  it("falls back to JSON on an unknown LOG_FORMAT", () => {
+    process.env.LOG_FORMAT = "fancy";
+    const { lines, stream } = capture();
+
+    createLogger("test-service", stream).info("hello");
+
+    expect(JSON.parse(lines[0])).toMatchObject({ msg: "hello" });
+  });
+
+  it("writes to stdout without a stream", () => {
+    const write = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+    createLogger("test-service").info("to stdout");
+
+    expect(write.mock.calls.some(([chunk]) => String(chunk).includes("to stdout"))).toBe(true);
+  });
+
+  it("formats an error without a stack, and an entry without a message", () => {
+    expect(formatPretty({ level: "error", time: "t", err: { type: "RangeError", message: "bad" } })).toBe(
+      "t ERROR \n    RangeError: bad\n",
+    );
+    expect(formatPretty({ time: "t", err: {} })).toBe("t       \n    Error: \n");
+  });
+});
+
+describe("formatPretty de-duplication", () => {
+  it("leaves out fields the message already shows, and keeps the rest", () => {
+    const line = formatPretty({
+      level: "info",
+      time: "t",
+      msg: "GET /nope 404 9ms",
+      method: "GET",
+      path: "/nope",
+      route: "/_not-found",
+      status: 404,
+      durationMs: 9,
+    });
+
+    expect(line).toBe("t INFO  GET /nope 404 9ms route=/_not-found\n");
   });
 });

@@ -301,8 +301,8 @@ The app emits signals and does not care what consumes them
 | Signal | Where | Notes |
 |---|---|---|
 | Metrics | `GET /api/metrics`, Prometheus text | Off unless `METRICS_TOKEN` is set; then send it as `Authorization: Bearer <token>` (Prometheus: `authorization: { credentials: <token> }` in the scrape config). Anything else gets a 404. The startup log says which state the instance is in. |
-| Logs | structured JSON (Pino) on stdout | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. Startup logs every configuration problem (`Configuration: …`) and any non-default feature flags. An email that couldn't be sent is logged at `warn` with its request id and never retried ([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). |
-| Traces | OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` | Always on. Unset, it targets `http://localhost:4318`, and exports fail harmlessly if nothing listens there. |
+| Logs | stdout: JSON (Pino) by default, or `LOG_FORMAT=pretty` for one readable line per entry | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. One line per request (method, path, status, duration; `LOG_REQUESTS=false` turns it off), with health checks at `debug`. **Every server error** is logged with its stack and the *digest* a user's error page shows, so "digest 123" leads straight to it. Startup logs every configuration problem (`Configuration: …`), an outdated PocketID and any non-default feature flags. An email that couldn't be sent is logged at `warn` with its request id and never retried ([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). |
+| Traces | OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` | Always on: each request is a trace, with a timed span for the render and each PocketID or database call inside it. They need a collector to see them (e.g. Grafana Tempo, Jaeger). Unset, it targets `http://localhost:4318`, and exports fail harmlessly if nothing listens there. The per-request log line is taken from the same span. |
 
 ## Backups
 

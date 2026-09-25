@@ -46,6 +46,8 @@ services:
       # of band with `docker compose run --rm portal migrate`.
       MIGRATE_ON_START: ${MIGRATE_ON_START:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-}
+      LOG_REQUESTS: ${LOG_REQUESTS:-}
       # /api/metrics is served only to this bearer token; unset = off.
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       # Access-request emails; unset SMTP_HOST = no email.

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import { getPocketIdOidcConfig } from "@/lib/auth/config";
 import { applyProfileToToken, applyTokenToSession } from "@/lib/auth/callbacks";
+import { authLogger } from "@/lib/observability/auth-logger";
 import { recordSignInClaims, refreshSessionClaims } from "@/lib/auth/claims-refresh";
 import { createClaimsStore } from "@/lib/auth/claims-store";
 import { getDb } from "@/lib/db/client";
@@ -25,6 +26,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => {
     trustHost: true,
     // The portal's own pages rather than Auth.js's unstyled defaults.
     pages: { signIn: "/", error: "/auth/error" },
+    // Auth.js logs in the portal's format.
+    logger: authLogger(),
     providers: [
       {
         id: "pocketid",

@@ -1,8 +1,10 @@
+import type { Instrumentation } from "next";
 import { registerOTel } from "@vercel/otel";
 import { resolveServiceName } from "@/lib/observability/otel";
 import { warnIfOriginNotPinned } from "@/lib/auth/origin";
-import { nonDefaultFlags, validateConfig } from "@/lib/config";
+import { nonDefaultFlags, readLogRequests, validateConfig } from "@/lib/config";
 import { logger, syncLogLevel } from "@/lib/observability/logger";
+import { RequestLogProcessor } from "@/lib/observability/request-log";
 import { warnIfPocketIdSecretsReadable } from "@/lib/pocketid/secret-exposure";
 import { warnIfPocketIdTooOld } from "@/lib/pocketid/version";
 
@@ -20,7 +22,12 @@ export async function register() {
     syncLogLevel();
   }
 
-  registerOTel({ serviceName: resolveServiceName() });
+  registerOTel({
+    serviceName: resolveServiceName(),
+    // "auto" keeps tracing's own export; the request log reads the same
+    // spans, so its lines and the traces agree.
+    spanProcessors: nodejs && readLogRequests() ? ["auto", new RequestLogProcessor(logger)] : ["auto"],
+  });
 
   if (!nodejs) return;
 
@@ -45,3 +52,12 @@ export async function register() {
   warnIfPocketIdSecretsReadable().catch(() => {});
   warnIfPocketIdTooOld().catch(() => {});
 }
+
+// Every server error (page render, route handler, server action), logged
+// with its stack and the digest the user's error page shows. Node only: the
+// logger's destination is the process's stdout.
+export const onRequestError: Instrumentation.onRequestError = async (err, request, context) => {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { logRequestError } = await import("@/lib/observability/request-errors");
+  logRequestError(err, request, context);
+};
