@@ -3,9 +3,17 @@ import type { logger as defaultLogger } from "@/lib/observability/logger";
 type Log = Pick<typeof defaultLogger, "info" | "debug" | "warn">;
 
 // The parts of an ended OpenTelemetry span this reads.
-interface EndedSpan {
+export interface EndedSpan {
   attributes: Record<string, unknown>;
   duration: [number, number];
+}
+
+export interface HandledRequest {
+  method: string;
+  path: string;
+  route: string;
+  status: number;
+  durationSeconds: number;
 }
 
 export interface RequestLogEntry {
@@ -20,18 +28,30 @@ const PROBES = new Set(["/api/health", "/api/ready"]);
 // Next ends one "BaseServer.handleRequest" span per request that carries
 // the matched route and the real status, plus an outer "bubble" span
 // without either, and separate middleware spans (observed on a production
-// build). Only the first describes the request.
-export function requestLogEntry(span: EndedSpan): RequestLogEntry | null {
+// build). Only the first describes the request. Shared by the request log
+// and the request metrics, so both count the same requests.
+export function handledRequest(span: EndedSpan): HandledRequest | null {
   const attrs = span.attributes;
   if (attrs["next.span_type"] !== "BaseServer.handleRequest" || attrs["next.bubble"]) return null;
   const route = attrs["http.route"];
   if (typeof route !== "string") return null;
 
-  const method = String(attrs["http.method"] ?? "GET");
-  // Never the query string: the OIDC callback's carries the sign-in code.
-  const path = String(attrs["http.target"] ?? route).split("?")[0];
-  const status = Number(attrs["http.status_code"]);
-  const durationMs = Math.round(span.duration[0] * 1000 + span.duration[1] / 1e6);
+  return {
+    method: String(attrs["http.method"] ?? "GET"),
+    // Never the query string: the OIDC callback's carries the sign-in code.
+    path: String(attrs["http.target"] ?? route).split("?")[0],
+    route,
+    status: Number(attrs["http.status_code"]),
+    durationSeconds: span.duration[0] + span.duration[1] / 1e9,
+  };
+}
+
+export function requestLogEntry(span: EndedSpan): RequestLogEntry | null {
+  const request = handledRequest(span);
+  if (!request) return null;
+
+  const { method, path, route, status } = request;
+  const durationMs = Math.round(request.durationSeconds * 1000);
   const level = PROBES.has(path) ? "debug" : status >= 500 ? "warn" : "info";
 
   return {

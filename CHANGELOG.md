@@ -8,6 +8,13 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Fixed
+- `/api/metrics` now counts requests: `http_requests_total` and
+  `http_request_duration_seconds` were exported with no samples. They're
+  labelled by route pattern, recorded whatever `LOG_REQUESTS` says, and the
+  duration buckets (25 ms to 10 s) now fit a portal's pages. The RUNBOOK
+  has a per-route p95 query.
+
 ## [1.0.0] - 2026-09-26
 
 > **The first stable release.** It needs **PocketID 2.15.0 or later**:

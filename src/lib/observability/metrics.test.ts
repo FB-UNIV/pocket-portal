@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { register, recordHttpRequest, metricsContentType } from "./metrics";
 
 describe("metrics registry", () => {
@@ -38,5 +38,21 @@ describe("metrics registry", () => {
 
     expect(body).toMatch(/http_requests_total\{method="GET",route="\/",status_code="200"\} 1/);
     expect(body).toMatch(/http_requests_total\{method="POST",route="\/",status_code="500"\} 1/);
+  });
+});
+
+// Next bundles instrumentation.ts (which records requests) and the
+// /api/metrics route (which serves them) into separate chunks, each with its
+// own copy of this module (observed on a production build).
+describe("metrics registry across bundled copies", () => {
+  it("is one registry per process, whichever copy records or serves", async () => {
+    register.resetMetrics();
+    vi.resetModules();
+    const otherCopy = await import("./metrics");
+
+    otherCopy.recordHttpRequest("GET", "/apps", 200, 0.03);
+
+    expect(otherCopy.register).toBe(register);
+    expect(await register.metrics()).toMatch(/http_requests_total\{method="GET",route="\/apps",status_code="200"\} 1/);
   });
 });
