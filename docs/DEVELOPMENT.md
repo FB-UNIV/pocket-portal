@@ -244,10 +244,16 @@ Every push to `main` and every PR runs:
   only then pushes to `ghcr.io`
 
 All jobs have a `timeout-minutes` cap and cancel superseded runs on the
-same branch/PR (`concurrency`) — there's no branch protection on this free
-private repo to enforce any of this as a merge gate, so it's convention,
-not the platform, doing the enforcing; a PR should still have all of these
-green before merging.
+same branch/PR (`concurrency`). Branch protection on `main` requires
+`unit`, `semgrep`, `check` (SBOM), `e2e`, `compose` and `build-check`.
+
+A docs-only PR (only `*.md`, `docs/`, `.claude/` or `LICENSE`) doesn't
+need e2e, compose or the image build, but those workflows still run on it:
+a required check that never starts blocks the merge forever, which is what
+`paths-ignore` used to cause. Instead each one's first job
+([`changes.yml`](../.github/workflows/changes.yml)) classifies the PR, and
+the real job skips itself on docs-only changes; GitHub counts a skipped job
+as passing. If classifying fails, the real job runs anyway.
 
 ### Troubleshooting
 

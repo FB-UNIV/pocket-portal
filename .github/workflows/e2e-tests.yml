@@ -4,13 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    # Docs-only changes can't break this job; skip it to save CI minutes.
-    # (Unit tests still run, and they hold the docs' drift checks.)
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".claude/**"
-      - "LICENSE"
 
 permissions:
   contents: read
@@ -20,7 +13,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Docs-only PRs skip the job below (they can't break it; unit tests still
+  # run and hold the docs' drift checks) without leaving a required check
+  # waiting forever, which `paths-ignore` did. See changes.yml.
+  changes:
+    uses: ./.github/workflows/changes.yml
+    permissions:
+      pull-requests: read
+
   e2e:
+    needs: changes
+    # Runs unless the PR is docs-only; also if classifying failed.
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
