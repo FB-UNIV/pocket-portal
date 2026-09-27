@@ -5,24 +5,27 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
-    # Docs-only changes can't break this job; skip it to save CI minutes.
-    # (Unit tests still run, and they hold the docs' drift checks.)
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - ".claude/**"
-      - "LICENSE"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Docs-only PRs skip the job below (they can't break it; unit tests still
+  # run and hold the docs' drift checks) without leaving a required check
+  # waiting forever, which `paths-ignore` did. See changes.yml.
+  changes:
+    uses: ./.github/workflows/changes.yml
+    permissions:
+      pull-requests: read
+
   # PR-time correctness check: a broken multi-stage build or `next build`
   # regression used to only surface after landing on main (docker-build ran
   # push-only). No scan, no push — just prove the image still builds.
   build-check:
-    if: github.event_name == 'pull_request'
+    needs: changes
+    # PRs only, and not docs-only ones; also if classifying failed.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
