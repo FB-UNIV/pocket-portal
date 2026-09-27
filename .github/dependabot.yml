@@ -9,6 +9,12 @@ updates:
     groups:
       npm-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Keep Node's types on the runtime's major (the image and CI run the
+      # current LTS), so code can't typecheck against APIs the runtime lacks.
+      # Moves together with the Docker `node` major below.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: "/"

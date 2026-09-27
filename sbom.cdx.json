@@ -4275,13 +4275,13 @@
       ]
     },
     {
-      "bom-ref": "@types/node@26.5.1",
+      "bom-ref": "@types/node@24.19.0",
       "type": "library",
       "name": "@types/node",
-      "version": "26.5.1",
+      "version": "24.19.0",
       "scope": "required",
       "description": "TypeScript definitions for node",
-      "purl": "pkg:npm/%40types/node@26.5.1",
+      "purl": "pkg:npm/%40types/node@24.19.0",
       "properties": [
         {
           "name": "cdx:npm:package:development",
@@ -4291,7 +4291,7 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/@types/node/-/node-26.5.1.tgz"
+          "url": "https://registry.npmjs.org/@types/node/-/node-24.19.0.tgz"
         },
         {
           "type": "vcs",
@@ -4305,7 +4305,7 @@
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "0b3366d857b35b8551fcb8c6eb251d88480b13fac043d4a58f9802bbf0b656b75c5bb2346a1359f0345b1d3ef3399eabdce36077f6ec4087926a80c6addd42ea"
+          "content": "cd8fb9b4ac577611a1d4f608d1a73eee3baf12ee0e23abd6b555688f98b69b8da3c4063553ecc71ade900b2385c3291d3fadac337309f6cb68618530e5a0967b"
         }
       ],
       "licenses": [
@@ -20113,13 +20113,13 @@
       ]
     },
     {
-      "bom-ref": "undici-types@8.9.0",
+      "bom-ref": "undici-types@7.24.6",
       "type": "library",
       "name": "undici-types",
-      "version": "8.9.0",
+      "version": "7.24.6",
       "scope": "required",
       "description": "A stand-alone types package for Undici",
-      "purl": "pkg:npm/undici-types@8.9.0",
+      "purl": "pkg:npm/undici-types@7.24.6",
       "properties": [
         {
           "name": "cdx:npm:package:development",
@@ -20129,7 +20129,7 @@
       "externalReferences": [
         {
           "type": "distribution",
-          "url": "https://registry.npmjs.org/undici-types/-/undici-types-8.9.0.tgz"
+          "url": "https://registry.npmjs.org/undici-types/-/undici-types-7.24.6.tgz"
         },
         {
           "type": "vcs",
@@ -20147,7 +20147,7 @@
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "2930f2453617f2c5a629702290f1c74b273adc244f11331cb728ca16ea5c0ba3812d74f7c6c3747bd685ee6fa6217bad156a545ee79db68c06ee22cece9d2442"
+          "content": "591356fac2608f9381378ff42691c5aadab38696e75741ae07e3a8cc0f6008bedaf7ddd2994fb5241642ccb37162c6cc7c87832fe953b29843e6337937e9f4ce"
         }
       ],
       "licenses": [
@@ -21198,7 +21198,7 @@
         "@testing-library/jest-dom@7.0.1",
         "@testing-library/react@16.3.3",
         "@testing-library/user-event@14.6.7",
-        "@types/node@26.5.1",
+        "@types/node@24.19.0",
         "@types/nodemailer@8.0.2",
         "@types/react@19.3.0",
         "@types/react-dom@19.3.0",
@@ -21873,15 +21873,15 @@
       "dependsOn": []
     },
     {
-      "ref": "@types/node@26.5.1",
+      "ref": "@types/node@24.19.0",
       "dependsOn": [
-        "undici-types@8.9.0"
+        "undici-types@7.24.6"
       ]
     },
     {
       "ref": "@types/nodemailer@8.0.2",
       "dependsOn": [
-        "@types/node@26.5.1"
+        "@types/node@24.19.0"
       ]
     },
     {
@@ -24408,7 +24408,7 @@
       "dependsOn": []
     },
     {
-      "ref": "undici-types@8.9.0",
+      "ref": "undici-types@7.24.6",
       "dependsOn": []
     },
     {
@@ -24435,7 +24435,7 @@
     {
       "ref": "vite@8.3.0",
       "dependsOn": [
-        "@types/node@26.5.1",
+        "@types/node@24.19.0",
         "esbuild@0.28.2",
         "jiti@2.7.0",
         "tsx@4.23.15",
@@ -24463,7 +24463,7 @@
       "dependsOn": [
         "vite@8.3.0",
         "@opentelemetry/api@1.9.1",
-        "@types/node@26.5.1",
+        "@types/node@24.19.0",
         "@vitest/coverage-v8@5.0.1",
         "jsdom@30.0.1",
         "@types/chai@5.2.3",
