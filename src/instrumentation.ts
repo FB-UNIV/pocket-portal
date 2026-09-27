@@ -1,5 +1,5 @@
 import type { Instrumentation } from "next";
-import { registerOTel } from "@vercel/otel";
+import { registerOTel, type SpanProcessorOrName } from "@vercel/otel";
 import { resolveServiceName } from "@/lib/observability/otel";
 import { warnIfOriginNotPinned } from "@/lib/auth/origin";
 import { nonDefaultFlags, readLogRequests, validateConfig } from "@/lib/config";
@@ -22,12 +22,16 @@ export async function register() {
     syncLogLevel();
   }
 
-  registerOTel({
-    serviceName: resolveServiceName(),
-    // "auto" keeps tracing's own export; the request log reads the same
-    // spans, so its lines and the traces agree.
-    spanProcessors: nodejs && readLogRequests() ? ["auto", new RequestLogProcessor(logger)] : ["auto"],
-  });
+  // "auto" keeps tracing's own export; the request log and the request
+  // metrics read the same spans, so lines, metrics and traces agree.
+  const spanProcessors: SpanProcessorOrName[] = ["auto"];
+  if (nodejs) {
+    // Imported here, not at the top: prom-client needs Node.
+    const { RequestMetricsProcessor } = await import("@/lib/observability/request-metrics");
+    spanProcessors.push(new RequestMetricsProcessor());
+    if (readLogRequests()) spanProcessors.push(new RequestLogProcessor(logger));
+  }
+  registerOTel({ serviceName: resolveServiceName(), spanProcessors });
 
   if (!nodejs) return;
 

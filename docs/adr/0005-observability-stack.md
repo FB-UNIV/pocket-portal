@@ -146,5 +146,5 @@ is in.
   fights `output: "standalone"`'s single-server model.
 - **`route` labels are route patterns, never raw paths**, so label
   cardinality is bounded by the route table rather than by whatever paths a
-  client sends. This is recorded next to `recordHttpRequest`, which has no
-  callers yet.
+  client sends. This is recorded next to `recordHttpRequest`, which is fed
+  Next's matched `http.route` from each request's span.

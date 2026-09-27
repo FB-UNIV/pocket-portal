@@ -58,9 +58,8 @@ describe("RequestMetricsProcessor", () => {
       new RegExp(`http_request_duration_seconds_bucket\\{le="${le}",method="GET",route="/apps",status_code="200"\\} (\\d+)`);
     expect(body.match(bucket("0.1"))?.[1]).toBe("0");
     expect(body.match(bucket("0.25"))?.[1]).toBe("1");
-    for (const le of ["0.025", "0.05", "0.1", "0.25", "0.5", "1", "2.5", "5", "10"]) {
-      expect(body).toMatch(bucket(le));
-    }
+    const bounds = [...body.matchAll(/http_request_duration_seconds_bucket\{le="([^"]+)"/g)].map((m) => m[1]);
+    expect(bounds).toEqual(["0.025", "0.05", "0.1", "0.25", "0.5", "1", "2.5", "5", "10", "+Inf"]);
     expect(body).toMatch(/http_request_duration_seconds_sum\{method="GET",route="\/apps",status_code="200"\} 0\.18/);
   });
 
