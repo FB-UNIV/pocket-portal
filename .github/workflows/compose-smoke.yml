@@ -28,6 +28,8 @@ jobs:
       pull-requests: read
 
   compose:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Compose smoke test
     needs: changes
     # Runs unless the PR is docs-only; also if classifying failed.
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
@@ -97,7 +99,26 @@ jobs:
 
       - name: Stack logs
         if: failure()
-        run: docker compose logs --no-color
+        run: |
+          docker compose logs --no-color
+          {
+            echo "### Compose smoke test failed"
+            echo
+            echo "The reference stack (\`docker-compose.yml\`, this PR's image) didn't come up healthy, or a probe failed. Container states:"
+            echo
+            echo '```'
+            docker compose ps -a
+            echo '```'
+            echo
+            echo "<details><summary>Last 40 lines of the portal's logs</summary>"
+            echo
+            echo '```'
+            docker compose logs --no-color --tail 40 portal
+            echo '```'
+            echo "</details>"
+            echo
+            echo "Full logs: the **Stack logs** step."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Tear down
         if: always()

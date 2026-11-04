@@ -18,6 +18,8 @@ jobs:
   # Pull requests: fail with a pointer if sbom.cdx.json is stale. Never
   # writes; a PR branch may belong to a fork.
   check:
+    # The check's name on the PR, and the context branch protection requires.
+    name: SBOM up to date
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -34,11 +36,41 @@ jobs:
       - run: npm run sbom
 
       - name: Check SBOM is current
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BRANCH: ${{ github.head_ref }}
         run: |
-          if ! git diff --exit-code -- sbom.cdx.json; then
-            echo "::error::sbom.cdx.json is out of date. Regenerate it the reproducible way (Node 24 on linux-x64; see docs/CONTRIBUTING.md) and commit it."
-            exit 1
+          if git diff --quiet -- sbom.cdx.json; then
+            echo "### SBOM up to date" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
+          echo "::error title=SBOM out of date::sbom.cdx.json doesn't match this PR's dependencies. The job summary has the commands to regenerate it."
+          {
+            echo "### sbom.cdx.json is out of date"
+            echo
+            echo "This PR changes dependencies (\`package.json\` / \`package-lock.json\`) without regenerating the SBOM."
+            if [ "$AUTHOR" = "dependabot[bot]" ]; then
+              echo "Dependabot can't do that itself: check out the branch, regenerate, and push."
+            fi
+            echo
+            echo "Regenerate it with **Node 24** from a scratch copy (\`docs/CONTRIBUTING.md\`), so it matches CI:"
+            echo
+            echo '```bash'
+            echo "git switch $BRANCH"
+            echo 'd=$(mktemp -d) && mkdir -p "$d/scripts"'
+            echo 'cp package.json package-lock.json "$d/" && cp scripts/generate-sbom.mjs "$d/scripts/"'
+            echo '(cd "$d" && npm ci --ignore-scripts && node scripts/generate-sbom.mjs)'
+            echo 'cp "$d/sbom.cdx.json" . && git commit -am "chore: regenerate sbom.cdx.json" && git push'
+            echo '```'
+            echo
+            echo "<details><summary>What changed (component names and versions)</summary>"
+            echo
+            echo '```diff'
+            git diff -U0 -- sbom.cdx.json | grep -E '^[-+] *"(name|version)"' | head -60
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
 
   # main: self-heal by committing CI's own output, since npm sbom's result
   # depends on the installed tree and this is the canonical environment.

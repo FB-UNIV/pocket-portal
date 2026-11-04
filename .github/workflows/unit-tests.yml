@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   unit:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Lint, typecheck & unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -24,27 +26,50 @@ jobs:
           node-version: 24
           cache: npm
 
-      - run: npm ci
+      - id: install
+        name: Install dependencies
+        run: npm ci
 
-      - run: npm run lint
+      - id: lint
+        name: Lint
+        run: npm run lint
 
       # Next.js's typed-routes feature (LayoutProps, PageProps, etc.) only
       # exists after this — a fresh checkout has no .next/types yet.
-      - run: npx next typegen
+      - id: typegen
+        name: Generate route types
+        run: npx next typegen
 
-      - run: npx tsc --noEmit
+      - id: typecheck
+        name: Typecheck
+        run: npx tsc --noEmit
 
-      - run: npm run test:coverage
+      - id: test
+        name: Unit tests + coverage
+        run: npm run test:coverage
 
-      # Blocking for production dependencies at high severity: that code
-      # ships in the image, and advisory-only is how a vulnerable nodemailer
-      # reached a release. A new advisory does redden open PRs, which
-      # is the point: fix it first.
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      # Dependency advisories are dependency-audit.yml's job, so that a new
+      # CVE fails a check named after it rather than this one.
 
-      # Advisory for everything else (dev tooling isn't shipped). Dependabot
-      # (7-day cooldown) handles the updates.
-      - name: Audit all dependencies
-        run: npm audit --audit-level=high
-        continue-on-error: true
+      - name: Explain the failure
+        if: failure()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          LINT: ${{ steps.lint.outcome }}
+          TYPEGEN: ${{ steps.typegen.outcome }}
+          TYPECHECK: ${{ steps.typecheck.outcome }}
+          TEST: ${{ steps.test.outcome }}
+        run: |
+          {
+            echo "### Lint, typecheck & unit tests failed"
+            echo
+            echo "| Step | Result | Reproduce locally |"
+            echo "| --- | --- | --- |"
+            echo "| Install | $INSTALL | \`npm ci\` (with Node 24; a lockfile written by another npm can fail here) |"
+            echo "| Lint | $LINT | \`npm run lint\` |"
+            echo "| Route types | $TYPEGEN | \`npx next typegen\` |"
+            echo "| Typecheck | $TYPECHECK | \`npx tsc --noEmit\` |"
+            echo "| Unit tests + coverage | $TEST | \`npm run test:coverage\` (coverage thresholds fail the run even when every test passes) |"
+            echo
+            echo "Open the step marked **failure** in the log for the details."
+          } >> "$GITHUB_STEP_SUMMARY"
