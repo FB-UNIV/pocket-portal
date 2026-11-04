@@ -15,6 +15,12 @@ updates:
       # Moves together with the Docker `node` major below.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # @opentelemetry/resources@2.12.0 (pulled in by @vercel/otel and
+      # sdk-logs) peers on "@opentelemetry/api" ">=1.3.0 <1.10.0", so 1.10
+      # makes `npm ci` fail with ERESOLVE. Drop this once a resources
+      # release accepts api 1.10.
+      - dependency-name: "@opentelemetry/api"
+        versions: [">=1.10.0"]
 
   - package-ecosystem: docker
     directory: "/"

@@ -8,6 +8,24 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-04
+
+> **Security release: upgrade.** Next.js 16.3.5 has a critical advisory
+> (remote code execution in `next/og`) and several high ones. Nothing to
+> change in your configuration.
+
+### Security
+- Next.js 16.3.5 → 16.4.3, fixing
+  [GHSA-vcvr-r3jv-pc5j](https://github.com/advisories/GHSA-vcvr-r3jv-pc5j)
+  (critical: RCE in `next/og` ImageResponse), cache poisoning of SSG/ISR
+  pages ([GHSA-4jqv-mc3x-m676](https://github.com/advisories/GHSA-4jqv-mc3x-m676),
+  [GHSA-mcj8-r9mp-w47p](https://github.com/advisories/GHSA-mcj8-r9mp-w47p)),
+  SSRF in image optimization
+  ([GHSA-cjq9-62q9-8jv4](https://github.com/advisories/GHSA-cjq9-62q9-8jv4))
+  and others.
+- sharp → 0.35.5 (librsvg CVE-2026-96889) and source-map-js → 1.2.2
+  (event-loop denial of service).
+
 ### Fixed
 - `/api/metrics` now counts requests: `http_requests_total` and
   `http_request_duration_seconds` were exported with no samples. They're
