@@ -1,13 +1,12 @@
 #!/usr/bin/env node
-// Generates a deterministic CycloneDX SBOM at sbom.cdx.json.
+// Generates a CycloneDX SBOM at sbom.cdx.json (gitignored). CI runs it to
+// attest the SBOM onto each image (docker-build.yml) and attach it to each
+// release (release-sbom.yml); see .claude/rules/dependencies.md.
 //
 // `npm sbom` embeds a random serialNumber and a timestamp on every run;
-// both are stripped below. It also walks the installed node_modules, whose
-// optional platform packages differ by environment even from one lockfile
-// (`--package-lock-only` would avoid that, but fails on this lockfile with
-// ESBOMPROBLEMS). So the output is reproducible only in CI's environment,
-// Node 24 on linux-x64: a scratch copy of package.json and the lockfile
-// there matches sbom-check.yml byte for byte; see docs/CONTRIBUTING.md.
+// both are stripped below, so one commit's SBOM is the same on every CI
+// run. It walks the installed node_modules, whose optional platform
+// packages differ by environment, so a local run can differ from CI's.
 //
 // npm names the root component after the directory it runs in, so the
 // root is renamed from package.json below: the output doesn't depend on

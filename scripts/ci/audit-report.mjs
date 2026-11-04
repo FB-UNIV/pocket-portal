@@ -56,7 +56,7 @@ export function renderSummary(vulns, { title, level }) {
     "| --- | --- | --- | --- | --- |",
     ...rows,
     "",
-    "Fix locally with `npm audit fix` (or bump the direct dependency), then regenerate the SBOM as `docs/CONTRIBUTING.md` describes.",
+    "Fix locally with `npm audit fix` (or bump the direct dependency), using Node 24's npm so the lockfile matches CI's.",
     "",
   ].join("\n");
 }

@@ -83,7 +83,8 @@ A PR that changes the version:
    ```
 
    The `--verify-tag` guards against publishing a release for a tag that was
-   never pushed (step 3).
+   never pushed (step 3). Publishing it triggers `release-sbom.yml`, which
+   attaches the npm SBOM (`sbom.cdx.json`) to the release.
 
 Not every PR needs a version bump — routine chores, CI tweaks, and
 docs-only changes don't need one. Bump when the change is something a

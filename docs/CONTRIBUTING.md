@@ -62,17 +62,11 @@ Full rules: [`git-workflow.md`](../.claude/rules/git-workflow.md),
 - [ ] `npm test`, `npm run lint`, `npx tsc --noEmit` pass.
       (Run `npx next typegen` before `tsc`, or `layout.tsx` errors with
       `Cannot find name 'LayoutProps'`.)
-- [ ] Added, removed or upgraded a dependency, or bumped the version?
-      Regenerate `sbom.cdx.json` the way `sbom-check` does, or CI rejects
-      it. Its output depends on the installed tree, so match CI's
-      environment (Node 24, linux-x64), from a scratch copy:
-
-      ```bash
-      d=$(mktemp -d) && mkdir -p "$d/scripts"
-      cp package.json package-lock.json "$d/" && cp scripts/generate-sbom.mjs "$d/scripts/"
-      (cd "$d" && npm ci --ignore-scripts && node scripts/generate-sbom.mjs)  # with Node 24
-      cp "$d/sbom.cdx.json" .
-      ```
+- [ ] Added, removed or upgraded a dependency? Update `package-lock.json`
+      with **Node 24's npm** (CI's; another npm can leave out optional
+      packages and break `npm ci`). No SBOM to regenerate: CI generates it
+      and attests it onto the image
+      ([`dependencies.md`](../.claude/rules/dependencies.md)).
 - [ ] Bumped the version? Follow [`versioning.md`](../.claude/rules/versioning.md):
       `package.json`, `.env.example`'s `POCKET_PORTAL_TAG` (a test checks
       both) and a `CHANGELOG.md` entry.

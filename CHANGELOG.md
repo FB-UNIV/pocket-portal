@@ -8,6 +8,12 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Changed
+- The npm SBOM is no longer a file in the repository. Every image now
+  carries it as a **signed attestation** (CycloneDX), and every GitHub
+  Release has it as a `sbom.cdx.json` asset. Verify an image's with
+  `gh attestation verify oci://ghcr.io/fb-univ/pocket-portal:<tag> --owner FB-UNIV --predicate-type https://cyclonedx.org/bom`.
+
 ## [1.0.1] - 2026-11-04
 
 > **Security release: upgrade.** Next.js 16.3.5 has a critical advisory

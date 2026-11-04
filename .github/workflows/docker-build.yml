@@ -8,7 +8,11 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only a PR's superseded runs are cancelled. On main every commit needs its
+  # own scanned `dev-<sha>` image (promote-release releases exactly that
+  # one), so builds queue: cancelling left commits #25, #27 and #44 without
+  # an image, and a tag on such a commit has nothing to promote.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # Docs-only PRs skip the job below (they can't break it; unit tests still
@@ -47,8 +51,37 @@ jobs:
   # Every merge to main: build for amd64 and arm64, scan, sign, and tag
   # `dev-<sha>` plus a moving `dev`. Never `latest` or a version: those
   # come only from promote-release below, on a release tag.
+  # The npm-level SBOM (CycloneDX) for this commit, attested onto its image
+  # by `build` below. A job of its own, holding no write permission: it
+  # installs the dependency tree (`--ignore-scripts`, so no package code
+  # runs) and only hands the JSON on as an artifact.
+  npm-sbom:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - run: npm run sbom
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: npm-sbom
+          path: sbom.cdx.json
+          retention-days: 90
+
   build:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: npm-sbom
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -57,6 +90,8 @@ jobs:
       # Keyless cosign signing: the signature is tied to this workflow's
       # GitHub OIDC identity, no key to store or leak.
       id-token: write
+      # The signed npm SBOM attestation (actions/attest-sbom).
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -136,6 +171,25 @@ jobs:
           IMAGE: ${{ steps.image.outputs.name }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "$IMAGE@$DIGEST"
+
+      # The npm dependency tree this image was built from, as a signed
+      # attestation on its digest (pushed to GHCR beside it, and listed under
+      # the repo's Attestations). It follows the digest, so the release tags
+      # promote-release adds later carry it too. `sbom: true` above covers
+      # the OS packages; this covers npm. Verify with:
+      #   gh attestation verify oci://IMAGE@DIGEST --owner OWNER \
+      #     --predicate-type https://cyclonedx.org/bom
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-sbom
+
+      - name: Attest the npm SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-name: ${{ steps.image.outputs.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.cdx.json
+          push-to-registry: true
 
       # Only once scanned and signed: move `dev` to that exact digest.
       # `imagetools create` only writes a manifest, no rebuild.

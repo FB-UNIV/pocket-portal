@@ -1,29 +1,41 @@
 # Dependency rules
 
-## Keep the SBOM current
+## The SBOM is a build output, not a committed file
 
-Whenever an external component is added, removed, or upgraded — an npm
-package, a Docker base image, anything pulled in from outside this repo —
-regenerate the Software Bill of Materials before considering the change done:
+The npm-level Software Bill of Materials (CycloneDX) is generated in CI,
+never by hand and never committed:
 
-```bash
-npm run sbom
-```
+- **Every image** built on `main` (`docker-build.yml`) gets it as a
+  **signed attestation** on its digest (`actions/attest-sbom`, pushed to
+  GHCR beside the image). Release tags point at that same digest, so they
+  carry it too. Verify with:
 
-This writes `sbom.cdx.json` (CycloneDX format). Commit it alongside the
-dependency change. `.github/workflows/sbom-check.yml` regenerates and diffs
-it on every push/PR.
+  ```bash
+  gh attestation verify oci://ghcr.io/fb-univ/pocket-portal:vX.Y.Z \
+    --owner FB-UNIV --predicate-type https://cyclonedx.org/bom
+  ```
 
-The output depends on the installed `node_modules`, so a plain local run
-can differ from CI's. Regenerate it the way `docs/CONTRIBUTING.md` shows
-(Node 24 on linux-x64, from a scratch copy), which
-matches CI byte for byte. A failure there then really means the SBOM is
-stale.
+- **Every GitHub Release** gets it as a `sbom.cdx.json` asset
+  (`release-sbom.yml`).
+- The OS/base-image level is covered by BuildKit's own SBOM attestation
+  (`sbom: true` in the same build).
 
-The Docker image itself is covered separately: `docker-build.yml` builds with
-an SBOM attestation (`sbom: true`) so the base-image/OS-level component list
-travels with the published image, independent of the npm-level
-`sbom.cdx.json`.
+So a dependency change needs nothing extra: no regeneration, no
+`sbom.cdx.json` in the diff. `npm run sbom` still exists (CI runs it) if
+you want to look at one locally; it's gitignored.
+
+**Why not commit it:** it's derived from `package-lock.json`, so a
+committed copy only drifts (it depends on the installed tree, so it only
+matched CI's byte for byte on Node 24 from a scratch copy) and every
+Dependabot PR failed on it. Making CI push it back onto those branches
+would put a write token in the job that installs the brand-new,
+not-yet-trusted dependency versions. A signed attestation tied to the
+image digest also proves more than a JSON file anyone can edit in a PR.
+Review supply-chain changes in the `package-lock.json` diff.
+
+The SBOM-generating jobs hold no write permission and install with
+`--ignore-scripts`; only a separate step or job, which runs no dependency
+code, attests or uploads the result. Keep it that way.
 
 ## Prefer the latest stable version
 
@@ -48,3 +60,7 @@ mutable tag, for the same reason (Semgrep's
 `github-actions-mutable-action-tag` rule; `trivy-action` has a real history
 of this exact attack). Dependabot still knows how to bump a SHA-pinned
 action when a new version's SHA needs swapping in.
+
+Lockfiles are resolved with **Node 24's npm** (CI's toolchain): a lockfile
+written by another npm major can omit optional packages Node 24's `npm ci`
+requires, and then every job fails at install.

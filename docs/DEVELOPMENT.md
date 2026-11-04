@@ -141,7 +141,7 @@ client are all gone with it. Next time you `test-env:up`, repeat steps
 | `npm run test-env:down` | Stop and remove them (`-v`: also drops tmpfs data) |
 | `npm run db:migrate` | Apply drizzle migrations — chained into `test-env:up` already; run it yourself only if a DB-touching route errors with a missing relation |
 | `npm run dev-login` | Print a one-click PocketID login link for manual testing (see above) |
-| `npm run sbom` | Regenerate `sbom.cdx.json`: required after any dependency change, see [Contributing](CONTRIBUTING.md#before-opening-a-pr) |
+| `npm run sbom` | Write the npm SBOM to `sbom.cdx.json` (gitignored). CI generates it and attests it onto each image; nothing to commit ([`dependencies.md`](../.claude/rules/dependencies.md)) |
 <!-- /AUTO-GENERATED -->
 
 There's also `npx tsc --noEmit` for typecheck — run `npx next typegen`
@@ -213,8 +213,8 @@ log for examples).
 
 **Dependencies** ([full rules](../.claude/rules/dependencies.md)): install
 the latest stable release (at least 7 days old), pin GitHub Actions to a
-commit SHA, and regenerate the SBOM on every change, as described in
-[Contributing](CONTRIBUTING.md#before-opening-a-pr).
+commit SHA, and resolve the lockfile with Node 24's npm. The SBOM is
+generated and attested in CI, never committed.
 
 **Configuration**: add a setting to the registry in `src/lib/config.ts` and
 read it through a reader there, never `process.env` directly. The README
@@ -236,7 +236,6 @@ Every push to `main` and every PR runs:
   in the run's summary ([`scripts/ci/audit-report.mjs`](../scripts/ci/audit-report.mjs))
 - `e2e-tests.yml` — integration tests against real PocketID, Playwright e2e
   (browser binaries cached, keyed on the pinned Playwright version)
-- `sbom-check.yml` — SBOM freshness
 - `compose-smoke.yml` — boots the reference compose stack from the PR's
   image and checks liveness, readiness and that migrations ran
 - `semgrep.yml` — static analysis, pinned rulesets (`p/typescript`,
@@ -245,11 +244,15 @@ Every push to `main` and every PR runs:
   personal account)
 - `docker-build.yml` — on a PR, a build-only check (no scan, no push) so a
   broken multi-stage build surfaces before merge, not after; on push to
-  `main`, the real build: scans with Trivy (fails on CRITICAL/HIGH), and
-  only then pushes to `ghcr.io`
+  `main`, the real build: scans with Trivy (fails on CRITICAL/HIGH), signs
+  it, attests the npm SBOM onto its digest, and only then moves `dev` to it.
+  `main` builds queue rather than cancel each other: every commit needs its
+  own image for a tag on it to have something to promote
+- `release-sbom.yml` — attaches the npm SBOM to each published GitHub
+  Release (or a given tag, by manual dispatch)
 
 All jobs have a `timeout-minutes` cap and cancel superseded runs on the
-same branch/PR (`concurrency`). Branch protection on `main` requires these
+same PR (`concurrency`). Branch protection on `main` requires these
 checks, by the job `name:` each workflow gives them (rename one and the
 required list in the branch protection settings must change with it, or
 merges block on a check that never reports):
@@ -258,7 +261,6 @@ merges block on a check that never reports):
 | --- | --- |
 | Lint, typecheck & unit tests | `unit-tests.yml` |
 | Dependency audit | `dependency-audit.yml` |
-| SBOM up to date | `sbom-check.yml` |
 | Semgrep scan | `semgrep.yml` |
 | Integration & e2e tests | `e2e-tests.yml` |
 | Compose smoke test | `compose-smoke.yml` |
@@ -267,7 +269,7 @@ merges block on a check that never reports):
 When one fails, start from its **job summary** (the run's Summary page,
 linked from the check on the PR): it names the failing step and how to
 reproduce or fix it locally — the vulnerable packages for the audit, the
-regeneration commands for the SBOM, container states for compose, the
+container states for compose, the
 Playwright report for e2e.
 
 A docs-only PR (only `*.md`, `docs/`, `.claude/` or `LICENSE`) doesn't
@@ -291,7 +293,6 @@ Issues you might hit running this locally:
 | `GET /api/auth/error?error=Configuration` returns HTTP 500 | Intentional Auth.js behavior (`@auth/core/lib/pages/error.js` hardcodes `status: 500` for the `Configuration` error class) | Not a bug — look at what upstream error actually triggered it (check the dev server log) instead of the error page's status code |
 | `npm install` prints an `EBADENGINE` warning for `jsdom@30.0.1` | `jsdom` wants Node `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`; an older 24.x patch triggers the warning | Harmless — tests still run correctly |
 | CI step loading `.env.test` into `$GITHUB_ENV` fails: `Invalid format '# ...'` | `$GITHUB_ENV`'s format rejects comment/blank lines; `.env.test` has both | Filter out `^#` and blank lines before appending (see `e2e-tests.yml`) |
-| `sbom-check.yml` fails although you ran `npm run sbom` | `npm sbom` walks the installed `node_modules`, whose optional platform packages differ by machine and Node version | Regenerate the way CI does; see [Contributing](CONTRIBUTING.md#before-opening-a-pr) |
 | e2e sign-ins fail with 429 after the first few | PocketID rate-limits one-time token redemption (burst 5, then 1 per 10s, per IP) | Reuse `sessionFile()` from `e2e/auth.setup.ts` rather than calling `signInAsSeedUser` per test |
 | Semgrep blocks on `github-actions-mutable-action-tag` across a workflow | Version tags (`@v7`, `@v4`, ...) can be silently repointed by the action owner — `trivy-action` has a real history of exactly this | Pin every `uses:` to a commit SHA with a `# vX.Y.Z` comment (Dependabot still updates these) |
 | `relation "apps"` (or similar) does not exist when a DB-touching route runs | You brought up Postgres some other way than `test-env:up`, so migrations were never applied | Run `npm run db:migrate` |
