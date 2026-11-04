@@ -224,6 +224,9 @@ table, `.env.example` and the config-file keys are then checked by tests.
 
 ### CI
 
+Diagrams of every pipeline (PR checks, the image build on `main`, releases)
+and a "when a check fails" table: [CI/CD](CI.md).
+
 Every push to `main` and every PR runs:
 
 - `unit-tests.yml` — lint, typecheck, unit tests + coverage

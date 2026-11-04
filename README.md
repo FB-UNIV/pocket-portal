@@ -129,6 +129,7 @@ Before going live:
 | [Runbook](docs/RUNBOOK.md) | Deploying, upgrading, health checks, rollback, backups |
 | [Development](docs/DEVELOPMENT.md) | Running it locally and changing it |
 | [Contributing](docs/CONTRIBUTING.md) | Setup gotchas and the pre-PR checklist |
+| [CI/CD](docs/CI.md) | The pipelines as diagrams, what each check proves, and verifying a published image |
 | [Decisions](docs/adr/) | Why it is built this way |
 | [Changelog](CHANGELOG.md) | What changed, and when |
 
