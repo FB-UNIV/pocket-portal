@@ -53,3 +53,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# npm SBOM: generated in CI and attested onto the image, never committed
+/sbom.cdx.json

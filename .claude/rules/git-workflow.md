@@ -11,7 +11,7 @@ Direct pushes/commits to `main` are not allowed, including for small or
    (RED/GREEN TDD commits, `chore:`/`fix:`/`feat:` prefixes).
 3. Push the branch and open a PR with `gh pr create`.
 4. Let CI run on the PR (unit tests, dependency audit, e2e, lint,
-   sbom-check, semgrep) before
+   semgrep, image build) before
    merging — this is the whole point: catching problems pre-merge instead
    of on `main`.
 5. Merge the PR (squash or merge, whichever keeps history readable) once
@@ -34,7 +34,7 @@ Direct pushes/commits to `main` are not allowed, including for small or
 
 - Direct pushes to `main` mean CI results are only known *after* the
   change already landed — this repo's CI (unit tests, e2e against real
-  PocketID/Postgres, SBOM check, semgrep) is meant to gate merges, not
+  PocketID/Postgres, dependency audit, semgrep) is meant to gate merges, not
   report on them after the fact.
 - PRs give every change a reviewable diff and a place for CI status,
   discussion, and linkage to the issue/project it came from — none of

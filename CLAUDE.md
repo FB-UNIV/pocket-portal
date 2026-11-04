@@ -24,4 +24,4 @@ Digital workspace for users, built by consuming the PocketID API (identity/auth 
 
 - Stateless-by-design (see rule above): no in-process session/cache state.
 - Configuration: read settings through `src/lib/config.ts` (add new ones to its `CONFIG_VARS` registry and the README table), never `process.env` directly.
-- SBOM: regenerate it the reproducible way in `docs/CONTRIBUTING.md` (Node 24, a scratch copy), not with a plain local `npm run sbom`.
+- SBOM: generated in CI and attested onto each image (see `.claude/rules/dependencies.md`); never commit `sbom.cdx.json`. Resolve lockfiles with Node 24's npm.
