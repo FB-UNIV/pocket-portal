@@ -10,7 +10,8 @@ Direct pushes/commits to `main` are not allowed, including for small or
 2. Commit work there, following the repo's existing commit conventions
    (RED/GREEN TDD commits, `chore:`/`fix:`/`feat:` prefixes).
 3. Push the branch and open a PR with `gh pr create`.
-4. Let CI run on the PR (unit tests, e2e, lint, sbom-check, semgrep) before
+4. Let CI run on the PR (unit tests, dependency audit, e2e, lint,
+   sbom-check, semgrep) before
    merging — this is the whole point: catching problems pre-merge instead
    of on `main`.
 5. Merge the PR (squash or merge, whichever keeps history readable) once

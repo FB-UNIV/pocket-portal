@@ -23,6 +23,8 @@ jobs:
   # regression used to only surface after landing on main (docker-build ran
   # push-only). No scan, no push — just prove the image still builds.
   build-check:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Docker image builds
     needs: changes
     # PRs only, and not docs-only ones; also if classifying failed.
     if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.code != 'false' }}

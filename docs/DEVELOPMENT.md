@@ -226,9 +226,14 @@ table, `.env.example` and the config-file keys are then checked by tests.
 
 Every push to `main` and every PR runs:
 
-- `unit-tests.yml` — lint, typecheck, unit tests + coverage, `npm audit`
-  (advisory: `continue-on-error`, doesn't block — Dependabot is the actual
-  enforcement path for dependency CVEs)
+- `unit-tests.yml` — lint, typecheck, unit tests + coverage
+- `dependency-audit.yml` — `npm audit`: blocking for production
+  dependencies at high or worse (that code ships in the image), warnings
+  only for dev tooling. Also runs **nightly on `main`**, because advisories
+  appear between pushes: a new CVE fails a run named after it, and GitHub
+  emails about failed scheduled runs, instead of first surfacing as
+  unrelated PRs turning red. The table of packages, advisories and fixes is
+  in the run's summary ([`scripts/ci/audit-report.mjs`](../scripts/ci/audit-report.mjs))
 - `e2e-tests.yml` — integration tests against real PocketID, Playwright e2e
   (browser binaries cached, keyed on the pinned Playwright version)
 - `sbom-check.yml` — SBOM freshness
@@ -244,8 +249,26 @@ Every push to `main` and every PR runs:
   only then pushes to `ghcr.io`
 
 All jobs have a `timeout-minutes` cap and cancel superseded runs on the
-same branch/PR (`concurrency`). Branch protection on `main` requires
-`unit`, `semgrep`, `check` (SBOM), `e2e`, `compose` and `build-check`.
+same branch/PR (`concurrency`). Branch protection on `main` requires these
+checks, by the job `name:` each workflow gives them (rename one and the
+required list in the branch protection settings must change with it, or
+merges block on a check that never reports):
+
+| Check | Workflow |
+| --- | --- |
+| Lint, typecheck & unit tests | `unit-tests.yml` |
+| Dependency audit | `dependency-audit.yml` |
+| SBOM up to date | `sbom-check.yml` |
+| Semgrep scan | `semgrep.yml` |
+| Integration & e2e tests | `e2e-tests.yml` |
+| Compose smoke test | `compose-smoke.yml` |
+| Docker image builds | `docker-build.yml` |
+
+When one fails, start from its **job summary** (the run's Summary page,
+linked from the check on the PR): it names the failing step and how to
+reproduce or fix it locally — the vulnerable packages for the audit, the
+regeneration commands for the SBOM, container states for compose, the
+Playwright report for e2e.
 
 A docs-only PR (only `*.md`, `docs/`, `.claude/` or `LICENSE`) doesn't
 need e2e, compose or the image build, but those workflows still run on it:

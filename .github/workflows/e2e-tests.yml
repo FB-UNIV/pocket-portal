@@ -22,6 +22,8 @@ jobs:
       pull-requests: read
 
   e2e:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Integration & e2e tests
     needs: changes
     # Runs unless the PR is docs-only; also if classifying failed.
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
@@ -89,6 +91,23 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+      - name: Explain the failure
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "### Integration & e2e tests failed"
+            echo
+            echo "Check which step failed in the log: **Start test environment** (PocketID/Postgres didn't come up),"
+            echo "**Run integration tests** or **Run Playwright e2e tests**."
+            echo
+            echo "For a Playwright failure, download the \`playwright-report\` artifact from [this run]($RUN_URL#artifacts)"
+            echo "and open \`index.html\`: it has the trace, screenshot and error for each failed test."
+            echo
+            echo "Locally: \`npm run test-env:up\`, then \`npm run test:integration\` / \`npm run test:e2e\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Stop test environment
         if: always()

@@ -1,0 +1,53 @@
+name: Dependency audit
+
+# Advisories appear between pushes, so this also runs nightly on main: a
+# new CVE in a shipped dependency then fails a run named after it (and
+# GitHub emails about a failed scheduled run) instead of first showing up
+# as unrelated PRs turning red.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # npm audit reads the lockfile; no install needed.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      # Blocking for production dependencies at high severity: that code
+      # ships in the image, and advisory-only is how a vulnerable nodemailer
+      # reached a release. A new advisory does redden open PRs, which is the
+      # point: fix it first.
+      - name: Production dependencies (blocking at high)
+        run: |
+          npm audit --omit=dev --json > audit-prod.json || true
+          node scripts/ci/audit-report.mjs audit-prod.json --level high --mode error --title "Production dependencies"
+
+      # Advisory for everything else (dev tooling isn't shipped): warnings
+      # on the PR, never a failure. Dependabot (7-day cooldown) handles the
+      # updates.
+      - name: All dependencies (advisory)
+        if: ${{ !cancelled() }}
+        run: |
+          npm audit --json > audit-all.json || true
+          node scripts/ci/audit-report.mjs audit-all.json --level high --mode warning --title "All dependencies (advisory)"

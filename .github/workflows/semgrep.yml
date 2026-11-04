@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   semgrep:
+    # The check's name on the PR, and the context branch protection requires.
+    name: Semgrep scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
     container:
