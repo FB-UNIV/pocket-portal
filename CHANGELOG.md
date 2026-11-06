@@ -8,6 +8,15 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Added
+- **Categories and search on the Apps page.** Admins file each app under a
+  short category on `/admin/apps` ("Watch & listen", "Files"; earlier
+  categories are suggested). The Apps page shows them as filter links,
+  next to a search over names, descriptions and categories. Both work
+  without JavaScript and keep their state in the URL. Adds migration 0010
+  (`app_overrides.category`, nullable). Nothing changes until an admin
+  sets a category, apart from the search box.
+
 ### Fixed
 - A dark PocketID accent colour (navy, forest) no longer turns the primary
   buttons invisible in the dark theme. The dark theme gets a lightened

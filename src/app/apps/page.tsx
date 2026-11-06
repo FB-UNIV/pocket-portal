@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
 import { listUserCatalogApps, type UserCatalogApp } from "@/lib/catalog/apps";
+import { browseHref, categoriesOf, filterApps, readBrowseParams } from "@/lib/catalog/browse";
 import { listUserAccessRequests } from "@/lib/requests/access-requests";
 import {
   deriveRequestOutcome,
@@ -123,7 +125,11 @@ function AppIntro({ app }: { app: UserCatalogApp }) {
   );
 }
 
-export default async function AppsPage() {
+export default async function AppsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+} = {}) {
   const session = await requireUser("/apps");
   const requestsEnabled = readAccessRequestsEnabled();
   const reasonMode = readAccessRequestReason();
@@ -133,9 +139,21 @@ export default async function AppsPage() {
     listUserCatalogApps(getPocketIdConfig(), db, session.user.groups),
     listUserAccessRequests(db, session.user.id),
   ]);
-  const usable = catalog.filter((app) => app.hasAccess);
   // Requests off: a pure launcher, listing only what can be opened.
-  const askable = requestsEnabled ? catalog.filter((app) => !app.hasAccess) : [];
+  const visible = requestsEnabled ? catalog : catalog.filter((app) => app.hasAccess);
+  const categories = categoriesOf(visible);
+
+  // ?q=…&category=… (see lib/catalog/browse.ts). A category no visible app
+  // has any more, say from an old bookmark, filters nothing out.
+  const params = readBrowseParams(await searchParams);
+  const browse = {
+    q: params.q,
+    category: params.category && categories.includes(params.category) ? params.category : undefined,
+  };
+  const filtering = Boolean(browse.q || browse.category);
+  const shown = filterApps(visible, browse);
+  const usable = shown.filter((app) => app.hasAccess);
+  const askable = shown.filter((app) => !app.hasAccess);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -165,40 +183,101 @@ export default async function AppsPage() {
           </p>
         </aside>
 
-        <section aria-labelledby="usable-h" className="flex flex-col gap-5">
-          <h2 id="usable-h" className="text-2xl font-bold tracking-tight">
-            What you can use
-          </h2>
-          {usable.length === 0 ? (
-            <p className="text-ink-muted">
-              {requestsEnabled
-                ? "Nothing yet. Ask for something below, and it shows up here once an admin lets you in."
-                : "You don’t have access to any apps yet. Ask an administrator."}
-            </p>
-          ) : (
-            <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
-              {usable.map((app) => (
-                <li key={app.id} className="flex">
-                  {/* SC 4.1.2 / 2.4.4: one "Open" per app is ambiguous out
-                      of context, so the accessible name carries the app. */}
-                  <a
-                    href={app.launchUrl}
-                    aria-label={`Open ${app.name}`}
-                    className="card card-link flex flex-1 flex-col gap-5 p-5 text-ink"
-                  >
-                    <AppIntro app={app} />
-                    <span className="mt-auto flex items-center justify-between border-t border-line pt-3.5 text-sm font-semibold text-ink-muted">
-                      Open
-                      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 17 17 7M9 7h8v8" />
-                      </svg>
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {visible.length > 0 && (
+          <div className="flex flex-col gap-4">
+            {/* A plain GET form: works without JavaScript, and the result is
+                a URL that can be bookmarked or sent to someone. */}
+            <form role="search" action="/apps" className="flex w-full max-w-xl items-center gap-2">
+              <label htmlFor="app-search" className="sr-only">
+                Search apps
+              </label>
+              <span className="relative flex-1">
+                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <input
+                  id="app-search"
+                  type="search"
+                  name="q"
+                  defaultValue={browse.q ?? ""}
+                  placeholder="Search by name, or by what it’s for"
+                  className="field min-h-12 rounded-full pl-12 text-base"
+                />
+              </span>
+              {browse.category && <input type="hidden" name="category" value={browse.category} />}
+              <button type="submit" className="btn btn-secondary">
+                Search
+              </button>
+            </form>
+
+            {categories.length > 0 && (
+              <nav aria-label="Categories">
+                <ul className="flex flex-wrap gap-2">
+                  {[undefined, ...categories].map((category) => (
+                    <li key={category ?? ""}>
+                      <Link
+                        href={browseHref({ q: browse.q, category })}
+                        aria-current={browse.category === category ? "page" : undefined}
+                        className="chip"
+                      >
+                        {category ?? "Everything"}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+
+            {filtering && (
+              <p className="text-[15px] text-ink-muted">
+                {shown.length === 0
+                  ? `Nothing matches${browse.q ? ` “${browse.q}”` : ""}${browse.category ? ` in ${browse.category}` : ""}.`
+                  : `${shown.length} ${shown.length === 1 ? "app" : "apps"} found.`}{" "}
+                <Link href="/apps" className="font-semibold text-ink underline underline-offset-4">
+                  Show everything
+                </Link>
+              </p>
+            )}
+          </div>
+        )}
+
+        {(!filtering || usable.length > 0) && (
+          <section aria-labelledby="usable-h" className="flex flex-col gap-5">
+            <h2 id="usable-h" className="text-2xl font-bold tracking-tight">
+              What you can use
+            </h2>
+            {usable.length === 0 ? (
+              <p className="text-ink-muted">
+                {requestsEnabled
+                  ? "Nothing yet. Ask for something below, and it shows up here once an admin lets you in."
+                  : "You don’t have access to any apps yet. Ask an administrator."}
+              </p>
+            ) : (
+              <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
+                {usable.map((app) => (
+                  <li key={app.id} className="flex">
+                    {/* SC 4.1.2 / 2.4.4: one "Open" per app is ambiguous out
+                        of context, so the accessible name carries the app. */}
+                    <a
+                      href={app.launchUrl}
+                      aria-label={`Open ${app.name}`}
+                      className="card card-link flex flex-1 flex-col gap-5 p-5 text-ink"
+                    >
+                      <AppIntro app={app} />
+                      <span className="mt-auto flex items-center justify-between border-t border-line pt-3.5 text-sm font-semibold text-ink-muted">
+                        Open
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M7 17 17 7M9 7h8v8" />
+                        </svg>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
         {requestsEnabled && askable.length > 0 && (
           <section

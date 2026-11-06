@@ -14,6 +14,11 @@ means nothing to them; "watch films and series" does. So:
   description as the headline and its name above it, small. Write
   descriptions in PocketID as a plain task ("Watch films and series"), not a
   product category ("Media server").
+- **Find by task, not by name.** Admins file apps under short categories
+  ("Watch & listen", "Files") on `/admin/apps`. The Apps page turns them
+  into filter links, next to a search that matches the name, the
+  description and the category. Both are plain links and a GET form, so
+  they work without JavaScript and give a URL someone can share.
 - **Plain words.** "Ask for access", "Waiting for an admin", "You won't need
   another password". Avoid OIDC, client, scope and similar jargon on
   user-facing pages. Group names still appear where someone has to choose
@@ -52,6 +57,8 @@ bold for card headlines. Geist Mono only for codes and identifiers.
   buttons at least 44px tall that shrink slightly when pressed.
 - `.card`: white surface, 20px radius, faint border and shadow. Add
   `.card-link` when the whole card is a link: it lifts on hover.
+- `.chip`: a filter link. The current one is filled with ink and marked
+  `aria-current`.
 - `.field`: text inputs and textareas.
 
 ## Polish rules

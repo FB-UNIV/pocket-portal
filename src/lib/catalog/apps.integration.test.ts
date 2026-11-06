@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { createDb, type Db } from "@/lib/db/client";
 import { appOverrides } from "@/lib/db/schema";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
-import { listAdminCatalogApps, listUserCatalogApps, setAppHidden } from "./apps";
+import { listAdminCatalogApps, listUserCatalogApps, setAppCategory, setAppHidden } from "./apps";
 
 // Requires a running test PocketID + Postgres: npm run test-env:up
 // Migrations run once for the whole integration suite via
@@ -24,8 +24,12 @@ describe("catalog apps (integration)", () => {
   // Close the pool, or its open sockets keep the test process alive past
   // the run ("something prevents ... from exiting").
   afterAll(() => db.$client.end());
+  // scripts/pocketid-provision-oidc-client.mjs always provisions this one.
+  const PROVISIONED = "00000000-0000-4000-8000-000000000001";
+
   afterEach(async () => {
     await db.delete(appOverrides).where(eq(appOverrides.pocketIdClientId, "test-client-id"));
+    await db.delete(appOverrides).where(eq(appOverrides.pocketIdClientId, PROVISIONED));
   });
 
   it("lists the real PocketID OIDC client provisioned for this test env, not hidden by default", async () => {
@@ -54,6 +58,28 @@ describe("catalog apps (integration)", () => {
     // listAdminCatalogApps uses.
     const apps = await listAdminCatalogApps(config, db);
     expect(apps.find((a) => a.id === "test-client-id")).toBeUndefined();
+  });
+
+  it("setAppCategory files a real client under a category, without touching hidden", async () => {
+    const config = getPocketIdConfig();
+
+    await setAppHidden(db, PROVISIONED, true);
+    await setAppCategory(db, PROVISIONED, "Watch & listen");
+
+    const app = (await listAdminCatalogApps(config, db)).find((a) => a.id === PROVISIONED);
+    expect(app!.category).toBe("Watch & listen");
+    expect(app!.hidden).toBe(true);
+  });
+
+  it("setAppCategory with null clears the category", async () => {
+    const config = getPocketIdConfig();
+
+    await setAppCategory(db, PROVISIONED, "Files");
+    await setAppCategory(db, PROVISIONED, null);
+
+    const app = (await listAdminCatalogApps(config, db)).find((a) => a.id === PROVISIONED);
+    expect(app!.category).toBeNull();
+    expect(app!.hidden).toBe(false);
   });
 
   it("setAppHidden can un-hide (upsert, not just insert)", async () => {

@@ -18,6 +18,7 @@ export interface CatalogApp {
   isGroupRestricted: boolean;
   allowedGroups: PocketIdUserGroup[];
   hidden: boolean;
+  category: string | null;
 }
 
 export interface UserCatalogApp {
@@ -28,13 +29,18 @@ export interface UserCatalogApp {
   iconUrl: string | null;
   hasAccess: boolean;
   allowedGroups: PocketIdUserGroup[];
+  category: string | null;
 }
 
 /* v8 ignore start -- exercised by the integration suite (real PocketID + Postgres), not unit mocks */
 async function fetchClientsWithOverrides(
   pocketId: PocketIdConfig,
   db: Db,
-): Promise<{ clients: PocketIdOidcClient[]; hiddenIds: Set<string> }> {
+): Promise<{
+  clients: PocketIdOidcClient[];
+  hiddenIds: Set<string>;
+  categories: Map<string, string>;
+}> {
   const [clients, overrides] = await Promise.all([
     listPocketIdOidcClients(pocketId),
     db.select().from(appOverrides),
@@ -43,6 +49,9 @@ async function fetchClientsWithOverrides(
   return {
     clients,
     hiddenIds: new Set(overrides.filter((o) => o.hidden).map((o) => o.pocketIdClientId)),
+    categories: new Map(
+      overrides.flatMap((o) => (o.category ? [[o.pocketIdClientId, o.category] as const] : [])),
+    ),
   };
 }
 
@@ -53,7 +62,7 @@ export async function listAdminCatalogApps(
   pocketId: PocketIdConfig,
   db: Db,
 ): Promise<CatalogApp[]> {
-  const { clients, hiddenIds } = await fetchClientsWithOverrides(pocketId, db);
+  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db);
 
   return clients.map((client) => ({
     id: client.id,
@@ -64,6 +73,7 @@ export async function listAdminCatalogApps(
     isGroupRestricted: client.isGroupRestricted,
     allowedGroups: client.allowedUserGroups,
     hidden: hiddenIds.has(client.id),
+    category: categories.get(client.id) ?? null,
   }));
 }
 
@@ -77,7 +87,7 @@ export async function listUserCatalogApps(
   db: Db,
   userGroups: string[],
 ): Promise<UserCatalogApp[]> {
-  const { clients, hiddenIds } = await fetchClientsWithOverrides(pocketId, db);
+  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db);
 
   return clients.flatMap((client) => {
     const launchUrl = safeLaunchUrl(client.launchURL);
@@ -92,6 +102,7 @@ export async function listUserCatalogApps(
         iconUrl: client.hasLogo ? `${pocketId.baseUrl}/api/oidc/clients/${client.id}/logo` : null,
         hasAccess: hasAccessToClient(userGroups, client),
         allowedGroups: client.allowedUserGroups,
+        category: categories.get(client.id) ?? null,
       },
     ];
   });
@@ -108,6 +119,23 @@ export async function setAppHidden(
     .onConflictDoUpdate({
       target: appOverrides.pocketIdClientId,
       set: { hidden, updatedAt: new Date() },
+    });
+}
+
+// `category` is stored as given: callers pass it through normalizeCategory
+// (./browse) first. Null clears it. A row that ends up neither hidden nor
+// categorised is left in place, harmless, rather than deleted.
+export async function setAppCategory(
+  db: Db,
+  pocketIdClientId: string,
+  category: string | null,
+): Promise<void> {
+  await db
+    .insert(appOverrides)
+    .values({ pocketIdClientId, category })
+    .onConflictDoUpdate({
+      target: appOverrides.pocketIdClientId,
+      set: { category, updatedAt: new Date() },
     });
 }
 /* v8 ignore stop */

@@ -1,7 +1,7 @@
 # ADR-0007: PocketID OIDC clients are the live app catalog, not a Postgres copy
 
 **Date**: 2026-09-21
-**Status**: accepted
+**Status**: accepted (amended 2026-11-06)
 **Deciders**: François Bouju
 
 ## Context
@@ -94,3 +94,14 @@ say regardless of what was requested.
 
 The "app catalog" half of ADR-0003 (Postgres for catalog *and* requests).
 The *requests* half of ADR-0003 is unaffected and still stands.
+
+## Amendment (2026-11-06): categories
+
+`app_overrides` also holds a nullable `category` (migration 0010): a short
+label an admin sets on `/admin/apps` ("Watch & listen") that groups the Apps
+page into filter links. It's portal-only data, because PocketID has no field
+for it, so it doesn't break the rule above. That rule still stands:
+**never** a copy of name, description, launch URL or groups. A description
+written for people, not admins, belongs in PocketID's own `description`
+field, which the Apps page already shows as each card's headline. A row
+can now exist for a category alone, with `hidden` false.

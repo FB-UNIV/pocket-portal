@@ -71,6 +71,13 @@
       "when": 1790273097986,
       "tag": "0009_add-audit-log-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793960030959,
+      "tag": "0010_add-app-category",
+      "breakpoints": true
     }
   ]
 }
