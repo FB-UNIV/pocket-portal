@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { brandColors, contrastRatio, getPocketIdBranding, getPortalName } from "./branding";
+import {
+  brandColors,
+  brandStyleSheet,
+  contrastRatio,
+  DARK_GROUND,
+  darkBrandColors,
+  getPocketIdBranding,
+  getPortalName,
+} from "./branding";
 
 // Records what branding.ts hands to React's cache(), passing it through.
 const { cacheSpy } = vi.hoisted(() => ({ cacheSpy: vi.fn(<T,>(fn: T) => fn) }));
@@ -60,6 +68,59 @@ describe("brandColors", () => {
     expect(contrastRatio(colors.brandHover, colors.onBrand)).toBeGreaterThanOrEqual(
       contrastRatio(colors.brand, colors.onBrand),
     );
+  });
+});
+
+// The dark theme paints the same accent on a near-black page. A navy or
+// forest accent that reads well on paper all but vanishes there, so the dark
+// variant is lightened until the button's shape stands out (SC 1.4.11, 3:1).
+describe("darkBrandColors", () => {
+  it("lightens an accent that would vanish on the dark page", () => {
+    const light = brandColors("oklch(0.32 0.09 262)")!;
+    expect(contrastRatio(light.brand, DARK_GROUND)).toBeLessThan(3);
+
+    const dark = darkBrandColors(light);
+
+    expect(contrastRatio(dark.brand, DARK_GROUND)).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(dark.brand, dark.onBrand)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("leaves an accent that already stands out alone", () => {
+    const light = brandColors("oklch(0.75 0.15 50)")!;
+
+    expect(darkBrandColors(light)).toEqual(light);
+  });
+
+  it("keeps the hover state at least as readable as the button", () => {
+    const dark = darkBrandColors(brandColors("oklch(0.25 0.05 150)")!);
+
+    expect(contrastRatio(dark.brandHover, dark.onBrand)).toBeGreaterThanOrEqual(
+      contrastRatio(dark.brand, dark.onBrand),
+    );
+  });
+});
+
+describe("brandStyleSheet", () => {
+  it("sets the light variables, then the dark ones under the dark scheme", () => {
+    const light = brandColors("oklch(0.32 0.09 262)")!;
+    const dark = darkBrandColors(light);
+
+    const css = brandStyleSheet(light);
+
+    expect(css).toBe(
+      `html:root{--brand:${light.brand};--on-brand:${light.onBrand};--brand-hover:${light.brandHover}}` +
+        `@media (prefers-color-scheme: dark){html:root{--brand:${dark.brand};--on-brand:${dark.onBrand};--brand-hover:${dark.brandHover}}}`,
+    );
+  });
+
+  // It ends up inside a <style> element: only the validated hex colours may
+  // ever reach it.
+  it("contains nothing but variable names and hex colours", () => {
+    const css = brandStyleSheet(brandColors("oklch(0.6 0.2 30)")!);
+
+    // No quotes, angle brackets, slashes or url(): nothing that could close
+    // the <style> element or fetch anything.
+    expect(css.replace(/#[0-9a-f]{6}/g, "")).toMatch(/^[a-z@:(){};\s-]+$/);
   });
 });
 

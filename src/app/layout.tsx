@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree, Geist_Mono } from "next/font/google";
-import type { CSSProperties } from "react";
 import { auth } from "@/auth";
-import { getPocketIdBranding, getPortalName } from "@/lib/pocketid/branding";
+import { brandStyleSheet, getPocketIdBranding, getPortalName } from "@/lib/pocketid/branding";
 import { readAccessRequestsEnabled, readAuditLogPageEnabled } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { hasPendingAccessRequests } from "@/lib/requests/access-requests";
@@ -52,22 +51,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       )
     : false;
 
-  // PocketID's accent, as the tokens globals.css defaults. Validated and
-  // re-serialised as hex by brandColors, never PocketID's raw string.
-  const brandStyle = branding?.colors
-    ? ({
-        "--brand": branding.colors.brand,
-        "--on-brand": branding.colors.onBrand,
-        "--brand-hover": branding.colors.brandHover,
-      } as CSSProperties)
-    : undefined;
+  // PocketID's accent, as the tokens globals.css defaults, with a lighter
+  // variant for the dark theme. Validated and re-serialised as hex by
+  // brandColors, never PocketID's raw string. See ADR-0010.
+  const brandCss = branding?.colors ? brandStyleSheet(branding.colors) : null;
 
   return (
     <html
       lang="en"
       className={`${figtree.variable} ${geistMono.variable} h-full antialiased`}
-      style={brandStyle}
     >
+      {brandCss ? (
+        <head>
+          <style>{brandCss}</style>
+        </head>
+      ) : null}
       <body className="min-h-full flex flex-col bg-ground text-ink">
         <SiteHeader
           name={name}
