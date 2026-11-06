@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-06
+
 ### Changed
 - **New look**, written for people who don't know what the apps behind the
   portal are. A warm, light design (with a matching dark mode) in the
