@@ -30,7 +30,10 @@ means nothing to them; "watch films and series" does. So:
 
 Warm paper and ink, with one terracotta accent. When PocketID has an accent
 colour, it replaces the terracotta (`--brand`, `--on-brand`, `--brand-hover`,
-contrast-checked in `src/lib/pocketid/branding.ts`).
+contrast-checked in `src/lib/pocketid/branding.ts`), lightened in the dark
+theme if needed so the buttons stay visible. Only PocketID's name, logo and
+accent carry over, never the rest of its look:
+[ADR-0010](adr/0010-inherit-pocketid-branding-not-theme.md).
 
 | Token | Light | Dark | Use |
 |---|---|---|---|

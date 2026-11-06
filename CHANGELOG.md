@@ -17,6 +17,14 @@ project-specific policy on when to bump what.
   (`app_overrides.category`, nullable). Nothing changes until an admin
   sets a category, apart from the search box.
 
+### Fixed
+- A dark PocketID accent colour (navy, forest) no longer turns the primary
+  buttons invisible in the dark theme. The dark theme gets a lightened
+  variant that stands out from the page by at least 3:1, and its text colour
+  is picked again. The light theme keeps the exact colour.
+  [ADR-0010](docs/adr/0010-inherit-pocketid-branding-not-theme.md) records
+  what the portal takes from PocketID: name, logo and accent, not its theme.
+
 ## [1.1.0] - 2026-11-06
 
 ### Changed
