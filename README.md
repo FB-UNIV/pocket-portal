@@ -113,7 +113,6 @@ Before going live:
 | Route | Who | What |
 |---|---|---|
 | `/` | anyone | Sign in |
-| `/my-access` | signed in | Your PocketID group memberships |
 | `/apps` | signed in | Browse the catalog, request access |
 | `/admin/apps` | admins | Show/hide apps in the catalog, and file them under categories |
 | `/admin/requests` | admins | Approve or deny requests |

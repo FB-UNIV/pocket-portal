@@ -82,11 +82,6 @@ export function SiteHeader({
             <nav aria-label="Portal">
               <ul className="flex flex-wrap items-center gap-1">
                 <li>
-                  <Link href="/my-access" className={navLinkClass}>
-                    My Access
-                  </Link>
-                </li>
-                <li>
                   <Link href="/apps" className={navLinkClass}>
                     Apps
                   </Link>
