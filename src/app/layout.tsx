@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
 import type { CSSProperties } from "react";
 import { auth } from "@/auth";
 import { getPocketIdBranding, getPortalName } from "@/lib/pocketid/branding";
@@ -10,8 +10,11 @@ import { showAccessRequestsLink } from "@/lib/requests/queue-link";
 import { SiteHeader } from "./_components/site-header";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Figtree: friendly and very legible at small sizes, for an audience that
+// mostly isn't technical (docs/DESIGN.md). Self-hosted by next/font, so the
+// CSP's font-src 'self' still holds.
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -62,10 +65,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${figtree.variable} ${geistMono.variable} h-full antialiased`}
       style={brandStyle}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-black">
+      <body className="min-h-full flex flex-col bg-ground text-ink">
         <SiteHeader
           name={name}
           user={session?.user ?? null}

@@ -15,7 +15,7 @@ export async function PocketIdSecretsBanner() {
   return (
     <section
       aria-label="Security warning"
-      className="w-full border-b border-amber-300 bg-amber-50 px-6 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+      className="w-full border-b border-tip-line bg-tip px-6 py-3 text-sm text-on-tip"
     >
       <strong>PocketID exposes its SMTP/LDAP passwords to this portal&rsquo;s API key.</strong>{" "}
       Set <code>UI_CONFIG_DISABLED=true</code> on PocketID.{" "}

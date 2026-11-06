@@ -9,6 +9,16 @@ project-specific policy on when to bump what.
 ## [Unreleased]
 
 ### Changed
+- **New look**, written for people who don't know what the apps behind the
+  portal are. A warm, light design (with a matching dark mode) in the
+  Figtree typeface. The sign-in page explains passkeys and how the portal
+  works in three steps. The Apps page now splits into "What you can use"
+  and "More you can ask for". Each app card leads with its PocketID
+  description, so write descriptions as what the app is for ("Watch films
+  and series"). Cards show the app's PocketID logo, or a coloured initial
+  if it has none. Request states use plain words ("Asked to join Media.
+  Waiting for an admin."). Buttons are at least 44px tall. The full set of
+  rules is in [`docs/DESIGN.md`](docs/DESIGN.md).
 - The npm SBOM is no longer a file in the repository. Every image now
   carries it as a **signed attestation** (CycloneDX), and every GitHub
   Release has it as a `sbom.cdx.json` asset. Verify an image's with

@@ -39,7 +39,7 @@ export function RequestDecision({
       {approveAction ? (
         <ApproveForm action={approveAction} label={`Approve ${requester} for ${groupName}`} />
       ) : (
-        <p className="col-span-2 max-w-xs text-xs text-zinc-600 sm:text-right dark:text-zinc-400">
+        <p className="col-span-2 max-w-xs text-xs text-ink-muted sm:text-right">
           Can’t be approved: the app is hidden, or this group was removed from it in PocketID.
         </p>
       )}
@@ -48,7 +48,7 @@ export function RequestDecision({
           type="submit"
           disabled={denying}
           aria-label={`Deny ${requester} for ${groupName}`}
-          className="rounded-full border border-black/[.15] px-4 py-2 text-sm transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-white/[.2] dark:hover:bg-zinc-900"
+          className="btn btn-secondary"
         >
           Deny
         </button>
@@ -70,7 +70,7 @@ function ApproveForm({ action, label }: { action: DecideAction; label: string })
           // user nothing to tell them apart, and approving performs a real
           // PocketID group grant.
           aria-label={label}
-          className="rounded-full bg-brand px-4 py-2 text-sm text-on-brand transition-colors hover:bg-brand-hover disabled:opacity-60"
+          className="btn btn-primary"
         >
           Approve
         </button>
@@ -79,7 +79,7 @@ function ApproveForm({ action, label }: { action: DecideAction; label: string })
           rendered: a region inserted along with its text is often missed. */}
       <p
         role="status"
-        className="col-span-2 max-w-xs text-xs text-red-700 sm:text-right dark:text-red-400"
+        className="col-span-2 max-w-xs text-xs text-on-bad sm:text-right"
       >
         {result && !result.ok ? EXPLANATION[result.reason] : null}
       </p>

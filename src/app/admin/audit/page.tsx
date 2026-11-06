@@ -43,10 +43,10 @@ function Details({ entry }: { entry: AuditEntry }) {
 
   return (
     <>
-      {group ? <span className="font-medium text-black dark:text-zinc-50">{group}</span> : null}
+      {group ? <span className="font-medium text-ink">{group}</span> : null}
       {requester ? <span> for {requester}</span> : null}
       {error ? (
-        <span className="block text-xs text-zinc-600 dark:text-zinc-400">{error}</span>
+        <span className="block text-xs text-ink-muted">{error}</span>
       ) : null}
     </>
   );
@@ -89,17 +89,17 @@ export default async function AdminAuditPage({
   });
 
   return (
-    <div className="flex flex-col flex-1 items-center bg-zinc-50 dark:bg-black">
+    <div className="flex flex-col flex-1 items-center">
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex w-full max-w-4xl flex-col gap-8 py-16 px-6 sm:px-16 bg-white dark:bg-black"
+        className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pt-8 pb-20"
       >
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-ink">
             Audit Log (Admin)
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm text-ink-muted">
             Every access request and decision, newest first, including grants
             that were refused or failed.
           </p>
@@ -109,14 +109,14 @@ export default async function AdminAuditPage({
             reload and can be shared. */}
         <form action="/admin/audit" className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1">
-            <label htmlFor="audit-action" className="text-xs text-zinc-600 dark:text-zinc-400">
+            <label htmlFor="audit-action" className="text-xs text-ink-muted">
               Action
             </label>
             <select
               id="audit-action"
               name="action"
               defaultValue={action ?? ""}
-              className="rounded-lg border border-black/[.15] bg-transparent px-2 py-2 text-sm dark:border-white/[.2]"
+              className="rounded-lg border border-line-strong bg-transparent px-2 py-2 text-sm"
             >
               <option value="">All actions</option>
               {Object.entries(ACTION_LABELS).map(([value, label]) => (
@@ -128,20 +128,20 @@ export default async function AdminAuditPage({
           </div>
           <button
             type="submit"
-            className="rounded-full border border-black/[.15] px-4 py-2 text-sm transition-colors hover:bg-zinc-100 dark:border-white/[.2] dark:hover:bg-zinc-900"
+            className="btn btn-secondary"
           >
             Filter
           </button>
         </form>
 
         {entries.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-ink-muted">
             {action || before ? "No audit events match." : "No audit events yet."}
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs text-zinc-600 dark:text-zinc-400">
+              <thead className="text-xs text-ink-muted">
                 <tr>
                   <th scope="col" className="py-2 pr-4 font-medium">
                     Time
@@ -161,9 +161,9 @@ export default async function AdminAuditPage({
                 {entries.map((entry) => (
                   <tr
                     key={entry.id}
-                    className="border-t border-black/[.08] align-top dark:border-white/[.145]"
+                    className="border-t border-line align-top"
                   >
-                    <td className="py-2 pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-400">
+                    <td className="py-2 pr-4 whitespace-nowrap text-ink-muted">
                       <time dateTime={entry.createdAt.toISOString()}>
                         {formatUtcTimestamp(entry.createdAt)}
                       </time>
