@@ -1,48 +1,216 @@
 @import "tailwindcss";
 
+/* The portal's design tokens: warm paper and ink, written for people who
+   don't know what the apps behind it are (see docs/DESIGN.md). Pages use
+   them through the Tailwind colours below (bg-ground, text-ink-muted, …)
+   and the component classes at the end, never raw hex or zinc-*. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Primary buttons. The defaults are the portal's own look; the root
+  --ground: #fbf8f3;
+  --surface: #ffffff;
+  --surface-muted: #f1ebe2;
+  --ink: #1f1b16;
+  --ink-muted: #5e554b;
+  --line: rgb(31 27 22 / 0.09);
+  --line-strong: rgb(31 27 22 / 0.18);
+
+  /* Status: background, text on it, and a border. All text pairs >= 7:1. */
+  --tip: #fff1d6;
+  --on-tip: #4d3600;
+  --tip-line: #f0d39a;
+  --ok: #e3f2ea;
+  --on-ok: #14432d;
+  --ok-line: #a9d5bd;
+  --bad: #fbe7e1;
+  --on-bad: #7a2410;
+  --bad-line: #eeb5a5;
+
+  --shadow-card: 0 1px 2px rgb(31 27 22 / 0.04);
+  --shadow-card-hover: 0 2px 4px rgb(31 27 22 / 0.06), 0 14px 28px -12px rgb(31 27 22 / 0.22);
+
+  /* Primary buttons. The defaults are the portal's own terracotta; the root
      layout overrides all three from PocketID's accent colour, already
-     contrast-checked (src/lib/pocketid/branding.ts). */
-  --brand: var(--foreground);
-  --on-brand: var(--background);
-  --brand-hover: #383838;
+     contrast-checked (src/lib/pocketid/branding.ts). White on #b4461f is
+     5.5:1. */
+  --brand: #b4461f;
+  --on-brand: #ffffff;
+  --brand-hover: #8f3517;
+
+  /* Kept for existing references (focus ring, skip link). */
+  --background: var(--ground);
+  --foreground: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #16130f;
+    --surface: #201c17;
+    --surface-muted: #2a251f;
+    --ink: #f3ede4;
+    --ink-muted: #bdb2a4;
+    --line: rgb(255 255 255 / 0.09);
+    --line-strong: rgb(255 255 255 / 0.2);
+
+    --tip: #3a2c10;
+    --on-tip: #f7dfa6;
+    --tip-line: #6b5320;
+    --ok: #173326;
+    --on-ok: #bfe8d1;
+    --ok-line: #2f5e47;
+    --bad: #3a1a14;
+    --on-bad: #f5c2b5;
+    --bad-line: #6e3426;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.3), 0 14px 28px -12px rgb(0 0 0 / 0.6);
+
+    /* Lighter terracotta with ink text: 6.5:1. */
+    --brand: #e8865f;
+    --on-brand: #1f1b16;
+    --brand-hover: #f0a07f;
+  }
 }
 
 @theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-tip: var(--tip);
+  --color-on-tip: var(--on-tip);
+  --color-tip-line: var(--tip-line);
+  --color-ok: var(--ok);
+  --color-on-ok: var(--on-ok);
+  --color-ok-line: var(--ok-line);
+  --color-bad: var(--bad);
+  --color-on-bad: var(--on-bad);
+  --color-bad-line: var(--bad-line);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-brand: var(--brand);
   --color-on-brand: var(--on-brand);
   --color-brand-hover: var(--brand-hover);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-figtree);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --brand-hover: #cccccc;
-  }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  /* Was a hardcoded Arial stack left over from create-next-app, which meant
-     the Geist fonts the layout loads were downloaded and then never used
-     outside the subtrees carrying a `font-sans` utility class. */
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 /* WCAG 2.2 SC 2.4.7 Focus Visible. The UA default ring is drawn in the
-   button's own colours, which all but disappears on the dark filled
-   buttons; --foreground against the page background is >= 15:1 in both
-   themes, and the offset keeps the ring off the control it outlines. */
+   button's own colours, which all but disappears on the filled buttons;
+   ink against the ground is >= 15:1 in both themes, and the offset keeps
+   the ring off the control it outlines. */
 :focus-visible {
-  outline: 2px solid var(--foreground);
-  outline-offset: 2px;
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+@layer components {
+  /* 44px tall: WCAG 2.2 SC 2.5.8 wants 24px, and these are tapped by
+     people on phones. Only the properties that change are transitioned. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.125rem;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition-property: background-color, border-color, transform;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: var(--on-brand);
+    box-shadow: 0 1px 2px rgb(31 27 22 / 0.14);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--brand-hover);
+  }
+  .btn-secondary {
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--surface-muted);
+  }
+  .btn-quiet {
+    color: var(--ink-muted);
+  }
+  .btn-quiet:hover {
+    background: var(--surface-muted);
+    color: var(--ink);
+  }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .card-link {
+    text-decoration: none;
+    transition-property: transform, box-shadow, border-color;
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card-link:hover {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  .card-link:active {
+    transform: scale(0.98);
+  }
+
+  .field {
+    width: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--surface);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .btn,
+    .card-link {
+      transition-duration: 0ms;
+    }
+    .btn:active:not(:disabled),
+    .card-link:hover,
+    .card-link:active {
+      transform: none;
+    }
+  }
 }

@@ -9,12 +9,12 @@ import { useEffect } from "react";
 // on Next's built-in 500 page.
 //
 // This file replaces the document when active, which means globals.css, the
-// Geist fonts and the site header are all absent. Hence the inline <style>
+// portal font and the site header are all absent. Hence the inline <style>
 // (a stylesheet import would be ignored) and the system font stack.
 const STYLES = `
-  :root { color-scheme: light dark; --bg: #ffffff; --fg: #171717; --muted: #52525b; --border: rgba(0,0,0,.15); }
+  :root { color-scheme: light dark; --bg: #fbf8f3; --fg: #1f1b16; --muted: #5e554b; --border: rgba(31,27,22,.18); --brand: #b4461f; --on-brand: #ffffff; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0a0a0a; --fg: #ededed; --muted: #a1a1aa; --border: rgba(255,255,255,.2); }
+    :root { --bg: #16130f; --fg: #f3ede4; --muted: #bdb2a4; --border: rgba(255,255,255,.2); --brand: #e8865f; --on-brand: #1f1b16; }
   }
   body {
     margin: 0; min-height: 100vh; background: var(--bg); color: var(--fg);
@@ -22,16 +22,16 @@ const STYLES = `
     display: flex; justify-content: center;
   }
   .wrap { width: 100%; max-width: 48rem; padding: 4rem 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
-  h1 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  h1 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 800; letter-spacing: -.01em; margin: 0; }
   p { margin: 0; }
   .muted { color: var(--muted); }
   .digest { font-size: .75rem; }
   .actions { display: flex; flex-wrap: wrap; gap: .75rem; }
   .btn, .link {
-    border-radius: 9999px; padding: .5rem 1rem; font: inherit; font-size: .875rem;
-    cursor: pointer; text-decoration: none; display: inline-block;
+    border-radius: 9999px; padding: 0 1.125rem; min-height: 44px; box-sizing: border-box; font: inherit; font-size: .9375rem; font-weight: 600;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center;
   }
-  .btn { background: var(--fg); color: var(--bg); border: 0; }
+  .btn { background: var(--brand); color: var(--on-brand); border: 0; }
   .link { border: 1px solid var(--border); color: inherit; }
   :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 `;

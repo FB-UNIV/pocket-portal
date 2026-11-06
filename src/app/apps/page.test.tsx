@@ -156,7 +156,7 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    expect(screen.getByText("Pending: Media")).toBeInTheDocument();
+    expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Request access via Media" }),
     ).not.toBeInTheDocument();
@@ -196,7 +196,7 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Denied: Engineering")).toBeInTheDocument();
+      expect(screen.getByText("Not approved: Engineering")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Request access via Engineering" }),
       ).toBeInTheDocument();
@@ -210,8 +210,8 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Approved: Engineering")).toBeInTheDocument();
-      expect(screen.getByText(/may take a few minutes/i)).toBeInTheDocument();
+      expect(screen.getByText("Approved for Engineering")).toBeInTheDocument();
+      expect(screen.getByText(/within a few minutes/i)).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Request access via Engineering" }),
       ).not.toBeInTheDocument();
@@ -226,7 +226,7 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Access removed: Engineering")).toBeInTheDocument();
+      expect(screen.getByText("Access through Engineering was removed")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Request access via Engineering" }),
       ).toBeInTheDocument();
@@ -264,7 +264,8 @@ describe("AppsPage", () => {
   });
 
   // SC 1.3.1: the app list is a list of named things; each card's name should
-  // be a heading so screen-reader users can jump between apps.
+  // be a heading (under its section's) so screen-reader users can jump
+  // between apps.
   it("gives each app a heading under the page title", async () => {
     mockListUserCatalogApps.mockResolvedValue([
       {
@@ -281,7 +282,8 @@ describe("AppsPage", () => {
     render(await AppsPage());
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Apps");
-    expect(screen.getByRole("heading", { level: 2, name: "Immich" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "What you can use" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Immich" })).toBeInTheDocument();
   });
 
   it("names the pending badge after the group it is pending for", async () => {
@@ -317,7 +319,7 @@ describe("AppsPage", () => {
     render(await AppsPage());
 
     // Two groups on one app: a bare "Pending" would not say which.
-    expect(screen.getByText("Pending: Media")).toBeInTheDocument();
+    expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Request access via Media Admin" }),
     ).toBeInTheDocument();

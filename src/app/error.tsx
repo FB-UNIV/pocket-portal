@@ -20,19 +20,19 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <div className="flex flex-col flex-1 items-center bg-zinc-50 dark:bg-black">
+    <div className="flex flex-col flex-1 items-center">
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex w-full max-w-3xl flex-col gap-6 py-16 px-6 sm:px-16 bg-white dark:bg-black"
+        className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-8 pb-20"
       >
         {/* role="alert" so the failure is announced rather than silently
             swapped in under a screen reader (SC 4.1.3 Status Messages). */}
         <div role="alert" className="flex flex-col gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-ink">
             Something went wrong
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-ink-muted">
             That action didn&rsquo;t complete. Nothing was changed if it failed
             partway — you can try again, or head back and start over.
           </p>
@@ -40,7 +40,7 @@ export default function ErrorPage({
               so only the digest (which an operator can grep the logs for)
               is shown here. */}
           {error.digest && (
-            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            <p className="text-xs text-ink-muted">
               Reference: <code className="font-mono">{error.digest}</code>
             </p>
           )}
@@ -50,13 +50,13 @@ export default function ErrorPage({
           <button
             type="button"
             onClick={() => retry()}
-            className="rounded-full bg-brand px-4 py-2 text-sm text-on-brand transition-colors hover:bg-brand-hover"
+            className="btn btn-primary"
           >
             Try again
           </button>
           <Link
             href="/"
-            className="rounded-full border border-black/[.15] px-4 py-2 text-sm transition-colors hover:bg-zinc-100 dark:border-white/[.2] dark:hover:bg-zinc-900"
+            className="btn btn-secondary"
           >
             Back to portal home
           </Link>

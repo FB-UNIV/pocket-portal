@@ -53,27 +53,27 @@ export function RequestAccessForm({
   const [result, formAction, pending] = useActionState(action, null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form action={formAction} className="flex flex-col gap-2.5">
       {reason === "off" ? null : (
         <>
-          <label htmlFor={fieldId} className="text-xs text-zinc-600 dark:text-zinc-400">
+          <label htmlFor={fieldId} className="text-sm font-semibold text-ink-muted">
             Reason for requesting {friendlyName} {reason === "required" ? "(required)" : "(optional)"}
           </label>
           <textarea
             id={fieldId}
             name="message"
-            rows={2}
+            rows={3}
             maxLength={MAX_REASON_LENGTH}
             required={reason === "required"}
             placeholder="Why do you need access? This is shown to the admin reviewing your request."
-            className="w-full rounded-lg border border-black/[.15] bg-transparent p-2 text-sm dark:border-white/[.2]"
+            className="field"
           />
         </>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-full border border-black/[.15] px-4 py-2 text-sm transition-colors hover:bg-zinc-100 disabled:opacity-60 dark:border-white/[.2] dark:hover:bg-zinc-900"
+        className="btn btn-primary self-start"
       >
         Request access via {friendlyName}
       </button>
@@ -81,7 +81,7 @@ export function RequestAccessForm({
           response to the user's own action, so it is announced (SC 4.1.3).
           The region is always rendered: one inserted along with its text is
           often not announced. */}
-      <p role="status" className="text-xs text-red-700 dark:text-red-400">
+      <p role="status" className="text-sm font-semibold text-on-bad">
         {result && !result.ok ? explain(result.reason, friendlyName) : null}
       </p>
     </form>

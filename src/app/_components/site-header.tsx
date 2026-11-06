@@ -7,8 +7,10 @@ export type SiteHeaderUser = {
   isAdmin?: boolean;
 };
 
+// Pills, not underlined text: 44px tall for touch, and a visible hover
+// surface so it reads as something to press.
 const navLinkClass =
-  "underline-offset-4 hover:underline focus-visible:underline text-zinc-700 dark:text-zinc-300";
+  "inline-flex min-h-11 items-center rounded-full px-3.5 text-[15px] font-semibold text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink";
 
 // Persistent portal chrome, rendered by the root layout on every route.
 // Before this existed each page was a navigational dead end — you could only
@@ -33,20 +35,20 @@ export function SiteHeader({
   logo?: { light: string; dark: string };
 }) {
   return (
-    <header className="border-b border-black/[.08] bg-white dark:border-white/[.145] dark:bg-black">
+    <header className="bg-ground">
       {/* Visually hidden until focused, so the first Tab on any page offers
           "jump past the nav" rather than walking the whole header. */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-foreground focus:px-4 focus:py-2 focus:text-background"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-ground"
       >
         Skip to main content
       </a>
 
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-3">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
         <Link
           href="/"
-          className="flex items-center gap-2 font-semibold tracking-tight text-black underline-offset-4 hover:underline dark:text-zinc-50"
+          className="flex min-h-11 items-center gap-2.5 text-lg font-bold tracking-tight text-ink no-underline"
         >
           {logo ? (
             <picture>
@@ -54,9 +56,22 @@ export function SiteHeader({
               {/* A plain <img>: next/image would need PocketID's host in
                   next.config's remotePatterns, which varies per deployment.
                   Decorative, since the wordmark already names the link. */}
-              <img src={logo.light} alt="" width={24} height={24} className="h-6 w-6" />
+              <img src={logo.light} alt="" width={32} height={32} className="h-8 w-8 rounded-[10px]" />
             </picture>
-          ) : null}
+          ) : (
+            // The portal's own mark when PocketID has no logo: a house, since
+            // this is where the household's apps live. Decorative.
+            <span
+              aria-hidden="true"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-brand text-on-brand"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 9.5V21h14V9.5" />
+                <path d="M10 21v-6h4v6" />
+              </svg>
+            </span>
+          )}
           {name}
         </Link>
 
@@ -65,7 +80,7 @@ export function SiteHeader({
             {/* Named landmark: a screen reader's landmark list shows "Portal
                 navigation" rather than an anonymous second <nav>. */}
             <nav aria-label="Portal">
-              <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <ul className="flex flex-wrap items-center gap-1">
                 <li>
                   <Link href="/my-access" className={navLinkClass}>
                     My Access
@@ -78,6 +93,7 @@ export function SiteHeader({
                 </li>
                 {user.isAdmin && (
                   <>
+                    <li aria-hidden="true" className="mx-1 h-5 w-px bg-line-strong" />
                     <li>
                       <Link href="/admin/apps" className={navLinkClass}>
                         App Catalog
@@ -103,6 +119,7 @@ export function SiteHeader({
             </nav>
 
             <form
+              className="ml-auto"
               action={async () => {
                 "use server";
                 await signOut();
@@ -110,7 +127,7 @@ export function SiteHeader({
             >
               <button
                 type="submit"
-                className="rounded-full border border-black/[.15] px-3 py-1.5 text-sm transition-colors hover:bg-zinc-100 dark:border-white/[.2] dark:hover:bg-zinc-900"
+                className="btn btn-quiet"
               >
                 Sign out
               </button>
