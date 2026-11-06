@@ -39,6 +39,9 @@ export const auditLog = pgTable(
 export const appOverrides = pgTable("app_overrides", {
   pocketIdClientId: text("pocket_id_client_id").primaryKey(),
   hidden: boolean("hidden").notNull().default(false),
+  // Portal-only grouping for /apps ("Watch & listen"), which PocketID has no
+  // field for. Null means uncategorised. See ADR-0007's 2026-11-06 amendment.
+  category: text("category"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

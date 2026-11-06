@@ -24,6 +24,7 @@ const APP = {
   description: "",
   launchUrl: "https://jellyfin.example.test",
   iconUrl: null,
+  category: null,
   isGroupRestricted: true,
   allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
   hidden: false,

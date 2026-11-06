@@ -57,6 +57,7 @@ const APP_WITH_GROUP = {
   description: "",
   launchUrl: "https://grafana.example.test",
   iconUrl: null,
+  category: null,
   isGroupRestricted: true,
   allowedGroups: [{ id: "group-1", name: "engineering", friendlyName: "Engineering" }],
   hidden: false,

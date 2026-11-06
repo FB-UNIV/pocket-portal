@@ -8,7 +8,7 @@ vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("@/lib/catalog/apps", () => ({ listAdminCatalogApps: vi.fn() }));
-vi.mock("./actions", () => ({ setAppHiddenAction: vi.fn() }));
+vi.mock("./actions", () => ({ setAppHiddenAction: vi.fn(), setAppCategoryAction: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockListApps = vi.mocked(listAdminCatalogApps);
@@ -27,6 +27,7 @@ describe("AdminAppsPage", () => {
         description: "Photo library",
         launchUrl: "https://photos.example.test",
         iconUrl: null,
+        category: null,
         isGroupRestricted: true,
         allowedGroups: [],
         hidden: false,
@@ -50,6 +51,7 @@ describe("AdminAppsPage", () => {
         description: "",
         launchUrl: "https://sonarr.example.test",
         iconUrl: null,
+        category: null,
         isGroupRestricted: false,
         allowedGroups: [],
         hidden: true,
@@ -70,6 +72,7 @@ describe("AdminAppsPage", () => {
         description: "",
         launchUrl: null,
         iconUrl: null,
+        category: null,
         isGroupRestricted: false,
         allowedGroups: [],
         hidden: false,
@@ -95,5 +98,33 @@ describe("AdminAppsPage", () => {
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", "main-content");
     expect(main).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("shows each app's category in a field named after the app, suggesting the ones in use", async () => {
+    const base = {
+      description: "",
+      launchUrl: "https://example.test",
+      iconUrl: null,
+      isGroupRestricted: false,
+      allowedGroups: [],
+      hidden: false,
+    };
+    mockListApps.mockResolvedValue([
+      { ...base, id: "c1", name: "Jellyfin", category: "Watch & listen" },
+      { ...base, id: "c2", name: "Nextcloud", category: "Files" },
+      { ...base, id: "c3", name: "Gitea", category: null },
+    ]);
+
+    const { container } = render(await AdminAppsPage());
+
+    expect(screen.getByRole("combobox", { name: "Category for Jellyfin" })).toHaveValue(
+      "Watch & listen",
+    );
+    expect(screen.getByRole("combobox", { name: "Category for Gitea" })).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save category for Gitea" })).toBeInTheDocument();
+    const suggestions = [...container.querySelectorAll("#category-suggestions option")].map(
+      (option) => option.getAttribute("value"),
+    );
+    expect(suggestions).toEqual(["Files", "Watch & listen"]);
   });
 });

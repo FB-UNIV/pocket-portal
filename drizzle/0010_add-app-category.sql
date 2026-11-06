@@ -1,0 +1,1 @@
+ALTER TABLE "app_overrides" ADD COLUMN "category" text;

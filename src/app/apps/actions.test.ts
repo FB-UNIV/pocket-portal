@@ -65,6 +65,7 @@ const CATALOG_APP = {
   description: "",
   launchUrl: "https://sonarr.example.test",
   iconUrl: null,
+  category: null,
   hasAccess: false,
   allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
 };

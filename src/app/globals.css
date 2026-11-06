@@ -192,6 +192,33 @@ p {
     transform: scale(0.98);
   }
 
+  /* Filter links on /apps. The current one is filled with ink, and says
+     so with aria-current, not colour alone. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition-property: background-color, border-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+  }
+  .chip:hover {
+    background: var(--surface-muted);
+  }
+  .chip[aria-current] {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--ground);
+  }
+
   .field {
     width: 100%;
     border: 1px solid var(--line-strong);

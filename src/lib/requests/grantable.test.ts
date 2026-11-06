@@ -8,6 +8,7 @@ const APP: CatalogApp = {
   description: "",
   launchUrl: null,
   iconUrl: null,
+  category: null,
   isGroupRestricted: true,
   allowedGroups: [{ id: "group-1", name: "engineering", friendlyName: "Engineering" }],
   hidden: false,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import AppsPage, { metadata } from "./page";
 import { requireUser } from "@/lib/auth/require-user";
 import { listUserCatalogApps } from "@/lib/catalog/apps";
@@ -45,6 +45,7 @@ describe("AppsPage", () => {
         description: "Photo library",
         launchUrl: "https://photos.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: true,
         allowedGroups: [],
       },
@@ -70,6 +71,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://sonarr.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [
           { id: "g1", name: "media", friendlyName: "Media" },
@@ -95,6 +97,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://sonarr.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
@@ -116,6 +119,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://internal.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [],
       },
@@ -135,6 +139,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://sonarr.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
@@ -171,6 +176,7 @@ describe("AppsPage", () => {
       description: "",
       launchUrl: "https://grafana.example.test",
       iconUrl: null,
+      category: null,
       hasAccess: false,
       allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
     };
@@ -274,6 +280,7 @@ describe("AppsPage", () => {
         description: "Photo library",
         launchUrl: "https://photos.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: true,
         allowedGroups: [],
       },
@@ -294,6 +301,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://sonarr.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [
           { id: "g1", name: "media", friendlyName: "Media" },
@@ -335,6 +343,7 @@ describe("AppsPage", () => {
       description: "",
       launchUrl: "https://photos.example.test",
       iconUrl: null,
+      category: null,
       hasAccess: true,
       allowedGroups: [],
     };
@@ -344,6 +353,7 @@ describe("AppsPage", () => {
       description: "",
       launchUrl: "https://grafana.example.test",
       iconUrl: null,
+      category: null,
       hasAccess: false,
       allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
     };
@@ -379,6 +389,7 @@ describe("AppsPage", () => {
         description: "",
         launchUrl: "https://grafana.example.test",
         iconUrl: null,
+        category: null,
         hasAccess: false,
         allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
       },
@@ -388,5 +399,82 @@ describe("AppsPage", () => {
 
     expect(screen.getByLabelText(/\(required\)/)).toBeRequired();
     vi.unstubAllEnvs();
+  });
+
+  describe("finding an app", () => {
+    const app = (id: string, name: string, description: string, category: string | null, hasAccess = true) => ({
+      id,
+      name,
+      description,
+      launchUrl: `https://${id}.example.test`,
+      iconUrl: null,
+      category,
+      hasAccess,
+      allowedGroups: hasAccess ? [] : [{ id: "g1", name: "family", friendlyName: "Family" }],
+    });
+    const catalog = [
+      app("jf", "Jellyfin", "Watch films and series", "Watch & listen"),
+      app("nc", "Nextcloud", "Keep and share your files", "Files"),
+      app("im", "Immich", "See the family photos", "Files", false),
+    ];
+    const params = (p: Record<string, string>) => ({ searchParams: Promise.resolve(p) });
+
+    beforeEach(() => {
+      mockListUserCatalogApps.mockResolvedValue(catalog);
+    });
+
+    it("offers a search box and one link per category, plus Everything", async () => {
+      render(await AppsPage());
+
+      expect(screen.getByRole("searchbox", { name: "Search apps" })).toBeInTheDocument();
+      const nav = screen.getByRole("navigation", { name: "Categories" });
+      const links = within(nav).getAllByRole("link");
+      expect(links.map((link) => link.textContent)).toEqual(["Everything", "Files", "Watch & listen"]);
+      expect(within(nav).getByRole("link", { name: "Everything" })).toHaveAttribute("aria-current", "page");
+      expect(within(nav).getByRole("link", { name: "Files" })).toHaveAttribute("href", "/apps?category=Files");
+    });
+
+    it("hides the category links while no app has a category", async () => {
+      mockListUserCatalogApps.mockResolvedValue(catalog.map((a) => ({ ...a, category: null })));
+
+      render(await AppsPage());
+
+      expect(screen.queryByRole("navigation", { name: "Categories" })).not.toBeInTheDocument();
+    });
+
+    it("filters both sections by the search, and says how many matched", async () => {
+      render(await AppsPage(params({ q: "photos" })));
+
+      expect(screen.queryByRole("link", { name: "Open Jellyfin" })).not.toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 3, name: "Immich" })).toBeInTheDocument();
+      expect(screen.getByText(/1 app found\./)).toBeInTheDocument();
+      expect(screen.getByRole("searchbox", { name: "Search apps" })).toHaveValue("photos");
+      // Nothing usable matched, so that section steps aside.
+      expect(screen.queryByRole("heading", { name: "What you can use" })).not.toBeInTheDocument();
+    });
+
+    it("filters by category, marks it current, and keeps it when searching again", async () => {
+      const { container } = render(await AppsPage(params({ category: "Files" })));
+
+      expect(screen.getByRole("link", { name: "Open Nextcloud" })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Open Jellyfin" })).not.toBeInTheDocument();
+      const nav = screen.getByRole("navigation", { name: "Categories" });
+      expect(within(nav).getByRole("link", { name: "Files" })).toHaveAttribute("aria-current", "page");
+      expect(container.querySelector('form[role="search"] input[name="category"]')).toHaveValue("Files");
+    });
+
+    it("ignores a category no app has, rather than showing nothing", async () => {
+      render(await AppsPage(params({ category: "Games" })));
+
+      expect(screen.getByRole("link", { name: "Open Jellyfin" })).toBeInTheDocument();
+      expect(screen.queryByText(/found|Nothing matches/)).not.toBeInTheDocument();
+    });
+
+    it("says when nothing matches, with a way back", async () => {
+      render(await AppsPage(params({ q: "spreadsheets" })));
+
+      expect(screen.getByText(/Nothing matches “spreadsheets”\./)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Show everything" })).toHaveAttribute("href", "/apps");
+    });
   });
 });
