@@ -41,7 +41,7 @@ test.describe("as a user", () => {
   test.use({ storageState: sessionFile("e2e-user") });
 
   test("signed-in pages run without CSP violations", async ({ page }) => {
-    for (const path of ["/", "/apps", "/my-access"]) await expectNoCspViolations(page, path);
+    for (const path of ["/", "/apps"]) await expectNoCspViolations(page, path);
   });
 });
 

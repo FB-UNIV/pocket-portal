@@ -8,6 +8,13 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Removed
+- **The My Access page.** `/my-access` listed the signed-in user's raw
+  PocketID group names, which mean nothing to the people the portal is for
+  and aren't something they need to see. The page, its header link and its
+  home-page card are gone; `/my-access` now returns the not-found page.
+  The Apps page is the one place to see what you can use.
+
 ## [1.2.0] - 2026-11-06
 
 ### Added

@@ -104,8 +104,8 @@ without HTTPS.
 
 Go to http://localhost:3000, click **Sign in with PocketID**, and
 authenticate with the passkey you just registered. You should land back
-on the portal signed in, with a **My Access** link showing your PocketID
-group memberships (empty until you add yourself to a group in PocketID's
+on the portal signed in. **Apps** lists what your PocketID groups give you
+(nothing restricted until you add yourself to a group in PocketID's
 admin UI — group changes show up within a few minutes without needing to
 sign out and back in: sessions re-derive groups and admin status from
 PocketID every `GROUPS_REFRESH_INTERVAL_MS`, 5 minutes, in
@@ -166,7 +166,7 @@ How the e2e suite is laid out:
   uses (a burst of 5, then 1 per 10s, per IP), so signing in per test fails.
 - **Accessibility.** `e2e/a11y.spec.ts` runs axe (WCAG 2.2 AA) over every
   page, in light and dark mode. Any violation fails.
-- **No browser needed.** `oidc-login`, `metrics`, `my-access` and
+- **No browser needed.** `oidc-login`, `metrics` and
   `admin-apps` use Playwright's `request` fixture, so they run where
   Chromium can't launch (e.g. WSL without passwordless `sudo` for its
   shared libraries). The other specs drive a browser.

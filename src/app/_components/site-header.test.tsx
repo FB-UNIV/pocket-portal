@@ -56,15 +56,13 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("navigation", { name: "Portal" })).toBeInTheDocument();
   });
 
-  it("links a signed-in user to their access and the catalog", () => {
+  it("links a signed-in user to the catalog, and never to their groups", () => {
     render(<SiteHeader name="pocket-portal" user={{ name: "Francois", email: null, isAdmin: false }} />);
 
     const nav = screen.getByRole("navigation", { name: "Portal" });
-    expect(within(nav).getByRole("link", { name: "My Access" })).toHaveAttribute(
-      "href",
-      "/my-access",
-    );
     expect(within(nav).getByRole("link", { name: "Apps" })).toHaveAttribute("href", "/apps");
+    // Group memberships are deliberately not shown to users (no My Access page).
+    expect(within(nav).queryByRole("link", { name: "My Access" })).not.toBeInTheDocument();
   });
 
   // PocketID's own logo, light and dark variants, beside the wordmark.
