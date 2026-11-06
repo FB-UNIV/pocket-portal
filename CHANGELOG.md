@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-06
+
 ### Added
 - **Categories and search on the Apps page.** Admins file each app under a
   short category on `/admin/apps` ("Watch & listen", "Files"; earlier
