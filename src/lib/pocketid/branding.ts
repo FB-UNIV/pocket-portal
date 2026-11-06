@@ -101,6 +101,11 @@ export function brandColors(accent: string): BrandColors | null {
   if (![r, g, b].every(Number.isFinite)) return null;
   const brand = toHex([encode(r), encode(g), encode(b)]);
 
+  return withText(brand);
+}
+
+// Pairs a button colour with its text and hover colours.
+function withText(brand: string): BrandColors {
   // No fallback needed: on any colour, black or white text reaches at least
   // ~4.58:1 (the worst case is a luminance near 0.18), which clears the 4.5:1
   // SC 1.4.3 asks of button text. So the better of the two always passes.
@@ -109,6 +114,37 @@ export function brandColors(accent: string): BrandColors | null {
   const brandHover = mix(brand, onBrand === "#000000" ? "#ffffff" : "#000000", 0.15);
 
   return { brand, onBrand, brandHover };
+}
+
+// The dark theme's page background: --ground under prefers-color-scheme: dark
+// in src/app/globals.css. Keep the two in step.
+export const DARK_GROUND = "#16130f";
+
+// The same accent on the dark page. A navy or forest accent that reads well
+// on paper all but disappears on near-black, so it's lightened, in 5% steps
+// toward white, until the button's shape reaches the 3:1 SC 1.4.11 asks of
+// a control's boundary. An accent that already does is returned unchanged.
+export function darkBrandColors(light: BrandColors): BrandColors {
+  if (contrastRatio(light.brand, DARK_GROUND) >= 3) return light;
+  let brand = light.brand;
+  for (let step = 1; step <= 20 && contrastRatio(brand, DARK_GROUND) < 3; step++) {
+    brand = mix(light.brand, "#ffffff", step * 0.05);
+  }
+  return withText(brand);
+}
+
+// The accent as a stylesheet: the light variables, then the dark ones under
+// the dark colour scheme, which a style attribute can't express. `html:root`
+// outranks globals.css's `:root`, whatever order the two load in. Built only
+// from BrandColors, which are always re-serialised hex, never PocketID's raw
+// string, so it is safe to put inside a <style> element.
+export function brandStyleSheet(light: BrandColors): string {
+  const vars = (c: BrandColors) =>
+    `--brand:${c.brand};--on-brand:${c.onBrand};--brand-hover:${c.brandHover}`;
+  return (
+    `html:root{${vars(light)}}` +
+    `@media (prefers-color-scheme: dark){html:root{${vars(darkBrandColors(light))}}}`
+  );
 }
 
 // Public config is a list of { key, type, value } (PocketID's
