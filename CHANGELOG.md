@@ -8,6 +8,14 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Changed
+- **One way to ask for an app.** Each app on the Apps page now has a single
+  **Ask for access** button instead of one "Request access via …" button per
+  PocketID group. When an app can be reached through several groups, a
+  **Role** picker chooses which, starting on the everyday one ("users",
+  "members") rather than an admin one, so asking for more is deliberate.
+  Roles already asked for drop out of the picker and keep their status note.
+
 ## [1.3.0] - 2026-11-09
 
 ### Changed

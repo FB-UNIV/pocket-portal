@@ -10,8 +10,14 @@ import {
   deriveRequestOutcome,
   type RequestState,
 } from "@/lib/requests/request-outcome";
-import { readAccessRequestReason, readAccessRequestsEnabled } from "@/lib/config";
-import { requestAccessAction } from "./actions";
+import type { AccessRequest } from "@/lib/requests/access-requests";
+import { defaultRole } from "@/lib/requests/default-role";
+import {
+  readAccessRequestReason,
+  readAccessRequestsEnabled,
+  type AccessRequestReason,
+} from "@/lib/config";
+import { requestAppAccessAction } from "./actions";
 import { RequestAccessForm } from "./request-access-form";
 import { AppMark } from "@/app/_components/app-mark";
 
@@ -91,6 +97,52 @@ function AppIntro({ app }: { app: UserCatalogApp }) {
           <h3 className="text-lg font-bold leading-snug tracking-tight">{app.name}</h3>
         )}
       </div>
+    </div>
+  );
+}
+
+// The ask part of one app's card: what already happened to each role the
+// user asked for, then a single form for the roles still open to them.
+// Pending and just-approved roles drop out of the picker (asking again
+// would be refused); declined and removed ones stay, since asking again is
+// allowed.
+function AskForApp({
+  app,
+  myRequests,
+  userGroups,
+  reason,
+}: {
+  app: UserCatalogApp;
+  myRequests: AccessRequest[];
+  userGroups: string[];
+  reason: AccessRequestReason;
+}) {
+  const roles = app.allowedGroups.map((group) => ({
+    group,
+    outcome: deriveRequestOutcome(myRequests, app.id, group.id, userGroups),
+  }));
+  const open = roles.filter(({ outcome }) => !outcome || outcome.canRequest).map(({ group }) => group);
+  const preselected = defaultRole(open);
+
+  return (
+    <div className="mt-auto flex flex-col gap-4">
+      {roles.map(({ group, outcome }) =>
+        outcome ? (
+          <OutcomeNotice key={group.id} state={outcome.state} friendlyName={group.friendlyName} />
+        ) : null,
+      )}
+      {/* Offered only where it can actually succeed. The action re-checks
+          server-side regardless. */}
+      {preselected && (
+        <RequestAccessForm
+          action={requestAppAccessAction.bind(null, app.id)}
+          appId={app.id}
+          appName={app.name}
+          roles={open.map(({ id, friendlyName }) => ({ id, friendlyName }))}
+          defaultRoleId={preselected.id}
+          reason={reason}
+        />
+      )}
     </div>
   );
 }
@@ -272,38 +324,12 @@ export default async function AppsPage({
                       No group grants access to this app yet.
                     </p>
                   ) : (
-                    <div className="mt-auto flex flex-col gap-4">
-                      {app.allowedGroups.map((group) => {
-                        const outcome = deriveRequestOutcome(
-                          myRequests,
-                          app.id,
-                          group.id,
-                          session.user.groups,
-                        );
-
-                        return (
-                          <div key={group.id} className="flex flex-col gap-3">
-                            {outcome && (
-                              <OutcomeNotice
-                                state={outcome.state}
-                                friendlyName={group.friendlyName}
-                              />
-                            )}
-
-                            {/* Offered only where it can actually succeed.
-                                The action re-checks server-side regardless. */}
-                            {(!outcome || outcome.canRequest) && (
-                              <RequestAccessForm
-                                action={requestAccessAction.bind(null, app.id, group.id)}
-                                fieldId={`message-${app.id}-${group.id}`}
-                                friendlyName={group.friendlyName}
-                                reason={reasonMode}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <AskForApp
+                      app={app}
+                      myRequests={myRequests}
+                      userGroups={session.user.groups}
+                      reason={reasonMode}
+                    />
                   )}
                 </li>
               ))}
