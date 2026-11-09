@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-09
+
 ### Added
 - **The portal in French.** A language button in the header switches
   between English and French. Signed in, the choice is saved to your account
