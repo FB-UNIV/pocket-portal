@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Figtree, Geist_Mono } from "next/font/google";
 import { auth } from "@/auth";
 import { brandStyleSheet, getPocketIdBranding, getPortalName } from "@/lib/pocketid/branding";
-import { readAccessRequestsEnabled, readAuditLogPageEnabled } from "@/lib/config";
+import { readAccessRequestsEnabled } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { hasPendingAccessRequests } from "@/lib/requests/access-requests";
 import { showAccessRequestsLink } from "@/lib/requests/queue-link";
@@ -72,7 +72,6 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           user={session?.user ?? null}
           logo={branding?.logo}
           showAccessRequests={showAccessRequests}
-          showAuditLog={readAuditLogPageEnabled()}
         />
         {children}
       </body>

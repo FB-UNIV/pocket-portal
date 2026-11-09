@@ -138,7 +138,7 @@ describe("AdminAuditPage", () => {
       before: undefined,
       limit: 50,
     });
-    expect(screen.getByLabelText("Action")).toHaveValue("access_request.denied");
+    expect(screen.getByLabelText("Show")).toHaveValue("access_request.denied");
   });
 
   // Query params are user input: an arbitrary action is harmless but
@@ -187,7 +187,7 @@ describe("AdminAuditPage", () => {
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
   it("declares its own page title", () => {
-    expect(metadata.title).toBe("Audit Log");
+    expect(metadata.title).toBe("History");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.

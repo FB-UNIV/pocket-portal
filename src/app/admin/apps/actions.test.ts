@@ -34,7 +34,7 @@ describe("setAppHiddenAction", () => {
   it("revalidates the admin apps page after updating", async () => {
     await setAppHiddenAction("client-1", false);
 
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps", "layout");
   });
 });
 
@@ -78,7 +78,7 @@ describe("setAppCategoryAction", () => {
   it("revalidates the admin list and the apps page", async () => {
     await setAppCategoryAction("client-1", form("Files"));
 
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps", "layout");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
   });
 });

@@ -114,9 +114,10 @@ Before going live:
 |---|---|---|
 | `/` | anyone | Sign in |
 | `/apps` | signed in | Browse the catalog, request access |
-| `/admin/apps` | admins | Show/hide apps in the catalog, and file them under categories |
-| `/admin/requests` | admins | Approve or deny requests |
-| `/admin/audit` | admins | Every request and decision, newest first |
+| `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
+| `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
+| `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
+| `/admin/audit` | admins | History: every request and decision, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
 

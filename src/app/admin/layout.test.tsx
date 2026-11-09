@@ -6,6 +6,10 @@ import { PocketIdSecretsBanner } from "@/app/_components/pocketid-secrets-banner
 vi.mock("@/app/_components/pocketid-secrets-banner", () => ({
   PocketIdSecretsBanner: vi.fn(),
 }));
+// Tested on its own (admin-nav.test.tsx); here only its place matters.
+vi.mock("./_components/admin-nav", () => ({
+  AdminNav: () => <nav aria-label="Admin" />,
+}));
 
 // The real banner is an async server component. React renders a synchronous
 // stub here happily, so the cast narrows the mock to what we actually return
@@ -35,6 +39,15 @@ describe("AdminLayout", () => {
     render(<AdminLayout {...props}>{<main>Requests</main>}</AdminLayout>);
 
     expect(screen.getByRole("main")).toHaveTextContent("Requests");
+  });
+
+  it("puts the admin menu before the page", () => {
+    render(<AdminLayout {...props}>{<main>Apps</main>}</AdminLayout>);
+
+    const menu = screen.getByRole("navigation", { name: "Admin" });
+    expect(menu.compareDocumentPosition(screen.getByRole("main"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it("still renders the page when the banner renders nothing", () => {

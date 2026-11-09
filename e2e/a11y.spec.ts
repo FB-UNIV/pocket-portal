@@ -64,6 +64,16 @@ for (const colorScheme of ["light", "dark"] as const) {
           await expectNoViolations(page);
         });
       }
+
+      // An app's own page. Client ids are minted by the seed script, so
+      // it's reached the way an admin would: from the catalog.
+      test("/admin/apps/[id]", async ({ page }) => {
+        await page.goto("/admin/apps");
+        await page.getByRole("table").getByRole("link").first().click();
+        await expect(page).toHaveURL(/\/admin\/apps\/[^/]+$/);
+        await expect(page.getByRole("heading", { name: "Set here" })).toBeVisible();
+        await expectNoViolations(page);
+      });
     });
   });
 }

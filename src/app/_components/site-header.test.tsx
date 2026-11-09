@@ -91,43 +91,26 @@ describe("SiteHeader", () => {
     expect(container.querySelector("picture")).toBeNull();
   });
 
-  it("hides the admin links from a non-admin", () => {
+  it("hides the Admin link from a non-admin", () => {
     render(<SiteHeader name="pocket-portal" user={{ name: "Francois", email: null, isAdmin: false }} />);
 
-    expect(screen.queryByRole("link", { name: "App Catalog" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Access Requests" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Audit Log" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Admin" })).not.toBeInTheDocument();
   });
 
-  it("shows the admin links to an admin", () => {
+  // One link: the admin pages have their own side menu (admin/layout.tsx).
+  it("gives an admin one Admin link, opening on the request queue", () => {
     render(<SiteHeader name="pocket-portal" user={{ name: "Francois", email: null, isAdmin: true }} />);
 
     const nav = screen.getByRole("navigation", { name: "Portal" });
-    expect(within(nav).getByRole("link", { name: "App Catalog" })).toHaveAttribute(
-      "href",
-      "/admin/apps",
-    );
-    expect(within(nav).getByRole("link", { name: "Access Requests" })).toHaveAttribute(
+    expect(within(nav).getByRole("link", { name: "Admin" })).toHaveAttribute(
       "href",
       "/admin/requests",
     );
-    expect(within(nav).getByRole("link", { name: "Audit Log" })).toHaveAttribute(
-      "href",
-      "/admin/audit",
-    );
   });
 
-  // with requests off, the queue link shows only while there is
-  // something left to decide.
-  it("can hide the Audit Log link from an admin", () => {
-    render(
-      <SiteHeader name="pocket-portal" user={{ name: "Francois", email: null, isAdmin: true }} showAuditLog={false} />,
-    );
-
-    expect(screen.queryByRole("link", { name: "Audit Log" })).not.toBeInTheDocument();
-  });
-
-  it("can hide the Access Requests link from an admin", () => {
+  // Requests switched off with nothing left to decide: the queue is a dead
+  // page, so the link opens on the catalog instead.
+  it("opens the Admin link on the catalog when the queue is hidden", () => {
     render(
       <SiteHeader
         name="pocket-portal"
@@ -136,8 +119,7 @@ describe("SiteHeader", () => {
       />,
     );
 
-    expect(screen.queryByRole("link", { name: "Access Requests" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "App Catalog" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin/apps");
   });
 
   it("signs the user out from the header", async () => {
