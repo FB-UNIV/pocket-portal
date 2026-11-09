@@ -17,6 +17,20 @@ test("completes a real OIDC sign-in and lands on the portal home", async ({ page
 test.describe("authenticated portal journeys", () => {
   test.use({ storageState: sessionFile("e2e-user") });
 
+  test("the dashboard launches the apps this user can open, and only those", async ({ page }) => {
+    await page.goto("/");
+
+    const yourApps = page.getByRole("region", { name: "Your apps" });
+    await expect(yourApps.getByRole("link", { name: "Open Immich (seed)" })).toBeVisible();
+    await expect(yourApps.getByRole("link", { name: "Open Sonarr (seed)" })).toBeVisible();
+    // Grafana is engineering-only: askable on /apps, never a launcher here.
+    await expect(yourApps.getByText("Grafana (seed)")).toHaveCount(0);
+    await expect(yourApps.getByRole("link", { name: "See all apps, or ask for more" })).toHaveAttribute(
+      "href",
+      "/apps",
+    );
+  });
+
   test("Apps reflects the seeded access matrix for this user", async ({ page }) => {
     await page.goto("/apps");
 
