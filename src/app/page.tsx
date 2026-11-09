@@ -1,8 +1,8 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { auth, signIn } from "@/auth";
 import { getPortalName } from "@/lib/pocketid/branding";
 import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
+import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
 
 // No `metadata` export: this page is the root layout's own segment, where
 // `title.template` deliberately doesn't apply, so it takes the layout's
@@ -37,19 +37,14 @@ export default async function Home({
             </p>
           </div>
 
-          {/* The full nav (including the admin sections) lives in the site
-              header; the apps are the one entry point worth a landing-page
-              call to action. Labelled by its title alone, so the link name
-              stays short and unambiguous. */}
-          <ul className="grid max-w-xl gap-4">
-            <EntryCard
-              href="/apps"
-              id="entry-apps"
-              title="Browse apps"
-              body="Open the apps you use, and ask for the ones you don’t have yet."
-              icon={<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />}
-            />
-          </ul>
+          {/* The dashboard (#20), top to bottom: the onboarding checklist
+              (#21), your apps, news (#22), integration widgets (#23). Only
+              "Your apps" exists so far; the others slot in here as they
+              land, each in its own <Suspense> and handling its own
+              failure, so one slow or broken source never blanks the page. */}
+          <Suspense fallback={<YourAppsLoading />}>
+            <YourApps userGroups={session.user.groups} />
+          </Suspense>
         </main>
       </div>
     );
@@ -118,44 +113,5 @@ export default async function Home({
         </section>
       </main>
     </div>
-  );
-}
-
-function EntryCard({
-  href,
-  id,
-  title,
-  body,
-  icon,
-}: {
-  href: string;
-  id: string;
-  title: string;
-  body: string;
-  icon: ReactNode;
-}) {
-  return (
-    <li className="flex">
-      <Link
-        href={href}
-        aria-labelledby={id}
-        className="card card-link flex flex-1 items-start gap-5 p-6 text-ink"
-      >
-        <span
-          aria-hidden="true"
-          className="inline-flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-surface-muted"
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-            {icon}
-          </svg>
-        </span>
-        <span className="flex flex-col gap-1.5">
-          <span id={id} className="text-xl font-bold tracking-tight">
-            {title}
-          </span>
-          <span className="text-[15px] leading-relaxed text-ink-muted">{body}</span>
-        </span>
-      </Link>
-    </li>
   );
 }

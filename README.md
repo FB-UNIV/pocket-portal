@@ -112,7 +112,7 @@ Before going live:
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone | Sign in |
+| `/` | anyone | Sign in; once signed in, the dashboard: launchers for your apps |
 | `/apps` | signed in | Browse the catalog, request access |
 | `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |

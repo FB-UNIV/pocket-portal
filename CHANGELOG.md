@@ -8,6 +8,14 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Added
+- **A dashboard on the home page.** Signed in, the home page now opens
+  straight onto **Your apps**: one click on any app you can use, each
+  with what it's for, and a link to the Apps page to see everything or ask
+  for more. If the app list can't load (say PocketID is slow), that
+  section says so and offers to try again; the rest of the page still
+  works. Onboarding, news and widgets will join it here.
+
 ## [1.4.0] - 2026-11-09
 
 ### Changed

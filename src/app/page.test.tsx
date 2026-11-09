@@ -10,6 +10,14 @@ vi.mock("@/auth", () => ({
   signOut: vi.fn(),
 }));
 vi.mock("@/lib/pocketid/branding", () => ({ getPortalName: vi.fn().mockResolvedValue("Acme Apps") }));
+// The dashboard's sections are async server components (tested on their
+// own); here a stub stands in, so the page's own layout can be rendered.
+vi.mock("./_dashboard/your-apps", () => ({
+  YourApps: ({ userGroups }: { userGroups: string[] }) => (
+    <section aria-label="Your apps" data-groups={userGroups.join(",")} />
+  ),
+  YourAppsLoading: () => null,
+}));
 
 // auth()/signIn() are overloaded (NextAuth also exposes them as
 // middleware/route-handler-compatible signatures); vi.mocked() picks up the
@@ -66,13 +74,34 @@ describe("Home", () => {
     expect(mockSignIn).toHaveBeenCalledWith("pocketid", { redirectTo: "/" });
   });
 
-  it("shows the signed-in user and links on to the apps", async () => {
-    mockAuth.mockResolvedValue(session());
+  it("greets the signed-in user by first name", async () => {
+    mockAuth.mockResolvedValue(session({ name: "Francois Bouju" }));
 
     render(await Home());
 
-    expect(screen.getByText("Signed in as Francois")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Browse apps" })).toHaveAttribute("href", "/apps");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Hi Francois.");
+    expect(screen.getByText("Signed in as Francois Bouju")).toBeInTheDocument();
+  });
+
+  // #20: the signed-in home is the dashboard, starting with the user's apps.
+  it("shows the dashboard's Your apps section, for the user's groups", async () => {
+    mockAuth.mockResolvedValue(session({ groups: ["media", "vpn"] }));
+
+    render(await Home());
+
+    expect(screen.getByRole("region", { name: "Your apps" })).toHaveAttribute(
+      "data-groups",
+      "media,vpn",
+    );
+    expect(screen.queryByRole("button", { name: "Sign in with PocketID" })).not.toBeInTheDocument();
+  });
+
+  it("doesn't load the dashboard for a signed-out visitor", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    render(await Home());
+
+    expect(screen.queryByRole("region", { name: "Your apps" })).not.toBeInTheDocument();
   });
 
   it("falls back to email when the session user has no name", async () => {
