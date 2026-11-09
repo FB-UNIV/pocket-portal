@@ -10,10 +10,12 @@ import { readPocketIdBaseUrl } from "@/lib/config";
 import { AppMark } from "@/app/_components/app-mark";
 import { setAppCategoryAction } from "../actions";
 import { HealthBadges, ShownSwitch, WhoCanUse } from "../app-parts";
+import { getTranslations } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Edit app",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("AdminApp");
+  return { title: t("title") };
+}
 
 // One app: what the portal sets (shown, category) next to what PocketID
 // owns (name, description, link, groups; ADR-0007), which is read-only here
@@ -22,7 +24,11 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
   const { id } = await params;
   await requireAdmin(`/admin/apps/${encodeURIComponent(id)}`);
 
-  const apps = await listAdminCatalogApps(getPocketIdConfig(), getDb());
+  const [apps, t, tApps] = await Promise.all([
+    listAdminCatalogApps(getPocketIdConfig(), getDb()),
+    getTranslations("AdminApp"),
+    getTranslations("AdminApps"),
+  ]);
   const app = apps.find((a) => a.id === id);
   if (!app) notFound();
 
@@ -38,34 +44,30 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
         href="/admin/apps"
         className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-ink-muted underline-offset-4 hover:text-ink hover:underline"
       >
-        ← All apps
+        {t("back")}
       </Link>
 
       <div className="flex items-center gap-4">
         <AppMark name={app.name} iconUrl={app.iconUrl} />
         <div className="flex min-w-0 flex-col gap-1.5">
           <h1 className="text-3xl font-extrabold tracking-tight text-ink break-words">{app.name}</h1>
-          <HealthBadges app={app} />
+          <HealthBadges app={app} t={tApps} />
         </div>
       </div>
 
       <section aria-labelledby="set-here" className="card flex flex-col gap-5 p-6">
         <h2 id="set-here" className="text-lg font-bold">
-          Set here
+          {t("setHere")}
         </h2>
 
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="font-semibold">Show on the Apps page</p>
+            <p className="font-semibold">{t("showLabel")}</p>
             <p className="text-sm text-ink-muted">
-              {app.hidden
-                ? "Hidden: nobody sees it, and it can't be requested."
-                : app.launchUrl
-                  ? "Listed for everyone signed in, with a way to ask for it if they can't open it yet."
-                  : "On, but it has no launch link, so it isn't listed yet."}
+              {app.hidden ? t("hiddenNote") : app.launchUrl ? t("shownNote") : t("noLinkNote")}
             </p>
           </div>
-          <ShownSwitch app={app} />
+          <ShownSwitch app={app} t={tApps} />
         </div>
 
         <form
@@ -73,11 +75,10 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
           className="flex flex-col gap-2 border-t border-line pt-5"
         >
           <label htmlFor="category" className="font-semibold">
-            Filed under
+            {t("categoryLabel")}
           </label>
           <p id="category-hint" className="text-sm text-ink-muted">
-            The heading it sits under on the Apps page. Leave it empty for
-            &ldquo;Other&rdquo;.
+            {t("categoryHint")}
           </p>
           <div className="flex flex-wrap gap-2">
             <input
@@ -86,12 +87,12 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
               defaultValue={app.category ?? ""}
               list="category-suggestions"
               maxLength={MAX_CATEGORY_LENGTH}
-              placeholder="e.g. Watch & listen"
+              placeholder={t("categoryPlaceholder")}
               aria-describedby="category-hint"
               className="field max-w-xs"
             />
             <button type="submit" className="btn btn-primary">
-              Save
+              {t("save")}
             </button>
           </div>
           {/* Offered as suggestions, so "Files" doesn't become "files" on
@@ -107,43 +108,41 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
       <section aria-labelledby="from-pocketid" className="card flex flex-col gap-5 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="from-pocketid" className="text-lg font-bold">
-            From PocketID
+            {t("fromPocketId")}
           </h2>
           {pocketIdUrl ? (
             <a href={pocketIdUrl} className="btn btn-secondary">
-              Change in PocketID
+              {t("changeInPocketId")}
             </a>
           ) : null}
         </div>
 
         <dl className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-          <dt className="text-sm font-semibold text-ink-muted">What it&rsquo;s for</dt>
+          <dt className="text-sm font-semibold text-ink-muted">{t("whatFor")}</dt>
           <dd>
             {app.description ? (
               app.description
             ) : (
               <p className="rounded-2xl border border-tip-line bg-tip px-4 py-3 text-sm text-on-tip">
-                No description, so people only see the name. Write what it&rsquo;s
-                for, like &ldquo;Watch films and series&rdquo;, not what it is.
+                {t("noDescriptionTip")}
               </p>
             )}
           </dd>
 
-          <dt className="text-sm font-semibold text-ink-muted">Opens at</dt>
+          <dt className="text-sm font-semibold text-ink-muted">{t("opensAt")}</dt>
           <dd>
             {app.launchUrl ? (
               <span className="break-all">{app.launchUrl}</span>
             ) : (
               <p className="rounded-2xl border border-tip-line bg-tip px-4 py-3 text-sm text-on-tip">
-                No http(s) launch link, so it can&rsquo;t be opened from the
-                portal and isn&rsquo;t listed, even when shown.
+                {t("noLinkTip")}
               </p>
             )}
           </dd>
 
-          <dt className="text-sm font-semibold text-ink-muted">Who can use it</dt>
+          <dt className="text-sm font-semibold text-ink-muted">{t("whoCanUse")}</dt>
           <dd>
-            <WhoCanUse app={app} />
+            <WhoCanUse app={app} t={tApps} />
           </dd>
         </dl>
       </section>

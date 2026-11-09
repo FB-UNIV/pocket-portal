@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "use-intl";
 
 // Before this boundary existed, a throwing server action (a PocketID grant
 // that fails; expected refusals now answer inline) rendered Next's default
@@ -14,6 +15,9 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  // In the page's language, from the root layout's IntlProvider.
+  const t = useTranslations("Error");
+
   useEffect(() => {
     // Picked up by the Pino/OTel instrumentation already wired into the app.
     console.error(error);
@@ -30,18 +34,15 @@ export default function ErrorPage({
             swapped in under a screen reader (SC 4.1.3 Status Messages). */}
         <div role="alert" className="flex flex-col gap-3">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-ink">
-            Something went wrong
+            {t("title")}
           </h1>
-          <p className="text-ink-muted">
-            That action didn&rsquo;t complete. Nothing was changed if it failed
-            partway — you can try again, or head back and start over.
-          </p>
+          <p className="text-ink-muted">{t("body")}</p>
           {/* The thrown messages can name another user's groups or requests,
               so only the digest (which an operator can grep the logs for)
               is shown here. */}
           {error.digest && (
             <p className="text-xs text-ink-muted">
-              Reference: <code className="font-mono">{error.digest}</code>
+              {t("reference")} <code className="font-mono">{error.digest}</code>
             </p>
           )}
         </div>
@@ -52,13 +53,13 @@ export default function ErrorPage({
             onClick={() => retry()}
             className="btn btn-primary"
           >
-            Try again
+            {t("retry")}
           </button>
           <Link
             href="/"
             className="btn btn-secondary"
           >
-            Back to portal home
+            {t("home")}
           </Link>
         </div>
       </main>

@@ -24,6 +24,9 @@ log:
 # else Pocket Portal.
 # branding:
 #   name: Acme Apps
+#   # For people who haven't picked a language and whose browser asks for
+#   # neither: en or fr.
+#   defaultLocale: en
 
 # smtp:
 #   host: smtp.example.test

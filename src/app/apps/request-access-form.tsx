@@ -3,38 +3,27 @@
 import { useActionState } from "react";
 import type { RequestAccessResult } from "./actions";
 import type { AccessRequestReason } from "@/lib/config";
+import { MAX_REASON_LENGTH } from "./limits";
 
-// Mirrors MAX_MESSAGE_LENGTH in ./actions, which is the real guard: a
-// "use server" module can only export async functions, so the number is
-// repeated here rather than imported.
-const MAX_REASON_LENGTH = 500;
+export type RequestRefusal = Extract<RequestAccessResult, { ok: false }>["reason"];
 
-type Reason = Extract<RequestAccessResult, { ok: false }>["reason"];
+// Every word the form shows, already in the page's language: the page is a
+// server component and translates them, so no messages ship to the browser.
+export interface RequestAccessFormLabels {
+  role: string;
+  reason: string;
+  reasonPlaceholder: string;
+  submit: string;
+  // The submit button's accessible name, naming the app.
+  submitName: string;
+  // Fixed copy per refusal code. The action deliberately returns codes, not
+  // text, so what the requester sees is only ever about their own request.
+  refusals: Record<RequestRefusal, string>;
+}
 
 export interface RoleOption {
   id: string;
   friendlyName: string;
-}
-
-// Fixed copy per reason code. The action deliberately returns codes, not
-// text, so what the requester sees here is only ever about their own request.
-function explain(reason: Reason): string {
-  switch (reason) {
-    case "already_active":
-      return "You’ve already asked for this role. Reload the page to see where it stands.";
-    case "already_granted":
-      return "You already have this role. Reload the page to see it.";
-    case "not_allowed":
-      return "That role can’t be requested for this app any more. Reload the page to see what’s available.";
-    case "message_too_long":
-      return `Keep your reason to ${MAX_REASON_LENGTH} characters or fewer.`;
-    case "reason_required":
-      return "Add a reason, so the admin knows why you need it.";
-    case "requests_disabled":
-      return "Access requests aren’t being taken at the moment. Reload the page.";
-    case "rate_limited":
-      return "You’ve sent a lot of requests in the last hour. Try again later.";
-  }
 }
 
 // One request form per app. The role is a field: a picker when the app
@@ -45,22 +34,22 @@ function explain(reason: Reason): string {
 export function RequestAccessForm({
   action,
   appId,
-  appName,
   roles,
   defaultRoleId,
   reason,
+  labels,
 }: {
   action: (
     previous: RequestAccessResult | null,
     formData: FormData,
   ) => Promise<RequestAccessResult>;
   appId: string;
-  appName: string;
   // Only the roles that can be asked for right now; never empty.
   roles: RoleOption[];
   defaultRoleId: string;
   // ACCESS_REQUEST_REASON; the action enforces it independently.
   reason: AccessRequestReason;
+  labels: RequestAccessFormLabels;
 }) {
   const [result, formAction, pending] = useActionState(action, null);
   const roleId = `role-${appId}`;
@@ -71,7 +60,7 @@ export function RequestAccessForm({
       {roles.length > 1 ? (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={roleId} className="text-sm font-semibold text-ink-muted">
-            Role
+            {labels.role}
           </label>
           <select id={roleId} name="group" defaultValue={defaultRoleId} className="field">
             {roles.map((role) => (
@@ -88,7 +77,7 @@ export function RequestAccessForm({
       {reason === "off" ? null : (
         <div className="flex flex-col gap-1.5">
           <label htmlFor={reasonId} className="text-sm font-semibold text-ink-muted">
-            Why do you need it? {reason === "required" ? "(required)" : "(optional)"}
+            {labels.reason}
           </label>
           <textarea
             id={reasonId}
@@ -96,7 +85,7 @@ export function RequestAccessForm({
             rows={2}
             maxLength={MAX_REASON_LENGTH}
             required={reason === "required"}
-            placeholder="The admin sees this when they decide."
+            placeholder={labels.reasonPlaceholder}
             className="field"
           />
         </div>
@@ -107,17 +96,17 @@ export function RequestAccessForm({
       <button
         type="submit"
         disabled={pending}
-        aria-label={`Ask for access to ${appName}`}
+        aria-label={labels.submitName}
         className="btn btn-primary self-start"
       >
-        Ask for access
+        {labels.submit}
       </button>
       {/* Unlike the outcome notices, this is an update arriving mid-visit in
           response to the user's own action, so it is announced (SC 4.1.3).
           The region is always rendered: one inserted along with its text is
           often not announced. */}
       <p role="status" className="text-sm font-semibold text-on-bad">
-        {result && !result.ok ? explain(result.reason) : null}
+        {result && !result.ok ? labels.refusals[result.reason] : null}
       </p>
     </form>
   );

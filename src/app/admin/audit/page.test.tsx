@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import AdminAuditPage, { metadata } from "./page";
+import AdminAuditPage, { generateMetadata } from "./page";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { listAuditEvents, type AuditEntry } from "@/lib/audit/log";
 
@@ -186,8 +186,8 @@ describe("AdminAuditPage", () => {
   });
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
-  it("declares its own page title", () => {
-    expect(metadata.title).toBe("History");
+  it("declares its own page title", async () => {
+    expect((await generateMetadata()).title).toBe("History");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.

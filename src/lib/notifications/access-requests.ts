@@ -5,9 +5,14 @@ import { readMailConfig, sendMail, type MailConfig, type MailMessage } from "./m
 import {
   configSource,
   readAuthUrl,
+  readDefaultLocale,
   readEmailNotificationsEnabled,
   type ConfigSource,
 } from "@/lib/config";
+import { getDb } from "@/lib/db/client";
+import { getSavedLocale } from "@/lib/preferences/locale";
+import { pickLocale, type Locale } from "@/i18n/locales";
+import { translatorFor } from "@/i18n/translate";
 
 // Access-request emails. Best-effort by design (ADR-0009): the actions
 // schedule these with after() once the change has committed, and nothing
@@ -23,7 +28,9 @@ interface Deps {
   env: ConfigSource;
   log: Pick<typeof defaultLogger, "warn">;
   send: (config: MailConfig, message: MailMessage) => Promise<void>;
-  listUsers: () => Promise<Pick<PocketIdUser, "email" | "isAdmin" | "disabled">[]>;
+  listUsers: () => Promise<Pick<PocketIdUser, "id" | "email" | "isAdmin" | "disabled">[]>;
+  // The language a person reads their email in, by PocketID subject (#64).
+  localeOf: (subject: string) => Promise<Locale>;
 }
 
 /* v8 ignore start -- wiring only; the tests inject every dependency */
@@ -35,6 +42,12 @@ const DEFAULTS: Deps = {
   log: defaultLogger,
   send: sendMail,
   listUsers: () => listPocketIdUsers(getPocketIdConfig()),
+  // Their saved language, else the portal's default: there's no browser to
+  // ask. Unreadable falls back too: a language isn't worth a lost email.
+  localeOf: async (subject) => {
+    const saved = await getSavedLocale(getDb(), subject).catch(() => null);
+    return pickLocale({ saved, fallback: readDefaultLocale(configSource()) });
+  },
 };
 /* v8 ignore stop */
 
@@ -55,30 +68,37 @@ function body(...lines: (string | false | undefined)[]): string {
   return lines.filter((line) => typeof line === "string").join("\n\n") + "\n";
 }
 
+// One email per recipient: a shared To: header would show every admin who
+// else is an admin, one bad address shouldn't stop the others, and each
+// one is written in its recipient's language.
+interface Recipient {
+  email: string;
+  subject: string;
+}
+
 async function deliver(
   deps: Deps,
   requestId: string,
-  build: (config: MailConfig) => Promise<MailMessage | null>,
+  recipients: () => Promise<Recipient[]>,
+  compose: (locale: Locale) => Omit<MailMessage, "to">,
 ): Promise<void> {
   let config: MailConfig | null;
-  let message: MailMessage | null;
+  let to: Recipient[];
   // Paused: nothing is read, PocketID included, and nothing is sent.
   if (!readEmailNotificationsEnabled(deps.env)) return;
   try {
     config = readMailConfig(deps.env);
     if (!config) return;
-    message = await build(config);
-    if (!message) return;
+    to = await recipients();
   } catch (error) {
     deps.log.warn({ error, requestId }, "Access request notification not sent");
     return;
   }
 
-  // One email per recipient: a shared To: header would show every admin
-  // who else is an admin, and one bad address shouldn't stop the others.
-  for (const to of message.to) {
+  for (const recipient of to) {
     try {
-      await deps.send(config, { ...message, to: [to] });
+      const message = compose(await deps.localeOf(recipient.subject));
+      await deps.send(config, { ...message, to: [recipient.email] });
     } catch (error) {
       deps.log.warn({ error, requestId }, "Access request notification not sent");
     }
@@ -90,24 +110,29 @@ export function notifyNewAccessRequest(
   request: NotifiedRequest,
   deps: Deps = DEFAULTS,
 ): Promise<void> {
-  return deliver(deps, request.id, async () => {
-    const admins = (await deps.listUsers())
-      .filter((user) => user.isAdmin && !user.disabled && user.email)
-      .map((user) => user.email as string);
-    if (admins.length === 0) return null;
-
-    const requester = request.requesterEmail ?? request.requesterSubject;
-    const review = link(deps.env, "/admin/requests");
-    return {
-      to: admins,
-      subject: subject(`Access request for ${request.pocketIdGroupName}`),
-      text: body(
-        `${requester} asked for access to ${request.pocketIdGroupName}.`,
-        request.message ? `Their reason:\n${request.message}` : undefined,
-        review && `Review it: ${review}`,
-      ),
-    };
-  });
+  const requester = request.requesterEmail ?? request.requesterSubject;
+  const group = request.pocketIdGroupName;
+  const review = link(deps.env, "/admin/requests");
+  return deliver(
+    deps,
+    request.id,
+    async () =>
+      // A PocketID user's id is their OIDC subject (see src/auth.ts).
+      (await deps.listUsers())
+        .filter((user) => user.isAdmin && !user.disabled && user.email)
+        .map((user) => ({ email: user.email as string, subject: user.id })),
+    (locale) => {
+      const t = translatorFor(locale, "Email");
+      return {
+        subject: subject(t("newSubject", { group })),
+        text: body(
+          t("newBody", { requester, group }),
+          request.message ? `${t("newReason")}\n${request.message}` : undefined,
+          review && t("newReview", { url: review }),
+        ),
+      };
+    },
+  );
 }
 
 export function notifyAccessRequestDecision(
@@ -115,24 +140,23 @@ export function notifyAccessRequestDecision(
   decision: AccessRequestDecision,
   deps: Deps = DEFAULTS,
 ): Promise<void> {
-  return deliver(deps, request.id, async () => {
-    if (!request.requesterEmail) return null;
-
-    const apps = link(deps.env, "/apps");
-    const group = request.pocketIdGroupName;
-    return {
-      to: [request.requesterEmail],
-      subject: subject(`Access to ${group} ${decision}`),
-      text:
-        decision === "approved"
-          ? body(
-              `Your request for ${group} was approved. It can take a few minutes to show up in the portal.`,
-              apps && `Your apps: ${apps}`,
-            )
-          : body(
-              `Your request for ${group} was denied. You can request it again with more detail.`,
-              apps && `Your apps: ${apps}`,
-            ),
-    };
-  });
+  const apps = link(deps.env, "/apps");
+  const group = request.pocketIdGroupName;
+  const email = request.requesterEmail;
+  return deliver(
+    deps,
+    request.id,
+    async () => (email ? [{ email, subject: request.requesterSubject }] : []),
+    (locale) => {
+      const t = translatorFor(locale, "Email");
+      const approved = decision === "approved";
+      return {
+        subject: subject(t(approved ? "approvedSubject" : "deniedSubject", { group })),
+        text: body(
+          t(approved ? "approvedBody" : "deniedBody", { group }),
+          apps && t("yourApps", { url: apps }),
+        ),
+      };
+    },
+  );
 }

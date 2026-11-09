@@ -11,20 +11,20 @@ import { readAccessRequestsEnabled } from "@/lib/config";
 import { AppMark } from "@/app/_components/app-mark";
 import { decideAccessRequestAction } from "./actions";
 import { RequestDecision } from "./request-decision";
+import { decisionLabels } from "./decision-labels";
+import { getLocale, getTranslations } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Requests",
-};
-
-// "Jellyfin", "Jellyfin and Sonarr", "Jellyfin, Sonarr and Radarr".
-function listOf(names: string[]): string {
-  if (names.length <= 1) return names.join("");
-  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("AdminRequests");
+  return { title: t("title") };
 }
 
-function waitingHeading(count: number): string {
-  if (count === 0) return "Nobody is waiting";
-  return count === 1 ? "1 person is waiting" : `${count} people are waiting`;
+// "Jellyfin", "Jellyfin and Sonarr", "Jellyfin, Sonarr and Radarr" (or
+// "et" in French). Not Intl.ListFormat: its English adds a serial comma,
+// and its output follows the container's CLDR data.
+function listOf(names: string[], and: string): string {
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} ${and} ${names.at(-1)}`;
 }
 
 export default async function AdminRequestsPage() {
@@ -35,35 +35,30 @@ export default async function AdminRequestsPage() {
   // each one is for. Fetched even for an empty queue to keep this simple;
   // a PocketID outage reaches the error boundary, and approving would fail
   // anyway.
-  const [requests, apps] = await Promise.all([
+  const [requests, apps, t, locale] = await Promise.all([
     listPendingAccessRequests(db),
     listAdminCatalogApps(getPocketIdConfig(), db),
+    getTranslations("AdminRequests"),
+    getLocale(),
   ]);
 
   return (
     <main id="main-content" tabIndex={-1} className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight text-ink tabular-nums sm:text-4xl">
-          {waitingHeading(requests.length)}
+          {t("waiting", { count: requests.length })}
         </h1>
-        <p className="mt-2 max-w-2xl text-ink-muted">
-          People asking for an app they can&rsquo;t open yet. Approving adds
-          them to the app&rsquo;s group in PocketID; if that fails, the request
-          stays here.
-        </p>
+        <p className="mt-2 max-w-2xl text-ink-muted">{t("intro")}</p>
         {readAccessRequestsEnabled() ? null : (
           // kept reachable so what was filed before can be drained.
-          <p className="mt-3 badge badge-tip">
-            New requests are switched off (FEATURE_ACCESS_REQUESTS). You can
-            still decide these.
-          </p>
+          <p className="mt-3 badge badge-tip">{t("switchedOff")}</p>
         )}
       </div>
 
       {requests.length === 0 ? (
         <div className="card flex flex-col items-start gap-1 p-6">
-          <p className="text-lg font-bold">You&rsquo;re all caught up.</p>
-          <p className="text-ink-muted">New requests show up here, and in the menu&rsquo;s count.</p>
+          <p className="text-lg font-bold">{t("caughtUp")}</p>
+          <p className="text-ink-muted">{t("caughtUpDetail")}</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-4">
@@ -79,8 +74,11 @@ export default async function AdminRequestsPage() {
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <div>
                     <h2 className="text-lg leading-snug font-semibold break-words">
-                      {requester} <span className="font-normal text-ink-muted">asked for</span>{" "}
-                      {appName}
+                      {t.rich("askedFor", {
+                        requester,
+                        app: appName,
+                        muted: (chunks) => <span className="font-normal text-ink-muted">{chunks}</span>,
+                      })}
                     </h2>
                     {app?.description ? (
                       <p className="text-sm text-ink-muted">{app.description}</p>
@@ -92,19 +90,18 @@ export default async function AdminRequestsPage() {
                       {request.message}
                     </blockquote>
                   ) : (
-                    <p className="text-sm text-ink-muted italic">No note.</p>
+                    <p className="text-sm text-ink-muted italic">{t("noNote")}</p>
                   )}
 
                   {grantable ? (
                     <p className="text-sm text-ink-muted">
-                      Approving adds them to{" "}
-                      <span className="font-semibold text-ink">{groupLabel}</span>
-                      {opens.length > 1 ? (
-                        <>
-                          , which opens <span className="text-ink">{listOf(opens)}</span>
-                        </>
-                      ) : null}
-                      .
+                      {/* The group stands out; the apps it opens, a little. */}
+                      {t.rich(opens.length > 1 ? "approvingAddsOpens" : "approvingAdds", {
+                        group: groupLabel,
+                        apps: listOf(opens, t("and")),
+                        strong: (chunks) => <span className="font-semibold text-ink">{chunks}</span>,
+                        list: (chunks) => <span className="text-ink">{chunks}</span>,
+                      })}
                     </p>
                   ) : null}
 
@@ -116,13 +113,12 @@ export default async function AdminRequestsPage() {
                           : undefined
                       }
                       denyAction={decideAccessRequestAction.bind(null, request.id, "denied")}
-                      requester={requester}
-                      groupName={request.pocketIdGroupName}
+                      labels={decisionLabels(t, requester, request.pocketIdGroupName)}
                     />
                     <p className="text-xs text-ink-muted">
-                      Asked{" "}
+                      {t("asked")}{" "}
                       <time dateTime={request.createdAt.toISOString()}>
-                        {formatUtcTimestamp(request.createdAt)}
+                        {formatUtcTimestamp(request.createdAt, locale)}
                       </time>
                     </p>
                   </div>

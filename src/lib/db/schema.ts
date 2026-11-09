@@ -102,3 +102,15 @@ export const sessionClaims = pgTable("session_claims", {
   attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
 });
 /* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// Choices a person makes about the portal itself, keyed by PocketID subject
+// so they follow them across devices and replicas (#64). `locale` is null
+// until they pick a language; until then the browser's own preference is
+// used. One row per person who has ever set something.
+export const userPreferences = pgTable("user_preferences", {
+  subject: text("subject").primaryKey(),
+  locale: text("locale"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "./page";
 import { auth, signIn } from "@/auth";
+import { setTestLocale } from "@/test/intl";
 
 vi.mock("@/auth", () => ({
   auth: vi.fn(),
@@ -130,5 +131,34 @@ describe("Home", () => {
     render(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Acme Apps");
+  });
+
+  it("welcomes a signed-out visitor in French when the page is in French", async () => {
+    setTestLocale("fr");
+    mockAuth.mockResolvedValue(null);
+
+    render(await Home());
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bienvenue sur Acme Apps");
+    expect(screen.getByRole("button", { name: "Se connecter avec PocketID" })).toBeInTheDocument();
+  });
+
+  it("greets a signed-in user in French, with or without a name", async () => {
+    setTestLocale("fr");
+    mockAuth.mockResolvedValue(session({ name: "Francois Bouju" }));
+    const { unmount } = render(await Home());
+    // A narrow no-break space before "?", as French typography wants.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Bonjour Francois. Que voulez-vous faire\u202f?",
+      { normalizeWhitespace: false },
+    );
+    unmount();
+
+    mockAuth.mockResolvedValue(session({ name: null }));
+    render(await Home());
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Bonjour. Que voulez-vous faire\u202f?",
+      { normalizeWhitespace: false },
+    );
   });
 });

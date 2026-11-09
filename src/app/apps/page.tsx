@@ -19,11 +19,18 @@ import {
 } from "@/lib/config";
 import { requestAppAccessAction } from "./actions";
 import { RequestAccessForm } from "./request-access-form";
+import { formLabels, type AskFormT } from "./form-labels";
 import { AppMark } from "@/app/_components/app-mark";
+import { getTranslations } from "@/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Apps",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Apps");
+  return { title: t("title") };
+}
+
+type AppsT = Awaited<ReturnType<typeof getTranslations<"Apps">>>;
+type AskT = AskFormT;
+
 
 // What the requester is told about one client+group pairing. Every state but
 // "pending" was previously invisible to them: an approval or a denial just
@@ -36,32 +43,34 @@ export const metadata: Metadata = {
 function OutcomeNotice({
   state,
   friendlyName,
+  t,
 }: {
   state: RequestState;
   friendlyName: string;
+  t: AppsT;
 }) {
+  const group = friendlyName;
   const { label, detail, tone } = {
     pending: {
-      label: `Asked to join ${friendlyName}`,
-      detail: "Waiting for an admin.",
+      label: t("pendingLabel", { group }),
+      detail: t("pendingDetail"),
       tone: "tip",
     },
     settling: {
-      label: `Approved for ${friendlyName}`,
-      detail:
-        "It shows up under “What you can use” within a few minutes, or right away if you sign out and back in.",
+      label: t("settlingLabel", { group }),
+      detail: t("settlingDetail"),
       tone: "ok",
     },
     revoked: {
-      label: `Access through ${friendlyName} was removed`,
+      label: t("revokedLabel", { group }),
       // Negative, not neutral: a quiet tone made a loss of access read as a
       // benign in-progress state, or as though the app were still granted.
-      detail: "You had this before, but the group no longer grants it. You can ask again.",
+      detail: t("revokedDetail"),
       tone: "bad",
     },
     denied: {
-      label: `Not approved: ${friendlyName}`,
-      detail: "You can ask again if things have changed.",
+      label: t("deniedLabel", { group }),
+      detail: t("deniedDetail"),
       tone: "bad",
     },
   }[state];
@@ -78,6 +87,14 @@ function OutcomeNotice({
       <p className="text-sm">{detail}</p>
     </div>
   );
+}
+
+// The "no results" line, naming whatever was searched for.
+function nothingMatches(t: AppsT, { q, category }: { q?: string; category?: string }): string {
+  if (q && category) return t("nothingMatchesBoth", { q, category });
+  if (q) return t("nothingMatchesQuery", { q });
+  if (category) return t("nothingMatchesCategory", { category });
+  return t("nothingMatches");
 }
 
 // Leads with what the app is for when PocketID has a description, which is
@@ -111,11 +128,15 @@ function AskForApp({
   myRequests,
   userGroups,
   reason,
+  t,
+  tForm,
 }: {
   app: UserCatalogApp;
   myRequests: AccessRequest[];
   userGroups: string[];
   reason: AccessRequestReason;
+  t: AppsT;
+  tForm: AskT;
 }) {
   const roles = app.allowedGroups.map((group) => ({
     group,
@@ -128,7 +149,7 @@ function AskForApp({
     <div className="mt-auto flex flex-col gap-4">
       {roles.map(({ group, outcome }) =>
         outcome ? (
-          <OutcomeNotice key={group.id} state={outcome.state} friendlyName={group.friendlyName} />
+          <OutcomeNotice key={group.id} state={outcome.state} friendlyName={group.friendlyName} t={t} />
         ) : null,
       )}
       {/* Offered only where it can actually succeed. The action re-checks
@@ -137,10 +158,10 @@ function AskForApp({
         <RequestAccessForm
           action={requestAppAccessAction.bind(null, app.id)}
           appId={app.id}
-          appName={app.name}
           roles={open.map(({ id, friendlyName }) => ({ id, friendlyName }))}
           defaultRoleId={preselected.id}
           reason={reason}
+          labels={formLabels(tForm, app.name, reason)}
         />
       )}
     </div>
@@ -157,9 +178,11 @@ export default async function AppsPage({
   const reasonMode = readAccessRequestReason();
 
   const db = getDb();
-  const [catalog, myRequests] = await Promise.all([
+  const [catalog, myRequests, t, tForm] = await Promise.all([
     listUserCatalogApps(getPocketIdConfig(), db, session.user.groups),
     listUserAccessRequests(db, session.user.id),
+    getTranslations("Apps"),
+    getTranslations("AskForm"),
   ]);
   // Requests off: a pure launcher, listing only what can be opened.
   const visible = requestsEnabled ? catalog : catalog.filter((app) => app.hasAccess);
@@ -185,11 +208,9 @@ export default async function AppsPage({
         className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 pt-8 pb-20"
       >
         <div className="flex flex-col gap-3">
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Apps</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{t("title")}</h1>
           <p className="max-w-2xl text-lg text-ink-muted">
-            {requestsEnabled
-              ? "Everything you can open, and what else you can ask for."
-              : "The apps you can open."}
+            {requestsEnabled ? t("intro") : t("introLauncher")}
           </p>
         </div>
 
@@ -199,9 +220,7 @@ export default async function AppsPage({
             <path d="M12 11v5M12 8h.01" />
           </svg>
           <p className="text-[15px] leading-relaxed">
-            <strong className="font-bold">New here?</strong> Each card says what
-            the app is for. Click one and it opens. You won&rsquo;t need
-            another password.
+            <strong className="font-bold">{t("tipLead")}</strong> {t("tipBody")}
           </p>
         </aside>
 
@@ -211,7 +230,7 @@ export default async function AppsPage({
                 a URL that can be bookmarked or sent to someone. */}
             <form role="search" action="/apps" className="flex w-full max-w-xl items-center gap-2">
               <label htmlFor="app-search" className="sr-only">
-                Search apps
+                {t("searchLabel")}
               </label>
               <span className="relative flex-1">
                 <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted">
@@ -223,18 +242,18 @@ export default async function AppsPage({
                   type="search"
                   name="q"
                   defaultValue={browse.q ?? ""}
-                  placeholder="Search by name, or by what it’s for"
+                  placeholder={t("searchPlaceholder")}
                   className="field min-h-12 rounded-full pl-12 text-base"
                 />
               </span>
               {browse.category && <input type="hidden" name="category" value={browse.category} />}
               <button type="submit" className="btn btn-secondary">
-                Search
+                {t("searchButton")}
               </button>
             </form>
 
             {categories.length > 0 && (
-              <nav aria-label="Categories">
+              <nav aria-label={t("categoriesLabel")}>
                 <ul className="flex flex-wrap gap-2">
                   {[undefined, ...categories].map((category) => (
                     <li key={category ?? ""}>
@@ -243,7 +262,7 @@ export default async function AppsPage({
                         aria-current={browse.category === category ? "page" : undefined}
                         className="chip"
                       >
-                        {category ?? "Everything"}
+                        {category ?? t("everything")}
                       </Link>
                     </li>
                   ))}
@@ -254,10 +273,10 @@ export default async function AppsPage({
             {filtering && (
               <p className="text-[15px] text-ink-muted">
                 {shown.length === 0
-                  ? `Nothing matches${browse.q ? ` “${browse.q}”` : ""}${browse.category ? ` in ${browse.category}` : ""}.`
-                  : `${shown.length} ${shown.length === 1 ? "app" : "apps"} found.`}{" "}
+                  ? nothingMatches(t, browse)
+                  : t("found", { count: shown.length })}{" "}
                 <Link href="/apps" className="font-semibold text-ink underline underline-offset-4">
-                  Show everything
+                  {t("showEverything")}
                 </Link>
               </p>
             )}
@@ -267,13 +286,11 @@ export default async function AppsPage({
         {(!filtering || usable.length > 0) && (
           <section aria-labelledby="usable-h" className="flex flex-col gap-5">
             <h2 id="usable-h" className="text-2xl font-bold tracking-tight">
-              What you can use
+              {t("usableHeading")}
             </h2>
             {usable.length === 0 ? (
               <p className="text-ink-muted">
-                {requestsEnabled
-                  ? "Nothing yet. Ask for something below, and it shows up here once an admin lets you in."
-                  : "You don’t have access to any apps yet. Ask an administrator."}
+                {requestsEnabled ? t("usableEmptyAsk") : t("usableEmptyAdmin")}
               </p>
             ) : (
               <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
@@ -283,12 +300,12 @@ export default async function AppsPage({
                         of context, so the accessible name carries the app. */}
                     <a
                       href={app.launchUrl}
-                      aria-label={`Open ${app.name}`}
+                      aria-label={t("openApp", { name: app.name })}
                       className="card card-link flex flex-1 flex-col gap-5 p-5 text-ink"
                     >
                       <AppIntro app={app} />
                       <span className="mt-auto flex items-center justify-between border-t border-line pt-3.5 text-sm font-semibold text-ink-muted">
-                        Open
+                        {t("open")}
                         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M7 17 17 7M9 7h8v8" />
                         </svg>
@@ -308,27 +325,24 @@ export default async function AppsPage({
           >
             <div className="flex flex-col gap-1.5">
               <h2 id="ask-h" className="text-2xl font-bold tracking-tight">
-                More you can ask for
+                {t("askHeading")}
               </h2>
-              <p className="text-[15px] text-ink-muted">
-                Ask, and an admin will let you in. It moves up to &ldquo;What
-                you can use&rdquo; once they do.
-              </p>
+              <p className="text-[15px] text-ink-muted">{t("askIntro")}</p>
             </div>
             <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]">
               {askable.map((app) => (
                 <li key={app.id} className="card flex flex-col gap-5 p-5">
                   <AppIntro app={app} />
                   {app.allowedGroups.length === 0 ? (
-                    <p className="text-sm text-ink-muted">
-                      No group grants access to this app yet.
-                    </p>
+                    <p className="text-sm text-ink-muted">{t("noGroup")}</p>
                   ) : (
                     <AskForApp
                       app={app}
                       myRequests={myRequests}
                       userGroups={session.user.groups}
                       reason={reasonMode}
+                      t={t}
+                      tForm={tForm}
                     />
                   )}
                 </li>

@@ -5,6 +5,7 @@ import {
   configSource,
   nonDefaultFlags,
   readAccessRequestReason,
+  readDefaultLocale,
   readAccessRequestsEnabled,
   readAuditLogPageEnabled,
   readEmailNotificationsEnabled,
@@ -166,6 +167,22 @@ describe("config", () => {
       ["sometimes", "optional"],
     ])("ACCESS_REQUEST_REASON=%s reads as %s", (value, expected) => {
       expect(readAccessRequestReason({ ACCESS_REQUEST_REASON: value })).toBe(expected);
+    });
+
+    // #64: the language for people who haven't picked one.
+    it.each([
+      [undefined, "en"],
+      ["fr", "fr"],
+      ["FR", "fr"],
+      ["de", "en"],
+    ])("DEFAULT_LOCALE=%s reads as %s", (value, expected) => {
+      expect(readDefaultLocale({ DEFAULT_LOCALE: value })).toBe(expected);
+    });
+
+    it("reports a DEFAULT_LOCALE the portal doesn't speak", () => {
+      expect(validateConfig({ ...COMPLETE, DEFAULT_LOCALE: "de" })).toEqual([
+        'DEFAULT_LOCALE must be one of en, fr, not "de"',
+      ]);
     });
 
     // The remaining flags: all on by default, so nothing changes until a

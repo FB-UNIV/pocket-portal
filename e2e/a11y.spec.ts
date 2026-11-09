@@ -32,6 +32,46 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectNoViolations(page);
     });
 
+    // A browser that asks for French gets it (#64): French text runs longer,
+    // and the header gains an "English" switch, so it's checked too.
+    test.describe("in French", () => {
+      test.use({ locale: "fr-FR" });
+
+      test("signed-out home page", async ({ page }) => {
+        await page.goto("/");
+        await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+        await expectNoViolations(page);
+      });
+
+      // French from the browser only: nothing is saved to the seed users,
+      // so the English specs running alongside are unaffected.
+      test.describe("as a user", () => {
+        test.use({ storageState: sessionFile("e2e-user") });
+
+        for (const path of ["/", "/apps"]) {
+          test(path, async ({ page }) => {
+            await page.goto(path);
+            await expect(page).toHaveURL(path);
+            await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
+            await expectNoViolations(page);
+          });
+        }
+      });
+
+      test.describe("as an admin", () => {
+        test.use({ storageState: sessionFile("e2e-admin") });
+
+        for (const path of ["/admin/apps", "/admin/requests", "/admin/audit"]) {
+          test(path, async ({ page }) => {
+            await page.goto(path);
+            await expect(page).toHaveURL(path);
+            await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+            await expectNoViolations(page);
+          });
+        }
+      });
+    });
+
     test("not-found page", async ({ page }) => {
       await page.goto("/no-such-page");
       await expectNoViolations(page);

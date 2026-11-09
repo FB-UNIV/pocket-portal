@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { auth, signIn } from "@/auth";
 import { getPortalName } from "@/lib/pocketid/branding";
 import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
+import { getTranslations } from "@/i18n/server";
 import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
 
 // No `metadata` export: this page is the root layout's own segment, where
@@ -12,7 +13,13 @@ export default async function Home({
 }: {
   searchParams?: Promise<{ callbackUrl?: string | string[] }>;
 } = {}) {
-  const [session, name, params] = await Promise.all([auth(), getPortalName(), searchParams]);
+  const [session, name, params, tSignIn, tHome] = await Promise.all([
+    auth(),
+    getPortalName(),
+    searchParams,
+    getTranslations("SignIn"),
+    getTranslations("Home"),
+  ]);
   // Where a signed-out visitor was headed (requireUser adds it); validated,
   // so the portal can't be used to bounce someone to another site.
   const redirectTo = safeCallbackUrl(params?.callbackUrl);
@@ -30,10 +37,11 @@ export default async function Home({
         >
           <div className="flex flex-col gap-3">
             <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-              {firstName ? `Hi ${firstName}.` : "Hi there."} What would you like to do?
+              {/* "__none" picks the greeting without a name. */}
+              {tHome("greeting", { name: firstName ?? "__none" })}
             </h1>
             <p className="text-ink-muted">
-              Signed in as {session.user.name ?? session.user.email}
+              {tHome("signedInAs", { name: session.user.name ?? session.user.email ?? "" })}
             </p>
           </div>
 
@@ -59,12 +67,9 @@ export default async function Home({
       >
         <div className="flex max-w-xl flex-[1_1_420px] flex-col gap-6">
           <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
-            Welcome to {name}
+            {tSignIn("title", { name })}
           </h1>
-          <p className="text-lg leading-relaxed text-ink-muted">
-            One place for the apps we run. Sign in once, and everything you
-            can use is a click away. Anything else, you can ask for.
-          </p>
+          <p className="text-lg leading-relaxed text-ink-muted">{tSignIn("intro")}</p>
           <form
             className="flex flex-col items-start gap-3"
             action={async () => {
@@ -73,28 +78,25 @@ export default async function Home({
             }}
           >
             <button type="submit" className="btn btn-primary min-h-14 px-7 text-[17px]">
-              Sign in with PocketID
+              {tSignIn("button")}
             </button>
-            <p className="text-[15px] text-ink-muted">
-              No password: your phone or computer unlocks it, like it does for
-              your banking app.
-            </p>
+            <p className="text-[15px] text-ink-muted">{tSignIn("passkeyHint")}</p>
           </form>
           <p className="border-t border-line pt-5 text-[15px] text-ink-muted">
-            <strong className="font-bold text-ink">First time?</strong> Use the
-            invite link an admin sent you to set up your sign-in.
+            <strong className="font-bold text-ink">{tSignIn("firstTimeLead")}</strong>{" "}
+            {tSignIn("firstTimeBody")}
           </p>
         </div>
 
         <section aria-labelledby="how-h" className="flex flex-[1_1_340px] flex-col gap-4">
           <h2 id="how-h" className="text-sm font-bold uppercase tracking-wider text-ink-muted">
-            How it works
+            {tSignIn("howItWorks")}
           </h2>
           <ol className="flex flex-col gap-3">
             {[
-              ["Sign in", "With your phone or computer. No password to remember."],
-              ["Open what you need", "Each app says what it’s for. Click it and it opens."],
-              ["Ask for the rest", "Missing something? Ask, and an admin lets you in."],
+              [tSignIn("step1Title"), tSignIn("step1Body")],
+              [tSignIn("step2Title"), tSignIn("step2Body")],
+              [tSignIn("step3Title"), tSignIn("step3Body")],
             ].map(([title, body], i) => (
               <li key={title} className="card flex items-start gap-4 p-5">
                 <span

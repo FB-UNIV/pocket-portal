@@ -6,6 +6,9 @@ import { readAccessRequestsEnabled } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { hasPendingAccessRequests } from "@/lib/requests/access-requests";
 import { showAccessRequestsLink } from "@/lib/requests/queue-link";
+import { getLocale, getTranslations } from "@/i18n/server";
+import { IntlProvider } from "@/i18n/client-provider";
+import { MESSAGES } from "@/i18n/messages";
 import { SiteHeader } from "./_components/site-header";
 import "./globals.css";
 
@@ -26,22 +29,22 @@ const geistMono = Geist_Mono({
 // segment as this layout) takes `title.default` and every other route sets a
 // plain `title` that gets suffixed — WCAG 2.2 SC 2.4.2 Page Titled.
 export async function generateMetadata(): Promise<Metadata> {
-  const name = await getPortalName();
+  const [name, t] = await Promise.all([getPortalName(), getTranslations("Metadata")]);
   return {
     title: {
       default: name,
       template: `%s · ${name}`,
     },
-    description:
-      "A digital workspace portal: reach the apps you have access to, and request the ones you don't.",
+    description: t("description"),
   };
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [session, branding, name] = await Promise.all([
+  const [session, branding, name, locale] = await Promise.all([
     auth(),
     getPocketIdBranding(),
     getPortalName(),
+    getLocale(),
   ]);
   // Only an admin sees the link, so only an admin's render ever asks the DB,
   // and only while requests are off.
@@ -58,7 +61,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html
-      lang="en"
+      // The page's language, so screen readers pronounce it right and
+      // browsers don't offer to translate French as if it were English
+      // (WCAG 3.1.1).
+      lang={locale}
       className={`${figtree.variable} ${geistMono.variable} h-full antialiased`}
     >
       {brandCss ? (
@@ -73,7 +79,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           logo={branding?.logo}
           showAccessRequests={showAccessRequests}
         />
-        {children}
+        {/* Client components read their words from here: error.tsx can't
+            be handed them as props. Only its namespace is sent. */}
+        <IntlProvider locale={locale} messages={{ Error: MESSAGES[locale].Error }}>
+          {children}
+        </IntlProvider>
       </body>
     </html>
   );

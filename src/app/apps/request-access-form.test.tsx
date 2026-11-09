@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RequestAccessForm, type RoleOption } from "./request-access-form";
 import type { RequestAccessResult } from "./actions";
+import { formLabels } from "./form-labels";
+import { translatorFor } from "@/i18n/translate";
 
 const USERS = { id: "g-users", friendlyName: "Sonarr users" };
 const ADMINS = { id: "g-admins", friendlyName: "Sonarr admins" };
@@ -24,10 +26,10 @@ function renderForm({
     <RequestAccessForm
       action={action}
       appId="c1"
-      appName="Sonarr"
       roles={roles}
       defaultRoleId={defaultRoleId}
       reason={reason}
+      labels={formLabels(translatorFor("en", "AskForm"), "Sonarr", reason)}
     />,
   );
   return action;

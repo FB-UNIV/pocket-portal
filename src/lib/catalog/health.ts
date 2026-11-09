@@ -12,7 +12,3 @@ export function appProblems(app: Pick<CatalogApp, "launchUrl" | "description">):
   return problems;
 }
 
-export const PROBLEM_LABELS: Record<AppProblem, string> = {
-  "no-link": "No link",
-  "no-description": "No description",
-};

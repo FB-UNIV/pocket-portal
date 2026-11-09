@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { DEFAULT_LOCALE, negotiateLocale, type Locale } from "@/i18n/locales";
+import { MESSAGES } from "@/i18n/messages";
 
 // Catches what error.tsx structurally cannot: a throw in the *root layout*
 // itself. error.js wraps pages and nested layouts but not the layout in its
@@ -36,6 +38,11 @@ const STYLES = `
   :focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 `;
 
+// The browser's languages don't change while this page is up.
+const noSubscription = () => () => {};
+const browserLocale = (): Locale =>
+  negotiateLocale(navigator.languages.join(",")) ?? DEFAULT_LOCALE;
+
 export default function GlobalError({
   error,
   retry,
@@ -43,35 +50,38 @@ export default function GlobalError({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  // This replaces the root layout, so nothing here knows the request's
+  // language: English on the server, the browser's language once it runs
+  // there.
+  const locale = useSyncExternalStore(noSubscription, browserLocale, () => DEFAULT_LOCALE);
+  const t = MESSAGES[locale].Error;
+
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
     // global-error must render its own <html>/<body>.
-    <html lang="en">
+    <html lang={locale}>
       <body>
         {/* metadata exports aren't supported in a client boundary; React
             hoists this <title> instead. No portal name: that's read on the
             server, and this page renders when the server couldn't. */}
-        <title>Something went wrong</title>
+        <title>{t.title}</title>
         <style>{STYLES}</style>
         <div className="wrap">
           <div role="alert" style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
-            <h1>Something went wrong</h1>
-            <p className="muted">
-              The portal couldn&rsquo;t load. This usually means it can&rsquo;t
-              reach PocketID — trying again in a moment is the fastest fix.
-            </p>
+            <h1>{t.title}</h1>
+            <p className="muted">{t.globalBody}</p>
             {error.digest && (
               <p className="muted digest">
-                Reference: <code>{error.digest}</code>
+                {t.reference} <code>{error.digest}</code>
               </p>
             )}
           </div>
           <div className="actions">
             <button type="button" className="btn" onClick={() => retry()}>
-              Try again
+              {t.retry}
             </button>
             {/* Plain anchor, and the rule is disabled deliberately: this
                 boundary has replaced the document, so there is no router
@@ -80,7 +90,7 @@ export default function GlobalError({
                 A full document load is the recovery. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a className="link" href="/">
-              Back to portal home
+              {t.home}
             </a>
           </div>
         </div>

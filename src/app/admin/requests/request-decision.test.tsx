@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RequestDecision } from "./request-decision";
 import type { DecideAccessRequestResult } from "./actions";
+import { decisionLabels } from "./decision-labels";
+import { translatorFor } from "@/i18n/translate";
 
 function renderDecision(
   approveResult: DecideAccessRequestResult | null,
@@ -14,8 +16,7 @@ function renderDecision(
     <RequestDecision
       approveAction={approveResult ? approveAction : undefined}
       denyAction={denyAction}
-      requester="alice@example.test"
-      groupName="media"
+      labels={decisionLabels(translatorFor("en", "AdminRequests"), "alice@example.test", "media")}
     />,
   );
   return { approveAction, denyAction };

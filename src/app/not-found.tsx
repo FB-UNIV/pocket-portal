@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { getTranslations } from "@/i18n/server";
 
 // No `metadata` export: Next resolves metadata from layout.js/page.js only,
 // so a title set here would be dropped. This page inherits the root layout's
 // default title instead.
-export default function NotFound() {
+export default async function NotFound() {
+  const t = await getTranslations("NotFound");
   return (
     <div className="flex flex-col flex-1 items-center">
       <main
@@ -12,18 +14,14 @@ export default function NotFound() {
         className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-8 pb-20"
       >
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-ink">
-          Page not found
+          {t("title")}
         </h1>
-        <p className="text-ink-muted">
-          That URL doesn&rsquo;t match anything in this workspace. It may have
-          been an app link that changed, or a page you don&rsquo;t have access
-          to.
-        </p>
+        <p className="text-ink-muted">{t("body")}</p>
         <Link
           href="/"
           className="self-start btn btn-primary"
         >
-          Back to portal home
+          {t("home")}
         </Link>
       </main>
     </div>

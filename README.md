@@ -65,6 +65,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `FEATURE_EMAIL_NOTIFICATIONS` | no | `true` | `false` pauses emails, keeping the SMTP settings |
 | `FEATURE_POCKETID_BRANDING` | no | `true` | `false` keeps the portal's own look |
 | `PORTAL_NAME` | no | PocketID's app name, else `Pocket Portal` | Name shown in the header and page titles |
+| `DEFAULT_LOCALE` | no | `en` | Language for people who haven't picked one and whose browser asks for neither: `en` or `fr` |
 | `FEATURE_AUDIT_LOG_PAGE` | no | `true` | `false` hides `/admin/audit`; events are still recorded |
 | `WARN_POCKETID_SECRETS_READABLE` | no | `true` | `false` hides the admin banner; the startup log still warns |
 | `CONFIG_FILE` | no | | Path to an optional YAML config file (below) |

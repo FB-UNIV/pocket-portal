@@ -8,6 +8,9 @@ export type AdminNavItem = {
   label: string;
   // Shown beside the label (pending requests). Omitted, or 0, shows nothing.
   count?: number;
+  // What a screen reader hears after the label instead of the bare number
+  // (", 3 waiting"), already translated.
+  countLabel?: string;
 };
 
 // The admin side menu's links. A client component only for usePathname,
@@ -31,7 +34,7 @@ export function AdminNavLinks({ items }: { items: AdminNavItem[] }) {
                 <>
                   {/* A bare "3" read after the label means little; the link's
                       name says "Requests, 3 waiting" instead. */}
-                  <span className="sr-only">, {item.count} waiting</span>
+                  <span className="sr-only">{item.countLabel ?? `, ${item.count}`}</span>
                   <span
                     aria-hidden="true"
                     className="min-w-6 rounded-full bg-brand px-1.5 text-center text-xs leading-6 font-bold text-on-brand tabular-nums"
