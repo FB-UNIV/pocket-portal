@@ -22,15 +22,12 @@ export function SiteHeader({
   user,
   logo,
   showAccessRequests = true,
-  showAuditLog = true,
 }: {
   // The portal's display name (lib/pocketid/branding.ts getPortalName).
   name: string;
   user: SiteHeaderUser | null;
   // False once requests are switched off and nothing is left to decide.
   showAccessRequests?: boolean;
-  // False while FEATURE_AUDIT_LOG_PAGE is off.
-  showAuditLog?: boolean;
   // PocketID's logo, when its branding could be read.
   logo?: { light: string; dark: string };
 }) {
@@ -90,24 +87,16 @@ export function SiteHeader({
                   <>
                     <li aria-hidden="true" className="mx-1 h-5 w-px bg-line-strong" />
                     <li>
-                      <Link href="/admin/apps" className={navLinkClass}>
-                        App Catalog
+                      {/* One link: the admin pages carry their own side menu.
+                          It opens on the queue while there are requests to
+                          decide, else on the catalog. */}
+                      <Link
+                        href={showAccessRequests ? "/admin/requests" : "/admin/apps"}
+                        className={navLinkClass}
+                      >
+                        Admin
                       </Link>
                     </li>
-                    {showAccessRequests && (
-                      <li>
-                        <Link href="/admin/requests" className={navLinkClass}>
-                          Access Requests
-                        </Link>
-                      </li>
-                    )}
-                    {showAuditLog && (
-                      <li>
-                        <Link href="/admin/audit" className={navLinkClass}>
-                          Audit Log
-                        </Link>
-                      </li>
-                    )}
                   </>
                 )}
               </ul>

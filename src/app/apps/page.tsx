@@ -13,6 +13,7 @@ import {
 import { readAccessRequestReason, readAccessRequestsEnabled } from "@/lib/config";
 import { requestAccessAction } from "./actions";
 import { RequestAccessForm } from "./request-access-form";
+import { AppMark } from "@/app/_components/app-mark";
 
 export const metadata: Metadata = {
   title: "Apps",
@@ -70,37 +71,6 @@ function OutcomeNotice({
       <span className="text-[15px] font-bold">{label}</span>
       <p className="text-sm">{detail}</p>
     </div>
-  );
-}
-
-// Warm tints for apps without a PocketID logo, picked by name so an app
-// keeps its colour between visits. Ink on each is >= 7:1.
-const TINTS = ["#ECE6FB", "#FBEBD3", "#DFEDF9", "#DCF1E8", "#F8E4DA", "#E8E9EE"];
-
-function AppMark({ name, iconUrl }: { name: string; iconUrl: string | null }) {
-  if (iconUrl) {
-    return (
-      // A plain <img>, as in the site header: next/image would need
-      // PocketID's host in remotePatterns. Decorative: the card names the app.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={iconUrl}
-        alt=""
-        width={56}
-        height={56}
-        className="h-14 w-14 flex-none rounded-2xl border border-line bg-surface object-contain p-2"
-      />
-    );
-  }
-  const tint = TINTS[[...name].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TINTS.length];
-  return (
-    <span
-      aria-hidden="true"
-      style={{ background: tint }}
-      className="inline-flex h-14 w-14 flex-none items-center justify-center rounded-2xl text-2xl font-extrabold text-[#1f1b16]"
-    >
-      {[...name.trim()][0]?.toUpperCase() ?? "?"}
-    </span>
   );
 }
 

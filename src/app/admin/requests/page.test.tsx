@@ -62,25 +62,56 @@ describe("AdminRequestsPage", () => {
     expect(mockRequireAdmin).toHaveBeenCalled();
   });
 
-  it("lists a pending request with requester, target group, message, and approve/deny actions", async () => {
+  it("reads each request as a sentence, with the note and approve/decline actions", async () => {
     mockListPending.mockResolvedValue([request()]);
 
     render(await AdminRequestsPage());
 
     expect(
-      screen.getByRole("heading", { level: 2, name: /alice@example.test/ }),
+      screen.getByRole("heading", { level: 2, name: "alice@example.test asked for Jellyfin" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("media")).toBeInTheDocument();
     expect(screen.getByText("I maintain the on-call rotation.")).toBeInTheDocument();
-    // SC 4.1.2 / 2.4.4: a queue of rows all offering "Approve"/"Deny" needs
+    // SC 4.1.2 / 2.4.4: a queue of rows all offering "Approve"/"Decline" needs
     // each button's accessible name to say whose request it decides — an
     // irreversible PocketID group grant is the worst place to mis-click.
     expect(
       screen.getByRole("button", { name: "Approve alice@example.test for media" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Deny alice@example.test for media" }),
+      screen.getByRole("button", { name: "Decline alice@example.test for media" }),
     ).toBeInTheDocument();
+  });
+
+  // What approving hands out, in the group's PocketID friendly name: one
+  // group often opens more than the app that was asked for.
+  it("says which group approving adds them to, and every app it opens", async () => {
+    const sonarr = { ...APP, id: "client-2", name: "Sonarr" };
+    mockListAdminApps.mockResolvedValue([sonarr, APP]);
+    mockListPending.mockResolvedValue([request()]);
+
+    render(await AdminRequestsPage());
+
+    expect(
+      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "Approving adds them to Media, which opens Jellyfin and Sonarr."),
+    ).toBeInTheDocument();
+  });
+
+  it("names only the group when it opens just the app asked for", async () => {
+    mockListPending.mockResolvedValue([request()]);
+
+    render(await AdminRequestsPage());
+
+    expect(
+      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "Approving adds them to Media."),
+    ).toBeInTheDocument();
+  });
+
+  it("counts the people waiting in the heading", async () => {
+    mockListPending.mockResolvedValue([request(), request({ id: "req-2" })]);
+
+    render(await AdminRequestsPage());
+
+    expect(screen.getByRole("heading", { level: 1, name: "2 people are waiting" })).toBeInTheDocument();
   });
 
   // the approve action refuses these on purpose, so offering Approve
@@ -89,7 +120,7 @@ describe("AdminRequestsPage", () => {
     ["its app is hidden", [{ ...APP, hidden: true }]],
     ["its group was removed from the app", [{ ...APP, allowedGroups: [] }]],
     ["its app no longer exists", []],
-  ])("offers only Deny for a request that can't be granted because %s", async (_why, apps) => {
+  ])("offers only Decline for a request that can't be granted because %s", async (_why, apps) => {
     mockListAdminApps.mockResolvedValue(apps as never);
     mockListPending.mockResolvedValue([request()]);
 
@@ -97,9 +128,10 @@ describe("AdminRequestsPage", () => {
 
     expect(screen.queryByRole("button", { name: /^Approve/ })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Deny alice@example.test for media" }),
+      screen.getByRole("button", { name: "Decline alice@example.test for media" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/can.t be approved/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Approving adds them to/)).not.toBeInTheDocument();
   });
 
   it("falls back to the requester subject when no email is on the request", async () => {
@@ -115,7 +147,7 @@ describe("AdminRequestsPage", () => {
 
     render(await AdminRequestsPage());
 
-    expect(screen.getByText(/No message provided/i)).toBeInTheDocument();
+    expect(screen.getByText("No note.")).toBeInTheDocument();
   });
 
   it("shows an empty state when there are no pending requests", async () => {
@@ -123,13 +155,14 @@ describe("AdminRequestsPage", () => {
 
     render(await AdminRequestsPage());
 
-    expect(screen.getByText(/No pending access requests/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Nobody is waiting" })).toBeInTheDocument();
+    expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Approve/ })).not.toBeInTheDocument();
   });
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
   it("declares its own page title", () => {
-    expect(metadata.title).toBe("Access Requests");
+    expect(metadata.title).toBe("Requests");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.

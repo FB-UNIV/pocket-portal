@@ -59,7 +59,17 @@ bold for card headlines. Geist Mono only for codes and identifiers.
   `.card-link` when the whole card is a link: it lifts on hover.
 - `.chip`: a filter link. The current one is filled with ink and marked
   `aria-current`.
-- `.field`: text inputs and textareas.
+- `.field`: text inputs, textareas and selects.
+- `.switch`: an on/off `<button role="switch" aria-checked>`, 44x26 with
+  a 44px-tall hit area. On is green with the knob to the right.
+- `.badge` with `.badge-ok`, `.badge-tip` or `.badge-bad`: small status
+  labels. The text always says the status; colour only backs it.
+- `.data-table`: admin tables inside a `.card`, with a muted header row and
+  tabular numbers.
+
+The admin pages share a layout (`src/app/admin/layout.tsx`): a side menu
+beside the page, above it on narrow screens, where wide tables drop to
+the app's name, status and switch.
 
 ## Polish rules
 
@@ -70,4 +80,4 @@ bold for card headlines. Geist Mono only for codes and identifiers.
   globally). Counts and badges use `tabular-nums`.
 - Touch targets are at least 44px. Focus is a 2px ink ring, 3px out.
 - Use the tokens, never raw hex or Tailwind's `zinc-*`. The one exception is
-  the per-app tint behind an app without a logo (`src/app/apps/page.tsx`).
+  the per-app tint behind an app without a logo (`src/app/_components/app-mark.tsx`).

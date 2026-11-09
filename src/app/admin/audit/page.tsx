@@ -8,7 +8,7 @@ import { listAuditEvents, type AuditEntry } from "@/lib/audit/log";
 import { formatUtcTimestamp } from "@/lib/format/utc-timestamp";
 
 export const metadata: Metadata = {
-  title: "Audit Log",
+  title: "History",
 };
 
 const PAGE_SIZE = 50;
@@ -19,9 +19,20 @@ const ACTION_LABELS: Record<string, string> = {
   "access_request.created": "Requested",
   "access_request.reopened": "Re-requested",
   "access_request.approved": "Approved",
-  "access_request.denied": "Denied",
+  "access_request.denied": "Declined",
   "access_request.grant_rejected": "Grant refused",
   "access_request.grant_failed": "Grant failed",
+};
+
+// The badge each event wears: done is ok, refused or failed is bad, and
+// someone asking is a tip (something to decide). Text always names it.
+const ACTION_TONES: Record<string, string> = {
+  "access_request.created": "badge-tip",
+  "access_request.reopened": "badge-tip",
+  "access_request.approved": "badge-ok",
+  "access_request.denied": "",
+  "access_request.grant_rejected": "badge-bad",
+  "access_request.grant_failed": "badge-bad",
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -89,119 +100,96 @@ export default async function AdminAuditPage({
   });
 
   return (
-    <div className="flex flex-col flex-1 items-center">
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 pt-8 pb-20"
-      >
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-ink">
-            Audit Log (Admin)
-          </h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Every access request and decision, newest first, including grants
-            that were refused or failed.
-          </p>
-        </div>
+    <main id="main-content" tabIndex={-1} className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">History</h1>
+        <p className="mt-2 max-w-2xl text-ink-muted">
+          Every request and decision, newest first, including grants PocketID
+          refused or that failed.
+        </p>
+      </div>
 
-        {/* A plain GET form: the filter is just a URL, so it survives a
-            reload and can be shared. */}
-        <form action="/admin/audit" className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="audit-action" className="text-xs text-ink-muted">
-              Action
-            </label>
-            <select
-              id="audit-action"
-              name="action"
-              defaultValue={action ?? ""}
-              className="rounded-lg border border-line-strong bg-transparent px-2 py-2 text-sm"
-            >
-              <option value="">All actions</option>
-              {Object.entries(ACTION_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            className="btn btn-secondary"
+      {/* A plain GET form: the filter is just a URL, so it survives a
+          reload and can be shared. */}
+      <form action="/admin/audit" className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="audit-action" className="text-sm font-semibold text-ink-muted">
+            Show
+          </label>
+          <select
+            id="audit-action"
+            name="action"
+            defaultValue={action ?? ""}
+            className="field min-h-11 w-56"
           >
-            Filter
-          </button>
-        </form>
+            <option value="">Everything</option>
+            {Object.entries(ACTION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="submit" className="btn btn-secondary">
+          Filter
+        </button>
+      </form>
 
-        {entries.length === 0 ? (
-          <p className="text-sm text-ink-muted">
+      {entries.length === 0 ? (
+        <div className="card p-6">
+          <p className="text-ink-muted">
             {action || before ? "No audit events match." : "No audit events yet."}
           </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-ink-muted">
-                <tr>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Time
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    Event
-                  </th>
-                  <th scope="col" className="py-2 pr-4 font-medium">
-                    By
-                  </th>
-                  <th scope="col" className="py-2 font-medium">
-                    Details
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    className="border-t border-line align-top"
-                  >
-                    <td className="py-2 pr-4 whitespace-nowrap text-ink-muted">
-                      <time dateTime={entry.createdAt.toISOString()}>
-                        {formatUtcTimestamp(entry.createdAt)}
-                      </time>
-                    </td>
-                    <td className="py-2 pr-4 whitespace-nowrap">
+        </div>
+      ) : (
+        <div className="card overflow-x-auto">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">What</th>
+                <th scope="col">By</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id} className="align-top">
+                  <td className="whitespace-nowrap text-sm text-ink-muted">
+                    <time dateTime={entry.createdAt.toISOString()}>
+                      {formatUtcTimestamp(entry.createdAt)}
+                    </time>
+                  </td>
+                  <td>
+                    <span className={`badge ${ACTION_TONES[entry.action] ?? ""}`}>
                       {ACTION_LABELS[entry.action] ?? entry.action}
-                    </td>
-                    <td className="py-2 pr-4 break-all">
-                      {entry.actorEmail ?? entry.actorSubject}
-                    </td>
-                    <td className="py-2">
-                      <Details entry={entry} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </span>
+                  </td>
+                  <td className="break-all">{entry.actorEmail ?? entry.actorSubject}</td>
+                  <td>
+                    <Details entry={entry} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {before || nextCursor ? (
-          <nav aria-label="Audit log pages" className="flex gap-4 text-sm">
-            {before ? (
-              <Link href={auditHref({ action })} className="underline underline-offset-4">
-                Newest events
-              </Link>
-            ) : null}
-            {nextCursor ? (
-              <Link
-                href={auditHref({ action, before: nextCursor })}
-                className="underline underline-offset-4"
-              >
-                Older events
-              </Link>
-            ) : null}
-          </nav>
-        ) : null}
-      </main>
-    </div>
+      {before || nextCursor ? (
+        <nav aria-label="Audit log pages" className="flex gap-2">
+          {before ? (
+            <Link href={auditHref({ action })} className="btn btn-secondary">
+              Newest events
+            </Link>
+          ) : null}
+          {nextCursor ? (
+            <Link href={auditHref({ action, before: nextCursor })} className="btn btn-secondary">
+              Older events
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
+    </main>
   );
 }

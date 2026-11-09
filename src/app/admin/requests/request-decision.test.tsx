@@ -28,14 +28,14 @@ describe("RequestDecision", () => {
     expect(
       screen.getByRole("button", { name: "Approve alice@example.test for media" }),
     ).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Deny alice@example.test for media" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Decline alice@example.test for media" })).toBeEnabled();
   });
 
   it("submits approve and deny to their own actions", async () => {
     const { approveAction, denyAction } = renderDecision({ ok: true });
 
     await userEvent.click(screen.getByRole("button", { name: /^Approve/ }));
-    await userEvent.click(screen.getByRole("button", { name: /^Deny/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Decline/ }));
 
     expect(approveAction).toHaveBeenCalledTimes(1);
     expect(denyAction).toHaveBeenCalledTimes(1);
@@ -54,11 +54,11 @@ describe("RequestDecision", () => {
     );
   });
 
-  it("offers only Deny, with the reason, when no approve action is given", () => {
+  it("offers only Decline, with the reason, when no approve action is given", () => {
     renderDecision(null);
 
     expect(screen.queryByRole("button", { name: /^Approve/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^Deny/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^Decline/ })).toBeEnabled();
     expect(screen.getByText(/can.t be approved/i)).toBeInTheDocument();
   });
 });

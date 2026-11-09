@@ -8,6 +8,22 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Changed
+- **Redesigned admin pages.** A side menu (Requests, with how many are
+  waiting; App catalog; History) replaces the three admin links in the
+  header, which now has a single **Admin** link.
+  - **Requests** read as a sentence ("alex@… asked for Jellyfin"), show
+    the person's note, and say which group approving adds them to and every
+    app that group opens. *Deny* is now *Decline*.
+  - **App catalog** is a table with an on/off switch per app, its category,
+    who can use it, and a status that flags apps PocketID gives no launch
+    link or description. Filter by shown, hidden or needing a fix.
+  - **Each app has its own page** (`/admin/apps/[id]`): the switch and
+    category, next to what PocketID owns, read-only, with a link to change
+    it in PocketID.
+  - **History** (the audit log) uses the same table, with each event as a
+    labelled badge.
+
 ### Removed
 - **The My Access page.** `/my-access` listed the signed-in user's raw
   PocketID group names, which mean nothing to the people the portal is for

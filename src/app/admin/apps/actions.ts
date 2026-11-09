@@ -9,7 +9,8 @@ import { normalizeCategory } from "@/lib/catalog/browse";
 export async function setAppHiddenAction(pocketIdClientId: string, hidden: boolean) {
   await requireAdmin();
   await setAppHidden(getDb(), pocketIdClientId, hidden);
-  revalidatePath("/admin/apps");
+  // "layout" covers each app's own page under it too.
+  revalidatePath("/admin/apps", "layout");
 }
 
 // The admin list's category field. Blank clears it; anything else is
@@ -22,6 +23,7 @@ export async function setAppCategoryAction(pocketIdClientId: string, formData: F
     pocketIdClientId,
     normalizeCategory(typeof raw === "string" ? raw : null),
   );
-  revalidatePath("/admin/apps");
+  // "layout" covers each app's own page under it too.
+  revalidatePath("/admin/apps", "layout");
   revalidatePath("/apps");
 }
