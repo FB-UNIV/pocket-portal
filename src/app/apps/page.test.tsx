@@ -10,7 +10,7 @@ vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("@/lib/catalog/apps", () => ({ listUserCatalogApps: vi.fn() }));
 vi.mock("@/lib/requests/access-requests", () => ({ listUserAccessRequests: vi.fn() }));
-vi.mock("./actions", () => ({ requestAccessAction: vi.fn() }));
+vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn() }));
 
 const mockRequireUser = vi.mocked(requireUser);
 const mockListUserCatalogApps = vi.mocked(listUserCatalogApps);
@@ -59,10 +59,10 @@ describe("AppsPage", () => {
       "href",
       "https://photos.example.test",
     );
-    expect(screen.queryByRole("button", { name: /Request access/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
   });
 
-  it("shows a Request access button per allowed group when access is missing", async () => {
+  it("offers one Ask for access per app, with a role picker starting on the everyday role", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
     mockListUserCatalogApps.mockResolvedValue([
       {
@@ -82,13 +82,39 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    expect(screen.getByRole("button", { name: "Request access via Media" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Request access via Media Admin" }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Ask for access/ })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Ask for access to Sonarr" })).toBeInTheDocument();
+    const picker = screen.getByRole("combobox", { name: "Role" });
+    expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Media",
+      "Media Admin",
+    ]);
+    expect(picker).toHaveValue("g1");
   });
 
-  it("offers an optional message field on each request form", async () => {
+  it("preselects the users role even when PocketID lists the admin one first", async () => {
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Jellyfin",
+        description: "",
+        launchUrl: "https://jellyfin.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: false,
+        allowedGroups: [
+          { id: "g-admins", name: "jellyfin-admins", friendlyName: "Jellyfin admins" },
+          { id: "g-users", name: "jellyfin-users", friendlyName: "Jellyfin users" },
+        ],
+      },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.getByRole("combobox", { name: "Role" })).toHaveValue("g-users");
+  });
+
+  it("offers an optional reason field, and no picker for a single role", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
     mockListUserCatalogApps.mockResolvedValue([
       {
@@ -105,9 +131,10 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    const messageField = screen.getByLabelText(/reason for requesting Media/i);
+    const messageField = screen.getByLabelText(/Why do you need it\?/);
     expect(messageField).toBeInTheDocument();
     expect(messageField).not.toBeRequired();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("shows a fallback message when a restricted app has no groups configured to request", async () => {
@@ -162,9 +189,7 @@ describe("AppsPage", () => {
     render(await AppsPage());
 
     expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Request access via Media" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
   });
 
   // an approval or a denial used to be invisible -- the form simply
@@ -203,9 +228,7 @@ describe("AppsPage", () => {
       render(await AppsPage());
 
       expect(screen.getByText("Not approved: Engineering")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Request access via Engineering" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Ask for access to Grafana" })).toBeInTheDocument();
     });
 
     // The exact case that produced a 500: approved, session groups not caught
@@ -218,9 +241,7 @@ describe("AppsPage", () => {
 
       expect(screen.getByText("Approved for Engineering")).toBeInTheDocument();
       expect(screen.getByText(/within a few minutes/i)).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Request access via Engineering" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
     });
 
     // approved long ago and still not held -- the grant was taken away.
@@ -233,9 +254,7 @@ describe("AppsPage", () => {
       render(await AppsPage());
 
       expect(screen.getByText("Access through Engineering was removed")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Request access via Engineering" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Ask for access to Grafana" })).toBeInTheDocument();
     });
 
     it("says nothing about a request whose access the user now actually holds", async () => {
@@ -293,7 +312,7 @@ describe("AppsPage", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Immich" })).toBeInTheDocument();
   });
 
-  it("names the pending badge after the group it is pending for", async () => {
+  it("names the pending role, and leaves only the other roles to pick from", async () => {
     mockListUserCatalogApps.mockResolvedValue([
       {
         id: "client-1",
@@ -328,9 +347,10 @@ describe("AppsPage", () => {
 
     // Two groups on one app: a bare "Pending" would not say which.
     expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Request access via Media Admin" }),
-    ).toBeInTheDocument();
+    // One role left, so no picker: the form asks for Media Admin.
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    const form = screen.getByRole("button", { name: "Ask for access to Sonarr" }).closest("form")!;
+    expect(new FormData(form).get("group")).toBe("g2");
   });
 
   // with requests off the portal is a pure launcher (ADR-0001).
@@ -366,7 +386,7 @@ describe("AppsPage", () => {
 
       expect(screen.getByRole("link", { name: "Open Immich" })).toBeInTheDocument();
       expect(screen.queryByText("Grafana")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Request access/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
       expect(screen.queryByText(/can be requested/)).not.toBeInTheDocument();
     });
 

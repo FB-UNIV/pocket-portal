@@ -29,7 +29,7 @@ test.describe("authenticated portal journeys", () => {
     // …the engineering-gated app the user can't reach shows a request form instead.
     await expect(page.getByText("Grafana (seed)")).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Request access via Engineering" }),
+      page.getByRole("button", { name: "Ask for access to Grafana (seed)" }),
     ).toBeVisible();
   });
 });

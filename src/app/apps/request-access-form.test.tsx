@@ -1,51 +1,99 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { RequestAccessForm } from "./request-access-form";
+import { RequestAccessForm, type RoleOption } from "./request-access-form";
 import type { RequestAccessResult } from "./actions";
 
-function renderForm(
-  result: RequestAccessResult,
-  reason: "optional" | "required" | "off" = "optional",
-) {
+const USERS = { id: "g-users", friendlyName: "Sonarr users" };
+const ADMINS = { id: "g-admins", friendlyName: "Sonarr admins" };
+const ASK = { name: "Ask for access to Sonarr" };
+
+function renderForm({
+  result = { ok: true },
+  reason = "optional",
+  roles = [USERS],
+  defaultRoleId = roles[0].id,
+}: {
+  result?: RequestAccessResult;
+  reason?: "optional" | "required" | "off";
+  roles?: RoleOption[];
+  defaultRoleId?: string;
+} = {}) {
   const action = vi.fn().mockResolvedValue(result);
   render(
     <RequestAccessForm
       action={action}
-      fieldId="message-c1-g1"
-      friendlyName="Media"
+      appId="c1"
+      appName="Sonarr"
+      roles={roles}
+      defaultRoleId={defaultRoleId}
       reason={reason}
     />,
   );
   return action;
 }
 
-describe("RequestAccessForm", () => {
-  it("renders the reason field and a submit button named after the group", () => {
-    renderForm({ ok: true });
+function submitted(action: ReturnType<typeof vi.fn>): FormData {
+  expect(action).toHaveBeenCalledTimes(1);
+  return action.mock.calls[0][1] as FormData;
+}
 
-    expect(screen.getByLabelText(/Reason for requesting Media/)).toHaveAttribute(
-      "maxLength",
-      "500",
-    );
-    expect(screen.getByRole("button", { name: "Request access via Media" })).toBeEnabled();
+describe("RequestAccessForm", () => {
+  // SC 2.5.3 / 2.4.6: one button per card, its name says which app.
+  it("has one Ask for access button that names the app", () => {
+    renderForm();
+
+    const button = screen.getByRole("button", ASK);
+    expect(button).toHaveTextContent("Ask for access");
+    expect(button).toBeEnabled();
   });
 
-  it("submits the typed reason to the action", async () => {
-    const action = renderForm({ ok: true });
+  it("shows no role picker when there's only one role, and sends that role", async () => {
+    const action = renderForm();
 
-    await userEvent.type(screen.getByLabelText(/Reason for requesting Media/), "on call");
-    await userEvent.click(screen.getByRole("button", { name: "Request access via Media" }));
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", ASK));
 
-    expect(action).toHaveBeenCalledTimes(1);
-    const formData = action.mock.calls[0][1] as FormData;
-    expect(formData.get("message")).toBe("on call");
+    expect(submitted(action).get("group")).toBe("g-users");
+  });
+
+  it("lets you pick a role when there are several, starting on the default", async () => {
+    const action = renderForm({ roles: [ADMINS, USERS], defaultRoleId: "g-users" });
+
+    const picker = screen.getByRole("combobox", { name: "Role" });
+    expect(picker).toHaveValue("g-users");
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Sonarr admins",
+      "Sonarr users",
+    ]);
+
+    await userEvent.selectOptions(picker, "g-admins");
+    await userEvent.click(screen.getByRole("button", ASK));
+
+    expect(submitted(action).get("group")).toBe("g-admins");
+  });
+
+  it("submits the typed reason with the role", async () => {
+    const action = renderForm();
+
+    await userEvent.type(screen.getByLabelText(/Why do you need it\?/), "on call");
+    await userEvent.click(screen.getByRole("button", ASK));
+
+    const form = submitted(action);
+    expect(form.get("message")).toBe("on call");
+    expect(form.get("group")).toBe("g-users");
+  });
+
+  it("caps the reason at 500 characters", () => {
+    renderForm();
+
+    expect(screen.getByLabelText(/Why do you need it\?/)).toHaveAttribute("maxLength", "500");
   });
 
   it("says nothing extra once the request went through", async () => {
-    renderForm({ ok: true });
+    renderForm();
 
-    await userEvent.click(screen.getByRole("button", { name: "Request access via Media" }));
+    await userEvent.click(screen.getByRole("button", ASK));
 
     expect(screen.getByRole("status")).toBeEmptyDOMElement();
   });
@@ -53,17 +101,17 @@ describe("RequestAccessForm", () => {
   // A stale tab or a direct RPC call reaches these; they used to surface as an
   // opaque "Something went wrong" with a reference number.
   it.each([
-    ["already_active", /already have a pending or approved request/],
-    ["already_granted", /already have access through Media/],
+    ["already_active", /already asked for this role/],
+    ["already_granted", /already have this role/],
     ["not_allowed", /can.t be requested for this app any more/],
     ["message_too_long", /500 characters or fewer/],
     ["reason_required", /Add a reason/],
     ["requests_disabled", /aren.t being taken/],
     ["rate_limited", /a lot of requests/],
   ] as const)("explains %s inline, in a live region", async (reason, text) => {
-    renderForm({ ok: false, reason });
+    renderForm({ result: { ok: false, reason } });
 
-    await userEvent.click(screen.getByRole("button", { name: "Request access via Media" }));
+    await userEvent.click(screen.getByRole("button", ASK));
 
     // The status region is always mounted, so wait for the text itself, then
     // check it landed inside the live region.
@@ -72,16 +120,15 @@ describe("RequestAccessForm", () => {
 
   // ACCESS_REQUEST_REASON.
   it("marks the reason as required when the deployment asks for one", () => {
-    renderForm({ ok: true }, "required");
+    renderForm({ reason: "required" });
 
-    const field = screen.getByLabelText(/Reason for requesting Media \(required\)/);
-    expect(field).toBeRequired();
+    expect(screen.getByLabelText(/Why do you need it\? \(required\)/)).toBeRequired();
   });
 
   it("leaves the reason out entirely when it's switched off", () => {
-    renderForm({ ok: true }, "off");
+    renderForm({ reason: "off" });
 
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request access via Media" })).toBeEnabled();
+    expect(screen.getByRole("button", ASK)).toBeEnabled();
   });
 });

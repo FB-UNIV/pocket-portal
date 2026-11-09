@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { requestAccessAction } from "./actions";
+import { requestAccessAction, requestAppAccessAction } from "./actions";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdUserGroups } from "@/lib/pocketid/client";
@@ -203,6 +203,38 @@ describe("requestAccessAction", () => {
       reason: "not_allowed",
     });
     expect(mockCreateAccessRequest).not.toHaveBeenCalled();
+  });
+
+  // The per-app form sends the role as a field; it gets exactly the same
+  // checks as the bound group id did.
+  describe("requestAppAccessAction", () => {
+    function roleForm(group?: string): FormData {
+      const form = new FormData();
+      if (group !== undefined) form.set("group", group);
+      return form;
+    }
+
+    it("files the request for the role picked in the form", async () => {
+      await expect(requestAppAccessAction("client-1", null, roleForm("g1"))).resolves.toEqual({
+        ok: true,
+      });
+      expect(mockCreateAccessRequest).toHaveBeenCalledWith(
+        DB,
+        expect.objectContaining({ pocketIdClientId: "client-1", pocketIdGroupId: "g1" }),
+      );
+    });
+
+    it.each([
+      ["no role", undefined],
+      ["an empty role", ""],
+      ["a role this app doesn't offer", "not-a-real-group"],
+    ])("refuses %s", async (_label, group) => {
+      await expect(requestAppAccessAction("client-1", null, roleForm(group))).resolves.toEqual({
+        ok: false,
+        reason: "not_allowed",
+      });
+      expect(mockCreateAccessRequest).not.toHaveBeenCalled();
+    });
   });
 
   it("rejects a client id that doesn't exist in the user's browsable catalog", async () => {

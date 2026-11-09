@@ -225,3 +225,19 @@ export async function requestAccessAction(
   revalidatePath("/admin/requests");
   return { ok: true };
 }
+
+// One form per app: the role (group) is a field, not part of the binding,
+// so the page binds only the app. Everything requestAccessAction checks
+// still applies, the submitted group included: it must be one of this
+// app's allowed groups for this user, or the answer is not_allowed.
+export async function requestAppAccessAction(
+  pocketIdClientId: string,
+  previous?: RequestAccessResult | null,
+  formData?: FormData,
+): Promise<RequestAccessResult> {
+  const group = formData?.get("group");
+  if (typeof group !== "string" || group.length === 0) {
+    return { ok: false, reason: "not_allowed" };
+  }
+  return requestAccessAction(pocketIdClientId, group, previous, formData);
+}
