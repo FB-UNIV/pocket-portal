@@ -13,10 +13,13 @@ project-specific policy on when to bump what.
   between English and French. Signed in, the choice is saved to your account
   and follows you to other devices; signed out, it's remembered in this
   browser. Until you choose, the portal follows your browser's language.
-  This first step covers the header, the sign-in page and the dashboard; the
-  Apps page, the admin pages and emails follow. App names and descriptions
-  come from PocketID and stay as written there. Adds a `user_preferences`
-  table (migration 0011).
+  Every page is translated, admin pages and error pages included, as are
+  dates and page titles. Emails go out in each recipient's own language.
+  App names and descriptions come from PocketID and stay as written there.
+  Adds a `user_preferences` table (migration 0011).
+- **`DEFAULT_LOCALE`** (`en` or `fr`, default `en`): the language for
+  people who haven't picked one and whose browser asks for neither, and for
+  their emails.
 - **A dashboard on the home page.** Signed in, the home page now opens
   straight onto **Your apps**: one click on any app you can use, each
   with what it's for, and a link to the Apps page to see everything or ask

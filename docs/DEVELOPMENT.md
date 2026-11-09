@@ -223,7 +223,12 @@ table, `.env.example` and the config-file keys are then checked by tests.
 **Text and translations**: the UI speaks English and French (#64). Text
 lives in `src/i18n/messages/en.json` and `fr.json`, never inline; a server
 component reads it with `const t = await getTranslations("Namespace")` from
-`@/i18n/server`. Add a key to both files: `tsc` fails on a key English
+`@/i18n/server`. A client component gets its words as props from the
+server page that renders it (see `src/app/apps/form-labels.ts`), so no
+messages ship to the browser; the one exception is `error.tsx`, which
+nothing renders, so the root layout's `IntlProvider` carries just its
+`Error` messages. Emails use `translatorFor(locale, …)` from
+`@/i18n/translate`, in the recipient's saved language. Add a key to both files: `tsc` fails on a key English
 doesn't have, and `src/i18n/messages.test.ts` fails if the languages differ
 in keys or arguments. French follows French typography: a no-break space
 before `:` (`\u00a0`) and a narrow one before `?` `!` `;` (`\u202f`), which the
