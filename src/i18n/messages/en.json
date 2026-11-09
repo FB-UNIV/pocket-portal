@@ -1,0 +1,45 @@
+{
+  "Metadata": {
+    "description": "A digital workspace portal: reach the apps you have access to, and request the ones you don't."
+  },
+  "Header": {
+    "skipLink": "Skip to main content",
+    "navLabel": "Portal",
+    "apps": "Apps",
+    "admin": "Admin",
+    "signOut": "Sign out"
+  },
+  "SignIn": {
+    "title": "Welcome to {name}",
+    "intro": "One place for the apps we run. Sign in once, and everything you can use is a click away. Anything else, you can ask for.",
+    "button": "Sign in with PocketID",
+    "passkeyHint": "No password: your phone or computer unlocks it, like it does for your banking app.",
+    "firstTimeLead": "First time?",
+    "firstTimeBody": "Use the invite link an admin sent you to set up your sign-in.",
+    "howItWorks": "How it works",
+    "step1Title": "Sign in",
+    "step1Body": "With your phone or computer. No password to remember.",
+    "step2Title": "Open what you need",
+    "step2Body": "Each app says what it’s for. Click it and it opens.",
+    "step3Title": "Ask for the rest",
+    "step3Body": "Missing something? Ask, and an admin lets you in."
+  },
+  "Home": {
+    "greeting": "{name, select, __none {Hi there.} other {Hi {name}.}} What would you like to do?",
+    "signedInAs": "Signed in as {name}"
+  },
+  "YourApps": {
+    "heading": "Your apps",
+    "loading": "Loading your apps…",
+    "loadError": "We couldn’t load your apps just now.",
+    "loadErrorDetail": "It’s usually brief. Your apps themselves still work.",
+    "tryAgain": "Try again",
+    "seeAll": "See all apps",
+    "seeAllOrAsk": "See all apps, or ask for more",
+    "emptyTitle": "You don’t have any apps yet.",
+    "emptyAskBody": "See what’s available, and ask for what you need. An admin lets you in.",
+    "emptyAskButton": "Ask for an app",
+    "emptyAskAdmin": "Ask an administrator to give you access.",
+    "open": "Open {name}"
+  }
+}

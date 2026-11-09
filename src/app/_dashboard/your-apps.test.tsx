@@ -4,6 +4,7 @@ import { YourApps, YourAppsLoading } from "./your-apps";
 import { listUserCatalogApps, type UserCatalogApp } from "@/lib/catalog/apps";
 import { readAccessRequestsEnabled } from "@/lib/config";
 import { logger } from "@/lib/observability/logger";
+import { setTestLocale } from "@/test/intl";
 
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
@@ -133,11 +134,27 @@ describe("YourApps (dashboard section)", () => {
     );
   });
 
-  it("has a loading state that keeps the section's heading and says what's coming", () => {
-    render(<YourAppsLoading />);
+  it("has a loading state that keeps the section's heading and says what's coming", async () => {
+    render(await YourAppsLoading());
 
     const region = screen.getByRole("region", { name: "Your apps" });
     expect(region).toHaveAttribute("aria-busy", "true");
     expect(within(region).getByText("Loading your apps…")).toBeInTheDocument();
+  });
+
+  it("speaks French when the page is in French", async () => {
+    setTestLocale("fr");
+    mockList.mockResolvedValue([app()]);
+
+    render(await YourApps({ userGroups: [] }));
+
+    expect(screen.getByRole("region", { name: "Vos applications" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvrir Immich" })).toHaveAttribute(
+      "href",
+      "https://photos.example.test",
+    );
+    expect(
+      screen.getByRole("link", { name: "Voir toutes les applications, ou en demander d’autres" }),
+    ).toHaveAttribute("href", "/apps");
   });
 });

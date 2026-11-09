@@ -78,6 +78,13 @@
       "when": 1793960030959,
       "tag": "0010_add-app-category",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794235502588,
+      "tag": "0011_add-user-preferences",
+      "breakpoints": true
     }
   ]
 }

@@ -32,6 +32,18 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expectNoViolations(page);
     });
 
+    // A browser that asks for French gets it (#64): French text runs longer,
+    // and the header gains an "English" switch, so it's checked too.
+    test.describe("in French", () => {
+      test.use({ locale: "fr-FR" });
+
+      test("signed-out home page", async ({ page }) => {
+        await page.goto("/");
+        await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+        await expectNoViolations(page);
+      });
+    });
+
     test("not-found page", async ({ page }) => {
       await page.goto("/no-such-page");
       await expectNoViolations(page);

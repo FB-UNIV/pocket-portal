@@ -29,6 +29,7 @@ export default defineConfig({
       // e2e/metrics.spec.ts, the [...nextauth] catch-all).
       include: [
         "src/lib/**",
+        "src/i18n/**",
         // Ships inside the image and applies schema changes, so it is held
         // to the same bar as src/ despite living in scripts/.
         "scripts/migrate.mjs",

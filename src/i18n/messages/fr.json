@@ -1,0 +1,45 @@
+{
+  "Metadata": {
+    "description": "Un portail pour votre espace de travail : ouvrez les applications auxquelles vous avez accès, et demandez celles qui vous manquent."
+  },
+  "Header": {
+    "skipLink": "Aller au contenu principal",
+    "navLabel": "Portail",
+    "apps": "Applications",
+    "admin": "Administration",
+    "signOut": "Se déconnecter"
+  },
+  "SignIn": {
+    "title": "Bienvenue sur {name}",
+    "intro": "Un seul endroit pour toutes nos applications. Connectez-vous une fois, et tout ce que vous pouvez utiliser est à portée de clic. Pour le reste, il suffit de demander.",
+    "button": "Se connecter avec PocketID",
+    "passkeyHint": "Pas de mot de passe : votre téléphone ou votre ordinateur vous identifie, comme pour l’appli de votre banque.",
+    "firstTimeLead": "Première fois ?",
+    "firstTimeBody": "Utilisez le lien d’invitation qu’un administrateur vous a envoyé pour configurer votre connexion.",
+    "howItWorks": "Comment ça marche",
+    "step1Title": "Connectez-vous",
+    "step1Body": "Avec votre téléphone ou votre ordinateur. Aucun mot de passe à retenir.",
+    "step2Title": "Ouvrez ce dont vous avez besoin",
+    "step2Body": "Chaque application indique à quoi elle sert. Cliquez dessus, elle s’ouvre.",
+    "step3Title": "Demandez le reste",
+    "step3Body": "Il vous manque quelque chose ? Demandez-le, et un administrateur vous donne l’accès."
+  },
+  "Home": {
+    "greeting": "{name, select, __none {Bonjour.} other {Bonjour {name}.}} Que voulez-vous faire ?",
+    "signedInAs": "Compte : {name}"
+  },
+  "YourApps": {
+    "heading": "Vos applications",
+    "loading": "Chargement de vos applications…",
+    "loadError": "Impossible de charger vos applications pour le moment.",
+    "loadErrorDetail": "C’est généralement passager. Vos applications, elles, fonctionnent toujours.",
+    "tryAgain": "Réessayer",
+    "seeAll": "Voir toutes les applications",
+    "seeAllOrAsk": "Voir toutes les applications, ou en demander d’autres",
+    "emptyTitle": "Vous n’avez encore aucune application.",
+    "emptyAskBody": "Découvrez ce qui est disponible et demandez ce dont vous avez besoin. Un administrateur vous donne l’accès.",
+    "emptyAskButton": "Demander une application",
+    "emptyAskAdmin": "Demandez l’accès à un administrateur.",
+    "open": "Ouvrir {name}"
+  }
+}

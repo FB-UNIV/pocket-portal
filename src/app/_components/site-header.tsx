@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { signOut } from "@/auth";
+import { getLocale, getTranslations } from "@/i18n/server";
+import { LANGUAGE_NAMES, LOCALES } from "@/i18n/locales";
+import { setLanguageAction } from "./language-actions";
 
 export type SiteHeaderUser = {
   name?: string | null;
@@ -17,7 +20,7 @@ const navLinkClass =
 // reach /apps or /admin/* from the home page, and only by going back to it
 // (WCAG 2.2 SC 2.4.5 Multiple Ways). It also carries the skip link that
 // SC 2.4.1 wants, which has to come before any repeated block of links.
-export function SiteHeader({
+export async function SiteHeader({
   name,
   user,
   logo,
@@ -31,6 +34,8 @@ export function SiteHeader({
   // PocketID's logo, when its branding could be read.
   logo?: { light: string; dark: string };
 }) {
+  const [t, locale] = await Promise.all([getTranslations("Header"), getLocale()]);
+
   return (
     <header className="bg-ground">
       {/* Visually hidden until focused, so the first Tab on any page offers
@@ -39,7 +44,7 @@ export function SiteHeader({
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-ground"
       >
-        Skip to main content
+        {t("skipLink")}
       </a>
 
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
@@ -73,51 +78,72 @@ export function SiteHeader({
         </Link>
 
         {user && (
-          <>
-            {/* Named landmark: a screen reader's landmark list shows "Portal
-                navigation" rather than an anonymous second <nav>. */}
-            <nav aria-label="Portal">
-              <ul className="flex flex-wrap items-center gap-1">
-                <li>
-                  <Link href="/apps" className={navLinkClass}>
-                    Apps
-                  </Link>
-                </li>
-                {user.isAdmin && (
-                  <>
-                    <li aria-hidden="true" className="mx-1 h-5 w-px bg-line-strong" />
-                    <li>
-                      {/* One link: the admin pages carry their own side menu.
-                          It opens on the queue while there are requests to
-                          decide, else on the catalog. */}
-                      <Link
-                        href={showAccessRequests ? "/admin/requests" : "/admin/apps"}
-                        className={navLinkClass}
-                      >
-                        Admin
-                      </Link>
-                    </li>
-                  </>
-                )}
-              </ul>
-            </nav>
+          // Named landmark: a screen reader's landmark list shows "Portal
+          // navigation" rather than an anonymous second <nav>.
+          <nav aria-label={t("navLabel")}>
+            <ul className="flex flex-wrap items-center gap-1">
+              <li>
+                <Link href="/apps" className={navLinkClass}>
+                  {t("apps")}
+                </Link>
+              </li>
+              {user.isAdmin && (
+                <>
+                  <li aria-hidden="true" className="mx-1 h-5 w-px bg-line-strong" />
+                  <li>
+                    {/* One link: the admin pages carry their own side menu.
+                        It opens on the queue while there are requests to
+                        decide, else on the catalog. */}
+                    <Link
+                      href={showAccessRequests ? "/admin/requests" : "/admin/apps"}
+                      className={navLinkClass}
+                    >
+                      {t("admin")}
+                    </Link>
+                  </li>
+                </>
+              )}
+            </ul>
+          </nav>
+        )}
 
+        <div className="ml-auto flex items-center gap-1">
+          {/* One button per other language, each named in its own language
+              and marked with it, so a screen reader pronounces "Français"
+              as French (WCAG 3.1.2). Shown signed out too: the sign-in page
+              is where someone first needs it. */}
+          <form action={setLanguageAction} className="flex items-center gap-1">
+            {LOCALES.filter((other) => other !== locale).map((other) => (
+              <button
+                key={other}
+                type="submit"
+                name="locale"
+                value={other}
+                lang={other}
+                className="btn btn-quiet gap-2"
+              >
+                <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9s1.3-6.3 3.8-9z" />
+                </svg>
+                {LANGUAGE_NAMES[other]}
+              </button>
+            ))}
+          </form>
+
+          {user && (
             <form
-              className="ml-auto"
               action={async () => {
                 "use server";
                 await signOut();
               }}
             >
-              <button
-                type="submit"
-                className="btn btn-quiet"
-              >
-                Sign out
+              <button type="submit" className="btn btn-quiet">
+                {t("signOut")}
               </button>
             </form>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );
