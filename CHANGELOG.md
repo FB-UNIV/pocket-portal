@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-09
+
 ### Changed
 - **Redesigned admin pages.** A side menu (Requests, with how many are
   waiting; App catalog; History) replaces the three admin links in the
