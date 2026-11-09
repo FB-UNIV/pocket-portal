@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-09
+
 ### Changed
 - **One way to ask for an app.** Each app on the Apps page now has a single
   **Ask for access** button instead of one "Request access via …" button per
