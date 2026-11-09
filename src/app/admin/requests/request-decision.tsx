@@ -5,12 +5,20 @@ import type { DecideAccessRequestResult } from "./actions";
 
 type DecideAction = () => Promise<DecideAccessRequestResult>;
 
-// Fixed copy per reason code, as on the requester side: the action
-// returns codes, not text.
-const EXPLANATION = {
-  group_not_grantable:
-    "This group can’t be granted for this app any more: the app is hidden, or the group was removed from it in PocketID. Decline the request instead.",
-} as const;
+type Refusal = Extract<DecideAccessRequestResult, { ok: false }>["reason"];
+
+// Every word the row shows, already in the page's language (the page is a
+// server component and translates them). As on the requester side, the
+// action returns codes, not text, so refusals are fixed copy per code.
+export interface RequestDecisionLabels {
+  approve: string;
+  decline: string;
+  // Accessible names, naming who and what (see ApproveForm).
+  approveName: string;
+  declineName: string;
+  cantApprove: string;
+  refusals: Record<Refusal, string>;
+}
 
 // Approve/Decline for one queued request. A client component only because
 // a refused approval has to be explained inline, which takes useActionState;
@@ -22,13 +30,11 @@ const EXPLANATION = {
 export function RequestDecision({
   approveAction,
   denyAction,
-  requester,
-  groupName,
+  labels,
 }: {
   approveAction?: DecideAction;
   denyAction: DecideAction;
-  requester: string;
-  groupName: string;
+  labels: RequestDecisionLabels;
 }) {
   const [, deny, denying] = useActionState(denyAction, null);
 
@@ -37,27 +43,25 @@ export function RequestDecision({
     // isn't focusable, takes the full-width row underneath.
     <div className="grid shrink-0 grid-cols-[auto_auto] justify-start gap-2">
       {approveAction ? (
-        <ApproveForm action={approveAction} label={`Approve ${requester} for ${groupName}`} />
+        <ApproveForm action={approveAction} labels={labels} />
       ) : (
-        <p className="col-span-2 max-w-sm text-sm text-ink-muted">
-          Can’t be approved: the app is hidden, or this group was removed from it in PocketID.
-        </p>
+        <p className="col-span-2 max-w-sm text-sm text-ink-muted">{labels.cantApprove}</p>
       )}
       <form action={deny} className="col-start-2 row-start-1">
         <button
           type="submit"
           disabled={denying}
-          aria-label={`Decline ${requester} for ${groupName}`}
+          aria-label={labels.declineName}
           className="btn btn-secondary"
         >
-          Decline
+          {labels.decline}
         </button>
       </form>
     </div>
   );
 }
 
-function ApproveForm({ action, label }: { action: DecideAction; label: string }) {
+function ApproveForm({ action, labels }: { action: DecideAction; labels: RequestDecisionLabels }) {
   const [result, approve, approving] = useActionState(action, null);
 
   return (
@@ -69,16 +73,16 @@ function ApproveForm({ action, label }: { action: DecideAction; label: string })
           // A queue of rows all offering "Approve"/"Decline" gives a screen-reader
           // user nothing to tell them apart, and approving performs a real
           // PocketID group grant.
-          aria-label={label}
+          aria-label={labels.approveName}
           className="btn btn-primary"
         >
-          Approve
+          {labels.approve}
         </button>
       </form>
       {/* Announced, since it answers the admin's own click (SC 4.1.3). Always
           rendered: a region inserted along with its text is often missed. */}
       <p role="status" className="col-span-2 max-w-sm text-sm text-on-bad">
-        {result && !result.ok ? EXPLANATION[result.reason] : null}
+        {result && !result.ok ? labels.refusals[result.reason] : null}
       </p>
     </>
   );

@@ -26,6 +26,7 @@ function deps(overrides: Record<string, unknown> = {}) {
       { id: "3", email: "gone@example.test", isAdmin: true, disabled: true },
       { id: "4", email: null, isAdmin: true, disabled: false },
     ]),
+    localeOf: vi.fn().mockResolvedValue("en"),
     ...overrides,
   };
 }
@@ -91,8 +92,8 @@ describe("notifyNewAccessRequest", () => {
   it("sends each admin their own email, and keeps going past a failed one", async () => {
     const d = deps({
       listUsers: vi.fn().mockResolvedValue([
-        { email: "a@example.test", isAdmin: true, disabled: false },
-        { email: "b@example.test", isAdmin: true, disabled: false },
+        { id: "a", email: "a@example.test", isAdmin: true, disabled: false },
+        { id: "b", email: "b@example.test", isAdmin: true, disabled: false },
       ]),
       send: vi.fn().mockRejectedValueOnce(new Error("550 no such user")).mockResolvedValue(undefined),
     });
@@ -169,5 +170,42 @@ describe("notifyAccessRequestDecision", () => {
     await expect(notifyAccessRequestDecision(REQUEST, "denied", d)).resolves.toBeUndefined();
 
     expect(d.log.warn).toHaveBeenCalled();
+  });
+});
+
+// #64: each email is written in its recipient's language (their saved one,
+// else the portal default), not the language of whoever triggered it.
+describe("email language", () => {
+  it("writes to each admin in their own language", async () => {
+    const d = deps({
+      listUsers: vi.fn().mockResolvedValue([
+        { id: "admin-en", email: "en@example.test", isAdmin: true, disabled: false },
+        { id: "admin-fr", email: "fr@example.test", isAdmin: true, disabled: false },
+      ]),
+      localeOf: vi.fn(async (subject: string) => (subject === "admin-fr" ? "fr" : "en")),
+    });
+
+    await notifyNewAccessRequest(REQUEST, d);
+
+    const [en, fr] = d.send.mock.calls.map(([, message]) => message);
+    expect(en.subject).toBe("Access request for engineering");
+    expect(fr.to).toEqual(["fr@example.test"]);
+    expect(fr.subject).toBe("Demande d’accès pour engineering");
+    expect(fr.text).toContain("alice@example.test a demandé l’accès à engineering.");
+    expect(fr.text).toContain("On call this week.");
+    expect(fr.text).toContain("https://portal.example.test/admin/requests");
+  });
+
+  it("tells the requester the decision in their language, looked up by their subject", async () => {
+    const d = deps({ localeOf: vi.fn().mockResolvedValue("fr") });
+
+    await notifyAccessRequestDecision(REQUEST, "approved", d);
+    await notifyAccessRequestDecision(REQUEST, "denied", d);
+
+    expect(d.localeOf).toHaveBeenCalledWith("user-sub");
+    const [approved, denied] = d.send.mock.calls.map(([, message]) => message);
+    expect(approved.subject).toBe("Accès à engineering accordé");
+    expect(approved.text).toContain("Votre demande pour engineering a été approuvée.");
+    expect(denied.subject).toBe("Accès à engineering refusé");
   });
 });

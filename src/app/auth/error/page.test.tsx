@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import AuthErrorPage, { metadata } from "./page";
+import AuthErrorPage, { generateMetadata } from "./page";
+import { setTestLocale } from "@/test/intl";
 
 // Auth.js sends sign-in failures here (pages.error) instead of its own
 // unstyled page.
@@ -9,8 +10,8 @@ function renderWith(error?: string) {
 }
 
 describe("AuthErrorPage", () => {
-  it("is titled as a sign-in problem", () => {
-    expect(metadata.title).toBe("Sign-in problem");
+  it("is titled as a sign-in problem", async () => {
+    expect((await generateMetadata()).title).toBe("Sign-in problem");
   });
 
   it("explains a server misconfiguration and points operators at the logs", async () => {
@@ -38,5 +39,17 @@ describe("AuthErrorPage", () => {
     render(await renderWith());
 
     expect(screen.getByRole("link", { name: "Back to the sign-in page" })).toHaveAttribute("href", "/");
+  });
+
+  it("explains a known failure in French when the page is in French", async () => {
+    setTestLocale("fr");
+
+    render(await renderWith("Verification"));
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "La connexion n’a pas fonctionné",
+    );
+    expect(screen.getByText(/Ce lien de connexion a expiré/)).toBeInTheDocument();
+    expect((await generateMetadata()).title).toBe("Problème de connexion");
   });
 });

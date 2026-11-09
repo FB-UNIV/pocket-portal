@@ -63,6 +63,12 @@ describe("pickLocale", () => {
     expect(pickLocale({ acceptLanguage: "fr-BE,en;q=0.5" })).toBe("fr");
   });
 
+  it("falls back to the portal's default language when given one", () => {
+    expect(pickLocale({ acceptLanguage: "de", fallback: "fr" })).toBe("fr");
+    // A real choice still wins over the default.
+    expect(pickLocale({ acceptLanguage: "en", fallback: "fr" })).toBe("en");
+  });
+
   it("falls back to English", () => {
     expect(pickLocale({})).toBe(DEFAULT_LOCALE);
     expect(DEFAULT_LOCALE).toBe("en");

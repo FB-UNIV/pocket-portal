@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import AdminAppsPage, { metadata } from "./page";
+import AdminAppsPage, { generateMetadata } from "./page";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { listAdminCatalogApps, type CatalogApp } from "@/lib/catalog/apps";
 
@@ -167,8 +167,8 @@ describe("AdminAppsPage", () => {
   });
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
-  it("declares its own page title", () => {
-    expect(metadata.title).toBe("App catalog");
+  it("declares its own page title", async () => {
+    expect((await generateMetadata()).title).toBe("App catalog");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.

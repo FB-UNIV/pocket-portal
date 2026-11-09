@@ -62,4 +62,15 @@ describe("GlobalError", () => {
     const style = container.querySelector("style");
     expect(style?.textContent).toMatch(/prefers-color-scheme: dark/);
   });
+
+  // It replaces the root layout, so it can't know the request's language:
+  // it follows the browser's once it runs there.
+  it("switches to French in a browser that asks for it", async () => {
+    vi.spyOn(navigator, "languages", "get").mockReturnValue(["fr-FR", "fr"]);
+
+    render(<GlobalError error={new Error("boom")} retry={vi.fn()} />);
+
+    expect(await screen.findByRole("heading", { name: "Un problème est survenu" })).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute("lang", "fr");
+  });
 });

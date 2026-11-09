@@ -15,12 +15,14 @@ import { deriveRequestOutcome } from "@/lib/requests/request-outcome";
 import { countRecentRequestEvents, writeAuditEvent } from "@/lib/audit/log";
 import { notifyNewAccessRequest } from "@/lib/notifications/access-requests";
 import { readAccessRequestReason, readAccessRequestsEnabled } from "@/lib/config";
+import { MAX_REASON_LENGTH } from "./limits";
 
-// Cap on the requester's optional justification. The textarea sets the
-// same limit client-side, but this is the real guard: a server action is a
-// callable RPC endpoint, so a tampered submission that skips the browser
-// gets rejected here rather than writing an unbounded blob to the DB.
-const MAX_MESSAGE_LENGTH = 500;
+// Cap on the requester's optional justification (./limits). The textarea
+// sets the same limit client-side, but this is the real guard: a server
+// action is a callable RPC endpoint, so a tampered submission that skips
+// the browser gets rejected here rather than writing an unbounded blob to
+// the DB.
+const MAX_MESSAGE_LENGTH = MAX_REASON_LENGTH;
 
 // Each request emails every PocketID admin, so a user can't file
 // without bound. Counted in Postgres from the audit trail, never in

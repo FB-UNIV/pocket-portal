@@ -7,6 +7,8 @@ import { getDb } from "@/lib/db/client";
 import { hasPendingAccessRequests } from "@/lib/requests/access-requests";
 import { showAccessRequestsLink } from "@/lib/requests/queue-link";
 import { getLocale, getTranslations } from "@/i18n/server";
+import { IntlProvider } from "@/i18n/client-provider";
+import { MESSAGES } from "@/i18n/messages";
 import { SiteHeader } from "./_components/site-header";
 import "./globals.css";
 
@@ -77,7 +79,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           logo={branding?.logo}
           showAccessRequests={showAccessRequests}
         />
-        {children}
+        {/* Client components read their words from here: error.tsx can't
+            be handed them as props. Only its namespace is sent. */}
+        <IntlProvider locale={locale} messages={{ Error: MESSAGES[locale].Error }}>
+          {children}
+        </IntlProvider>
       </body>
     </html>
   );

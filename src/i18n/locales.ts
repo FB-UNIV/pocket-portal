@@ -52,17 +52,20 @@ export function negotiateLocale(acceptLanguage: string | null | undefined): Loca
 }
 
 // Most deliberate choice first: the person's saved preference, then this
-// browser's cookie, then what the browser says it prefers, then English.
+// browser's cookie, then what the browser says it prefers, then the
+// portal's default (DEFAULT_LOCALE, English unless an admin set it).
 export function pickLocale({
   saved,
   cookie,
   acceptLanguage,
+  fallback = DEFAULT_LOCALE,
 }: {
   saved?: string | null;
   cookie?: string | null;
   acceptLanguage?: string | null;
+  fallback?: Locale;
 }): Locale {
   if (isLocale(saved)) return saved;
   if (isLocale(cookie)) return cookie;
-  return negotiateLocale(acceptLanguage) ?? DEFAULT_LOCALE;
+  return negotiateLocale(acceptLanguage) ?? fallback;
 }

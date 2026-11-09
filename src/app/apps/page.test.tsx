@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import AppsPage, { metadata } from "./page";
+import AppsPage, { generateMetadata } from "./page";
 import { requireUser } from "@/lib/auth/require-user";
 import { listUserCatalogApps } from "@/lib/catalog/apps";
 import { listUserAccessRequests } from "@/lib/requests/access-requests";
+import { setTestLocale } from "@/test/intl";
 
 vi.mock("@/lib/auth/require-user", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
@@ -273,8 +274,8 @@ describe("AppsPage", () => {
   });
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
-  it("declares its own page title", () => {
-    expect(metadata.title).toBe("Apps");
+  it("declares its own page title", async () => {
+    expect((await generateMetadata()).title).toBe("Apps");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.
@@ -496,5 +497,63 @@ describe("AppsPage", () => {
       expect(screen.getByText(/Nothing matches “spreadsheets”\./)).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Show everything" })).toHaveAttribute("href", "/apps");
     });
+  });
+
+  it("speaks French when the page is in French, down to the request form", async () => {
+    setTestLocale("fr");
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Immich",
+        description: "Vos photos",
+        launchUrl: "https://photos.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: true,
+        allowedGroups: [],
+      },
+      {
+        id: "client-2",
+        name: "Sonarr",
+        description: "",
+        launchUrl: "https://sonarr.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: false,
+        allowedGroups: [
+          { id: "g1", name: "media", friendlyName: "Media" },
+          { id: "g2", name: "media-admin", friendlyName: "Media Admin" },
+        ],
+      },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.getByRole("heading", { level: 1, name: "Applications" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Ce que vous pouvez utiliser" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvrir Immich" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Demander l’accès à Sonarr" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Rôle" })).toBeInTheDocument();
+    expect((await generateMetadata()).title).toBe("Applications");
+  });
+
+  it("counts search results in French", async () => {
+    setTestLocale("fr");
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Immich",
+        description: "Vos photos",
+        launchUrl: "https://photos.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: true,
+        allowedGroups: [],
+      },
+    ]);
+
+    render(await AppsPage({ searchParams: Promise.resolve({ q: "photos" }) }));
+
+    expect(screen.getByText(/1 application trouvée\./)).toBeInTheDocument();
   });
 });

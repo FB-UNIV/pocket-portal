@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import AdminRequestsPage, { metadata } from "./page";
+import AdminRequestsPage, { generateMetadata } from "./page";
+import { setTestLocale } from "@/test/intl";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import {
@@ -161,8 +162,8 @@ describe("AdminRequestsPage", () => {
   });
 
   // WCAG 2.2 SC 2.4.2 Page Titled.
-  it("declares its own page title", () => {
-    expect(metadata.title).toBe("Requests");
+  it("declares its own page title", async () => {
+    expect((await generateMetadata()).title).toBe("Requests");
   });
 
   // SC 2.4.1 Bypass Blocks — target for the header's skip link.
@@ -200,5 +201,18 @@ describe("AdminRequestsPage", () => {
     expect(screen.getByText(/New requests are switched off/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Approve/ })).toBeInTheDocument();
     vi.unstubAllEnvs();
+  });
+
+  it("speaks French when the page is in French, dates included", async () => {
+    setTestLocale("fr");
+    mockListPending.mockResolvedValue([request(), request({ id: "req-2" })]);
+
+    render(await AdminRequestsPage());
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "2 personnes attendent" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("21 sept. 2026, 10:00 UTC")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Refuser / })).toHaveLength(2);
   });
 });

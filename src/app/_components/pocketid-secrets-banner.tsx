@@ -1,5 +1,6 @@
 import { readPocketIdBaseUrl, readSecretsWarningEnabled } from "@/lib/config";
 import { getSecretExposure } from "@/lib/pocketid/secret-exposure";
+import { getTranslations } from "@/i18n/server";
 
 const DOCS_URL = "https://github.com/FB-UNIV/pocket-portal#securing-the-portal";
 
@@ -11,16 +12,17 @@ export async function PocketIdSecretsBanner() {
   // line in instrumentation still records it.
   if (!baseUrl || !readSecretsWarningEnabled()) return null;
   if ((await getSecretExposure(baseUrl)) !== "readable") return null;
+  const t = await getTranslations("SecretsBanner");
 
   return (
     <section
-      aria-label="Security warning"
+      aria-label={t("label")}
       className="w-full border-b border-tip-line bg-tip px-6 py-3 text-sm text-on-tip"
     >
-      <strong>PocketID exposes its SMTP/LDAP passwords to this portal&rsquo;s API key.</strong>{" "}
-      Set <code>UI_CONFIG_DISABLED=true</code> on PocketID.{" "}
+      <strong>{t("lead")}</strong>{" "}
+      {t.rich("fix", { code: (chunks) => <code>{chunks}</code> })}{" "}
       <a href={DOCS_URL} className="underline">
-        Securing the portal
+        {t("docs")}
       </a>
     </section>
   );

@@ -1,7 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import ErrorPage from "./error";
+import { IntlProvider } from "@/i18n/client-provider";
+import { MESSAGES } from "@/i18n/messages";
+import type { Locale } from "@/i18n/locales";
+
+// The root layout provides the page's language (with only this namespace).
+function renderPage(ui: ReactNode, locale: Locale = "en") {
+  return render(
+    <IntlProvider locale={locale} messages={{ Error: MESSAGES[locale].Error }}>
+      {ui}
+    </IntlProvider>,
+  );
+}
 
 describe("ErrorPage", () => {
   beforeEach(() => {
@@ -13,7 +26,7 @@ describe("ErrorPage", () => {
   });
 
   it("announces the failure to assistive technology", () => {
-    render(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
+    renderPage(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent(/something went wrong/i);
@@ -23,7 +36,7 @@ describe("ErrorPage", () => {
   // user's groups or requests; the boundary is rendered client-side, so it
   // shows a generic message and only the digest an operator can grep for.
   it("does not render the raw error message", () => {
-    render(
+    renderPage(
       <ErrorPage error={Object.assign(new Error("boom"), { digest: "abc123" })} retry={vi.fn()} />,
     );
 
@@ -33,7 +46,7 @@ describe("ErrorPage", () => {
 
   it("offers a retry that re-renders the segment", async () => {
     const retry = vi.fn();
-    render(<ErrorPage error={new Error("boom")} retry={retry} />);
+    renderPage(<ErrorPage error={new Error("boom")} retry={retry} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
 
@@ -41,8 +54,15 @@ describe("ErrorPage", () => {
   });
 
   it("offers a way back to the portal home", () => {
-    render(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
+    renderPage(<ErrorPage error={new Error("boom")} retry={vi.fn()} />);
 
     expect(screen.getByRole("link", { name: "Back to portal home" })).toHaveAttribute("href", "/");
+  });
+
+  it("speaks French when the page is in French", () => {
+    renderPage(<ErrorPage error={new Error("boom")} retry={vi.fn()} />, "fr");
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Un problème est survenu");
+    expect(screen.getByRole("button", { name: "Réessayer" })).toBeInTheDocument();
   });
 });

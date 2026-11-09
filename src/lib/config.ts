@@ -10,6 +10,8 @@
 // instrumentation, and the mailer all read it, and none of them should drag
 // in the others (nodemailer in an Edge bundle, say).
 
+import { DEFAULT_LOCALE, isLocale, LOCALES, type Locale } from "@/i18n/locales";
+
 export type ConfigSource = Readonly<Record<string, string | undefined>>;
 
 // The project's identifier: the default logger and trace service name.
@@ -55,6 +57,7 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "LOG_REQUESTS", required: false, secret: false, yaml: "log.requests" },
   { name: "OTEL_SERVICE_NAME", required: false, secret: false, yaml: "otel.serviceName" },
   { name: "PORTAL_NAME", required: false, secret: false, yaml: "branding.name" },
+  { name: "DEFAULT_LOCALE", required: false, secret: false, yaml: "branding.defaultLocale" },
   { name: "SMTP_HOST", required: false, secret: false, yaml: "smtp.host" },
   { name: "SMTP_FROM", required: false, secret: false, yaml: "smtp.from" },
   { name: "SMTP_PORT", required: false, secret: false, yaml: "smtp.port" },
@@ -307,6 +310,14 @@ export function readAccessRequestReason(
     : "optional";
 }
 
+// The language for anyone who hasn't picked one and whose browser asks for
+// none the portal speaks (#64). Unrecognised values fall back to English;
+// validateConfig reports them.
+export function readDefaultLocale(source: ConfigSource = configSource()): Locale {
+  const value = source.DEFAULT_LOCALE?.toLowerCase();
+  return isLocale(value) ? value : DEFAULT_LOCALE;
+}
+
 // Flags set away from their defaults, as NAME=value, for one startup log
 // line: support questions can then start from the log. Built from
 // what each reader actually returns, so an unrecognised value (which falls
@@ -430,6 +441,7 @@ export function validateConfig(source: ConfigSource = configSource()): string[] 
   const flags = [
     flagProblem(source, "FEATURE_ACCESS_REQUESTS", [...TRUE_VALUES, ...FALSE_VALUES]),
     flagProblem(source, "ACCESS_REQUEST_REASON", REASON_MODES),
+    flagProblem(source, "DEFAULT_LOCALE", LOCALES),
     ...[
       "FEATURE_EMAIL_NOTIFICATIONS",
       "FEATURE_POCKETID_BRANDING",
