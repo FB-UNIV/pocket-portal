@@ -17,15 +17,6 @@ test("completes a real OIDC sign-in and lands on the portal home", async ({ page
 test.describe("authenticated portal journeys", () => {
   test.use({ storageState: sessionFile("e2e-user") });
 
-  test("My Access shows the seed user's real PocketID group memberships", async ({ page }) => {
-    await page.goto("/my-access");
-
-    await expect(page.getByRole("heading", { name: "My Access" })).toBeVisible();
-    await expect(page.getByText("media", { exact: true })).toBeVisible();
-    // e2e-user is not in engineering — that group must not appear.
-    await expect(page.getByText("engineering", { exact: true })).toHaveCount(0);
-  });
-
   test("Apps reflects the seeded access matrix for this user", async ({ page }) => {
     await page.goto("/apps");
 

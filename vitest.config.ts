@@ -39,7 +39,6 @@ export default defineConfig({
         "src/app/_components/**",
         "src/app/api/health/**",
         "src/app/api/ready/**",
-        "src/app/my-access/**",
         "src/app/admin/**",
         "src/app/apps/**",
         "src/app/auth/**",

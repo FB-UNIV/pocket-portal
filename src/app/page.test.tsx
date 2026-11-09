@@ -66,16 +66,12 @@ describe("Home", () => {
     expect(mockSignIn).toHaveBeenCalledWith("pocketid", { redirectTo: "/" });
   });
 
-  it("shows the signed-in user and links on to the portal's two entry points", async () => {
+  it("shows the signed-in user and links on to the apps", async () => {
     mockAuth.mockResolvedValue(session());
 
     render(await Home());
 
     expect(screen.getByText("Signed in as Francois")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "My Access" })).toHaveAttribute(
-      "href",
-      "/my-access",
-    );
     expect(screen.getByRole("link", { name: "Browse apps" })).toHaveAttribute("href", "/apps");
   });
 

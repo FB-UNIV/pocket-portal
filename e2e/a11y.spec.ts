@@ -40,7 +40,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.describe("as a user", () => {
       test.use({ storageState: sessionFile("e2e-user") });
 
-      for (const path of ["/", "/apps", "/my-access"]) {
+      for (const path of ["/", "/apps"]) {
         test(path, async ({ page }) => {
           await page.goto(path);
           // The saved session must still be live, or axe would be checking a

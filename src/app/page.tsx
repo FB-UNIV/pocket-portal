@@ -38,28 +38,16 @@ export default async function Home({
           </div>
 
           {/* The full nav (including the admin sections) lives in the site
-              header; these are the two entry points worth a landing-page
-              call to action. Labelled by their titles alone, so the link
-              names stay short and unambiguous. */}
-          <ul className="grid gap-4 sm:grid-cols-2">
+              header; the apps are the one entry point worth a landing-page
+              call to action. Labelled by its title alone, so the link name
+              stays short and unambiguous. */}
+          <ul className="grid max-w-xl gap-4">
             <EntryCard
               href="/apps"
               id="entry-apps"
               title="Browse apps"
               body="Open the apps you use, and ask for the ones you don’t have yet."
               icon={<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" />}
-            />
-            <EntryCard
-              href="/my-access"
-              id="entry-access"
-              title="My Access"
-              body="The groups you’re in. Handy when you’re asking an admin for something."
-              icon={
-                <>
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 21a8 8 0 0 1 16 0" />
-                </>
-              }
             />
           </ul>
         </main>
