@@ -220,6 +220,16 @@ generated and attested in CI, never committed.
 read it through a reader there, never `process.env` directly. The README
 table, `.env.example` and the config-file keys are then checked by tests.
 
+**Text and translations**: the UI speaks English and French (#64). Text
+lives in `src/i18n/messages/en.json` and `fr.json`, never inline; a server
+component reads it with `const t = await getTranslations("Namespace")` from
+`@/i18n/server`. Add a key to both files: `tsc` fails on a key English
+doesn't have, and `src/i18n/messages.test.ts` fails if the languages differ
+in keys or arguments. French follows French typography: a no-break space
+before `:` (`\u00a0`) and a narrow one before `?` `!` `;` (`\u202f`), which the
+same test checks. Unit tests render in English; call `setTestLocale("fr")`
+(`src/test/intl.ts`) to render in French.
+
 **Versioning**: [`versioning.md`](../.claude/rules/versioning.md).
 
 ### CI

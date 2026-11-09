@@ -320,9 +320,11 @@ Buckets run from 25 ms to 10 s (25, 50, 100, 250, 500 ms, 1, 2.5, 5,
 The portal is stateless; the only thing worth backing up is Postgres: the
 `postgres-data` volume in the compose stack, or the chart's PVC (which the
 chart itself never backs up). It holds `access_requests`,
-`app_overrides`, `audit_log` and `session_claims`. The last is disposable:
-losing it only means each user's next session refresh, at most one interval
-away, asks PocketID instead of reading a stored copy. The audit log is the
+`app_overrides`, `audit_log`, `session_claims` and `user_preferences`.
+`session_claims` is disposable: losing it only means each user's next
+session refresh, at most one interval away, asks PocketID instead of
+reading a stored copy. Losing `user_preferences` resets everyone's language
+to their browser's until they pick one again. The audit log is the
 one with real retention implications
 ([ADR-0006](adr/0006-audit-trail-separate-from-logs.md)).
 

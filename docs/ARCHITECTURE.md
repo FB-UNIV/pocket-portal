@@ -49,6 +49,7 @@ so there is no sync job and no stale mirror to reconcile.
 | Access requests | Postgres `access_requests` | Requester, target group, message, status, decision time |
 | Audit trail | Postgres `audit_log` | Separate from logs on purpose ([ADR-0006](adr/0006-audit-trail-separate-from-logs.md)) |
 | Session claims | Postgres `session_claims` | Last groups/admin PocketID verified per user, and the refresh throttle |
+| Language | Postgres `user_preferences`, plus a `portal-locale` cookie | The language a person picked, so it follows them across devices; the cookie covers signed-out visitors ([#64](https://github.com/FB-UNIV/pocket-portal/issues/64)) |
 | Sessions | **Nobody** | Signed JWT cookie; no server-side store ([ADR-0004](adr/0004-portal-oidc-login.md)) |
 
 That last row is what makes the portal stateless: any replica can serve any
@@ -229,6 +230,8 @@ Kubernetes, the [Helm chart](https://github.com/FB-UNIV/pocket-portal-helm) runs
 | `src/lib/audit/` | Audit writes, and the paged read behind `/admin/audit` |
 | `src/lib/notifications/` | Access-request emails (SMTP) |
 | `src/lib/format/` | Shared formatting (UTC timestamps) |
+| `src/i18n/` | Languages: the English and French messages, how a request's language is picked, and `getTranslations` for server components |
+| `src/lib/preferences/` | Per-person choices (the saved language) |
 | `src/lib/db/` | Drizzle schema and connection |
 | `src/lib/health/` | Dependency probes behind `/api/ready` |
 | `src/lib/observability/` | Pino logger, OTel, Prometheus registry |
