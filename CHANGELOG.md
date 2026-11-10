@@ -9,6 +9,12 @@ project-specific policy on when to bump what.
 ## [Unreleased]
 
 ### Changed
+- **Admin pages: tabs on top, and a calmer Requests page.** The admin side
+  menu is now three tabs above the page (Requests, Apps, History). Requests
+  is one list that reads as a sentence, "Sam Lee wants Paperless", using the
+  name PocketID has for the person (their email if it has none), with what
+  the app is for, the group approving adds them to, and "asked today,
+  08:15 UTC" for recent requests. Approve and Decline sit on the right.
 - **A shorter, calmer Apps page.** The intro line and the "New here?" tip
   are gone, and the search sits beside the title. App cards are bigger and
   lead with what each app is for, with the whole card opening it. "Ask for

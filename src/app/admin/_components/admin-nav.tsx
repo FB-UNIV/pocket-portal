@@ -5,7 +5,7 @@ import { listPendingAccessRequests } from "@/lib/requests/access-requests";
 import { getTranslations } from "@/i18n/server";
 import { AdminNavLinks, type AdminNavItem } from "./admin-nav-links";
 
-// Pending requests, or null when they couldn't be read: a side menu isn't
+// Pending requests, or null when they couldn't be read: the tabs aren't
 // worth failing every admin page over, and the requests page reports it.
 async function pendingCount(): Promise<number | null> {
   try {
@@ -15,7 +15,7 @@ async function pendingCount(): Promise<number | null> {
   }
 }
 
-// The side menu on every /admin page. Each page still runs requireAdmin;
+// The tabs on top of every /admin page. Each page still runs requireAdmin;
 // this renders nothing for anyone else, so their render never asks the DB.
 export async function AdminNav() {
   const session = await auth();
@@ -39,10 +39,7 @@ export async function AdminNav() {
   }
 
   return (
-    <nav aria-label={t("label")} className="lg:sticky lg:top-6 lg:w-52 lg:shrink-0 lg:self-start">
-      <p className="mb-2 hidden px-4 text-xs font-bold tracking-wide text-ink-muted uppercase lg:block">
-        {t("label")}
-      </p>
+    <nav aria-label={t("label")} className="max-w-full self-start">
       <AdminNavLinks items={items} />
     </nav>
   );

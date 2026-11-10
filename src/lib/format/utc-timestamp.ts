@@ -19,3 +19,24 @@ export function formatUtcTimestamp(date: Date, locale: Locale = "en"): string {
     `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
   );
 }
+
+export type UtcDay = "today" | "yesterday" | "other";
+
+// A timestamp split for a sentence like "asked today, 08:15 UTC": whether it
+// falls on `now`'s UTC day or the one before, plus its date and time, so a
+// message can choose its own words ("le" before a French date). UTC days,
+// like every timestamp the admin pages show.
+export function utcDayParts(
+  date: Date,
+  now: Date,
+  locale: Locale = "en",
+): { day: UtcDay; date: string; time: string } {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const dayNumber = (d: Date) => Math.floor(d.getTime() / 86_400_000);
+  const ago = dayNumber(now) - dayNumber(date);
+  return {
+    day: ago === 0 ? "today" : ago === 1 ? "yesterday" : "other",
+    date: `${pad(date.getUTCDate())} ${MONTHS[locale][date.getUTCMonth()]} ${date.getUTCFullYear()}`,
+    time: `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`,
+  };
+}

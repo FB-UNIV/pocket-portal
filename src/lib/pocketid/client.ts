@@ -76,7 +76,10 @@ export interface PocketIdUser {
   id: string;
   username: string;
   email: string | null;
+  // Can be empty (observed on PocketID 2.16) when first and last are set.
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   isAdmin: boolean;
   disabled: boolean;
 }

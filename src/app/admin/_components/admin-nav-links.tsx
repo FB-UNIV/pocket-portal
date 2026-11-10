@@ -13,13 +13,13 @@ export type AdminNavItem = {
   countLabel?: string;
 };
 
-// The admin side menu's links. A client component only for usePathname,
+// The admin tabs' links. A client component only for usePathname,
 // so the current page is marked with aria-current rather than colour alone.
 export function AdminNavLinks({ items }: { items: AdminNavItem[] }) {
   const pathname = usePathname();
 
   return (
-    <ul className="flex gap-1 overflow-x-auto lg:flex-col">
+    <ul className="flex gap-1 overflow-x-auto rounded-full bg-surface-muted p-1">
       {items.map((item) => {
         const current = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
@@ -27,7 +27,7 @@ export function AdminNavLinks({ items }: { items: AdminNavItem[] }) {
             <Link
               href={item.href}
               aria-current={current ? "page" : undefined}
-              className="flex min-h-11 items-center justify-between gap-3 rounded-full px-4 text-[15px] font-semibold text-ink-muted no-underline transition-colors hover:bg-surface-muted hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:text-ground"
+              className="flex min-h-11 items-center gap-2 rounded-full px-4 text-[15px] font-semibold text-ink-muted no-underline transition-colors hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:text-ground sm:px-5"
             >
               {item.label}
               {item.count ? (

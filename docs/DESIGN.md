@@ -67,9 +67,9 @@ bold for card headlines. Geist Mono only for codes and identifiers.
 - `.data-table`: admin tables inside a `.card`, with a muted header row and
   tabular numbers.
 
-The admin pages share a layout (`src/app/admin/layout.tsx`): a side menu
-beside the page, above it on narrow screens, where wide tables drop to
-the app's name, status and switch.
+The admin pages share a layout (`src/app/admin/layout.tsx`): three tabs
+above the page (Requests, Apps, History), which gets the full width. On
+narrow screens wide tables drop to the app's name, status and switch.
 
 ## Polish rules
 

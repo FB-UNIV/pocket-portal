@@ -44,7 +44,7 @@ describe("AdminNav", () => {
 
     const nav = screen.getByRole("navigation", { name: "Admin" });
     expect(within(nav).getByRole("link", { name: "Requests" })).toHaveAttribute("href", "/admin/requests");
-    expect(within(nav).getByRole("link", { name: "App catalog" })).toHaveAttribute("href", "/admin/apps");
+    expect(within(nav).getByRole("link", { name: "Apps" })).toHaveAttribute("href", "/admin/apps");
     expect(within(nav).getByRole("link", { name: "History" })).toHaveAttribute("href", "/admin/audit");
   });
 
@@ -62,7 +62,7 @@ describe("AdminNav", () => {
 
     render(await AdminNav());
 
-    expect(screen.getByRole("link", { name: "App catalog" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Apps" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Requests" })).not.toHaveAttribute("aria-current");
   });
 
