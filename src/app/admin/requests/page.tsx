@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
-import { getPocketIdConfig, listPocketIdUsers, type PocketIdConfig } from "@/lib/pocketid/client";
+import { getPocketIdConfig } from "@/lib/pocketid/client";
+import { pocketIdDisplayNames } from "@/lib/pocketid/display-names";
 import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { listPendingAccessRequests } from "@/lib/requests/access-requests";
 import { isGrantable } from "@/lib/requests/grantable";
@@ -27,22 +28,6 @@ function listOf(names: string[], and: string): string {
   return `${names.slice(0, -1).join(", ")} ${and} ${names.at(-1)}`;
 }
 
-// PocketID's display name for each requester, by user id (a request's
-// subject). A nicety: if PocketID can't be asked, rows fall back to the
-// email the request carries.
-async function displayNames(config: PocketIdConfig): Promise<Map<string, string>> {
-  try {
-    const users = await listPocketIdUsers(config);
-    const named = users.map((user) => {
-      const full = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-      return [user.id, user.displayName.trim() || full] as const;
-    });
-    return new Map(named.filter(([, name]) => name));
-  } catch {
-    return new Map();
-  }
-}
-
 export default async function AdminRequestsPage() {
   await requireAdmin("/admin/requests");
 
@@ -58,7 +43,7 @@ export default async function AdminRequestsPage() {
     getTranslations("AdminRequests"),
     getLocale(),
   ]);
-  const names = requests.length > 0 ? await displayNames(config) : new Map<string, string>();
+  const names = requests.length > 0 ? await pocketIdDisplayNames(config) : new Map<string, string>();
   const now = new Date();
 
   return (

@@ -64,7 +64,9 @@ describe("AdminAuditPage", () => {
     vi.unstubAllEnvs();
   });
 
-  const events = () => screen.getAllByRole("listitem");
+  // The events, day by day (each day is a labelled section).
+  const events = () =>
+    screen.getAllByRole("region").flatMap((day) => within(day).getAllByRole("listitem"));
 
   // the table is still written; only the page goes away.
   it("is a 404 while FEATURE_AUDIT_LOG_PAGE is off", async () => {

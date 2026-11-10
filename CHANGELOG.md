@@ -28,6 +28,12 @@ project-specific policy on when to bump what.
   What PocketID holds (what it's for, where it opens, who can use it) is a
   ✓/! checklist that says what's missing and how to write it, with **Open in
   PocketID**. The switch says in words where the app stands.
+- **Admin History reads as sentences, by day.** Instead of a table, each
+  event is a sentence ("Alex declined Sam Lee for media"), people by their
+  PocketID name, under Today, Yesterday or the date, with the time beside
+  it. Grants that failed or that PocketID refused say so in red, with the
+  reason. The filters are chips: Everything, Requests, Approved, Declined,
+  Problems (`?show=…`, which replaces `?action=…`).
 - **A shorter, calmer Apps page.** The intro line and the "New here?" tip
   are gone, and the search sits beside the title. App cards are bigger and
   lead with what each app is for, with the whole card opening it. "Ask for
