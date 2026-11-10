@@ -19,6 +19,20 @@ test.describe("on a wide screen", () => {
     expect(image.height).toBeGreaterThanOrEqual(640);
     expect(image.x).toBeGreaterThan(button.x + button.width);
   });
+
+  // The page grew wider than the signed-in pages; the header grows with it,
+  // so its logo and language switch line up with the page's edges.
+  test("lines the header up with the wider page", async ({ page }) => {
+    await page.goto("/");
+
+    const logo = (await page.getByRole("banner").getByRole("link", { name: /Pocket Portal/ }).boundingBox())!;
+    const image = (await picture(page).boundingBox())!;
+    const main = (await page.getByRole("main").boundingBox())!;
+    const language = (await page.getByRole("button", { name: "Français" }).boundingBox())!;
+
+    expect(logo.x).toBeCloseTo(main.x + 24, 0);
+    expect(language.x + language.width).toBeGreaterThan(image.x + image.width - 48);
+  });
 });
 
 // As PocketID's own login page does on a phone: the picture covers the whole
