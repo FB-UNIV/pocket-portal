@@ -164,6 +164,9 @@ describe("getPocketIdBranding", () => {
         light: "https://id.example.test/api/application-images/logo?light=true",
         dark: "https://id.example.test/api/application-images/logo?light=false",
       },
+      // Always there: an untouched PocketID serves its own stock image here
+      // rather than a 404, and nothing says which one it is.
+      background: "https://id.example.test/api/application-images/background",
     });
   });
 

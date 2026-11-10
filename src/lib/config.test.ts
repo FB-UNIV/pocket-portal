@@ -12,6 +12,8 @@ import {
   readPocketIdBrandingEnabled,
   readPortalName,
   readSecretsWarningEnabled,
+  readSignInInviteHintEnabled,
+  readSignInText,
   readAuthUrl,
   readDatabaseUrl,
   readLogFormat,
@@ -177,6 +179,53 @@ describe("config", () => {
       ["de", "en"],
     ])("DEFAULT_LOCALE=%s reads as %s", (value, expected) => {
       expect(readDefaultLocale({ DEFAULT_LOCALE: value })).toBe(expected);
+    });
+
+    // The sign-in page's words, one setting per language, so a French
+    // visitor never gets an English headline.
+    it("reads the sign-in headline and tagline for the page's language, trimmed", () => {
+      const source = {
+        SIGNIN_HEADLINE_EN: "  The Smiths' apps ",
+        SIGNIN_HEADLINE_FR: "Les applis des Smith",
+        SIGNIN_TAGLINE_EN: "Films, photos and files.",
+      };
+      expect(readSignInText("en", source)).toEqual({
+        headline: "The Smiths' apps",
+        tagline: "Films, photos and files.",
+      });
+      expect(readSignInText("fr", source)).toEqual({
+        headline: "Les applis des Smith",
+        tagline: undefined,
+      });
+    });
+
+    it("leaves the sign-in words to the translations when unset or blank", () => {
+      expect(readSignInText("en", { SIGNIN_HEADLINE_EN: "   " })).toEqual({
+        headline: undefined,
+        tagline: undefined,
+      });
+    });
+
+    it("has a sign-in setting per language the portal speaks", () => {
+      const names = CONFIG_VARS.map((v) => v.name);
+      for (const locale of ["EN", "FR"]) {
+        expect(names).toContain(`SIGNIN_HEADLINE_${locale}`);
+        expect(names).toContain(`SIGNIN_TAGLINE_${locale}`);
+      }
+    });
+
+    it.each([
+      [undefined, true],
+      ["false", false],
+      ["on", true],
+    ])("SIGNIN_INVITE_HINT=%s reads as %s", (value, expected) => {
+      expect(readSignInInviteHintEnabled({ SIGNIN_INVITE_HINT: value })).toBe(expected);
+    });
+
+    it("reports a SIGNIN_INVITE_HINT that isn't on or off", () => {
+      expect(validateConfig({ ...COMPLETE, SIGNIN_INVITE_HINT: "sometimes" })).toEqual([
+        expect.stringContaining("SIGNIN_INVITE_HINT"),
+      ]);
     });
 
     it("reports a DEFAULT_LOCALE the portal doesn't speak", () => {

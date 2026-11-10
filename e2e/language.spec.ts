@@ -14,11 +14,11 @@ test.describe("a browser that asks for French", () => {
     await page.goto("/");
 
     await expect(page.locator("html")).toHaveAttribute("lang", "fr");
-    await expect(page.getByRole("button", { name: "Se connecter avec PocketID" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
 
     await page.getByRole("button", { name: "English" }).click();
 
-    await expect(page.getByRole("button", { name: "Sign in with PocketID" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
   });
 });
@@ -28,17 +28,17 @@ test.describe("a browser that asks for English", () => {
 
   test("switches to French, and stays French after a reload", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "Sign in with PocketID" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 
     const french = page.getByRole("button", { name: "Français" });
     await expect(french).toHaveAttribute("lang", "fr");
     await french.click();
 
-    await expect(page.getByRole("button", { name: "Se connecter avec PocketID" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("lang", "fr");
 
     await page.reload();
-    await expect(page.getByRole("button", { name: "Se connecter avec PocketID" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
   });
 });
 
