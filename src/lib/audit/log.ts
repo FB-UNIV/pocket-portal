@@ -39,7 +39,7 @@ export async function writeAuditEvent(db: Db | DbTx, event: AuditEvent): Promise
 // or repeat rows. An id that matches nothing yields an empty page.
 export async function listAuditEvents(
   db: Db,
-  { action, before, limit }: { action?: string; before?: string; limit: number },
+  { actions, before, limit }: { actions?: string[]; before?: string; limit: number },
 ): Promise<{ entries: AuditEntry[]; nextCursor: string | null }> {
   const rows = await db
     .select({
@@ -63,7 +63,7 @@ export async function listAuditEvents(
     )
     .where(
       and(
-        action ? eq(auditLog.action, action) : undefined,
+        actions?.length ? inArray(auditLog.action, actions) : undefined,
         before
           ? sql`(${auditLog.createdAt}, ${auditLog.id}) < (select created_at, id from audit_log where id = ${before})`
           : undefined,
