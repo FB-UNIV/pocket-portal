@@ -6,7 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
 import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { categoriesOf, MAX_CATEGORY_LENGTH } from "@/lib/catalog/browse";
-import { readPocketIdBaseUrl } from "@/lib/config";
+import { pocketIdClientUrl } from "../pocketid-url";
 import { AppMark } from "@/app/_components/app-mark";
 import { setAppCategoryAction } from "../actions";
 import { HealthBadges, ShownSwitch, WhoCanUse } from "../app-parts";
@@ -33,10 +33,7 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
   if (!app) notFound();
 
   const categories = categoriesOf(apps);
-  const baseUrl = readPocketIdBaseUrl();
-  const pocketIdUrl = baseUrl
-    ? `${baseUrl.replace(/\/+$/, "")}/settings/admin/oidc-clients/${encodeURIComponent(app.id)}`
-    : null;
+  const pocketIdUrl = pocketIdClientUrl(app.id);
 
   return (
     <main id="main-content" tabIndex={-1} className="flex max-w-3xl flex-col gap-6">
