@@ -84,6 +84,8 @@ describe("listAuditEvents (integration)", () => {
   // The table is shared with every other suite and never cleaned wholesale,
   // so each run filters on an action name only it writes.
   const ACTION = `test.list-audit.${crypto.randomUUID()}`;
+  // A second action, for filters that cover two ("Problems").
+  const OTHER_ACTION = `test.list-audit-other.${crypto.randomUUID()}`;
   const ACTOR = "test-list-audit-sub";
   let requestId: string;
 
@@ -113,6 +115,7 @@ describe("listAuditEvents (integration)", () => {
         metadata: { n: i },
       })),
     );
+    await db.insert(auditLog).values({ actorSubject: ACTOR, action: OTHER_ACTION });
   });
 
   afterAll(async () => {
@@ -128,7 +131,7 @@ describe("listAuditEvents (integration)", () => {
     const seen: string[] = [];
     let before: string | undefined;
     for (let page = 0; page < 5; page++) {
-      const { entries, nextCursor } = await listAuditEvents(db, { action: ACTION, before, limit: 2 });
+      const { entries, nextCursor } = await listAuditEvents(db, { actions: [ACTION], before, limit: 2 });
       seen.push(...entries.map((e) => e.id));
       if (!nextCursor) break;
       before = nextCursor;
@@ -139,14 +142,14 @@ describe("listAuditEvents (integration)", () => {
   });
 
   it("says there is nothing older on the last page", async () => {
-    const { entries, nextCursor } = await listAuditEvents(db, { action: ACTION, limit: 5 });
+    const { entries, nextCursor } = await listAuditEvents(db, { actions: [ACTION], limit: 5 });
 
     expect(entries).toHaveLength(5);
     expect(nextCursor).toBeNull();
   });
 
   it("joins the requester's email for an access-request event", async () => {
-    const { entries } = await listAuditEvents(db, { action: ACTION, limit: 5 });
+    const { entries } = await listAuditEvents(db, { actions: [ACTION], limit: 5 });
 
     const linked = entries.find((e) => e.targetId === requestId);
     expect(linked?.requesterEmail).toBe("requester@example.test");
@@ -156,9 +159,16 @@ describe("listAuditEvents (integration)", () => {
   });
 
   it("only returns the filtered action", async () => {
-    const { entries } = await listAuditEvents(db, { action: ACTION, limit: 50 });
+    const { entries } = await listAuditEvents(db, { actions: [ACTION], limit: 50 });
 
     expect(entries.every((e) => e.action === ACTION)).toBe(true);
+  });
+
+  it("returns any of several actions", async () => {
+    const { entries } = await listAuditEvents(db, { actions: [ACTION, OTHER_ACTION], limit: 50 });
+
+    expect(entries).toHaveLength(6);
+    expect(entries[0].action).toBe(OTHER_ACTION);
   });
 });
 
