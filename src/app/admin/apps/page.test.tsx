@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import AdminAppsPage, { generateMetadata } from "./page";
 import { requireAdmin } from "@/lib/auth/require-admin";
@@ -31,21 +31,33 @@ function app(overrides: Partial<CatalogApp>): CatalogApp {
 const page = (show?: string) =>
   AdminAppsPage({ searchParams: Promise.resolve(show ? { show } : {}) });
 
+// The list's rows, by the app's PocketID name (shown under what it's for).
+function rows(): HTMLElement[] {
+  return within(screen.getByRole("list", { name: "Apps" })).getAllByRole("listitem", {
+    // Only the rows themselves, not the "who can use it" chips inside them.
+    name: (_, el) => el.parentElement?.getAttribute("aria-label") === "Apps",
+  });
+}
+
 function row(name: string): HTMLElement {
-  return screen.getByRole("link", { name }).closest("tr") as HTMLElement;
+  const found = rows().find((r) => within(r).queryByText(new RegExp(`^${name} · `)));
+  if (!found) throw new Error(`no row for ${name}`);
+  return found;
 }
 
 function listedNames(): string[] {
-  return screen
-    .getAllByRole("row")
-    .slice(1)
-    .map((r) => within(r).getAllByRole("link")[0].textContent ?? "");
+  return rows().map((r) => within(r).getByText(/ · /).textContent!.split(" · ")[0]);
 }
 
 describe("AdminAppsPage", () => {
   beforeEach(() => {
     mockRequireAdmin.mockReset().mockResolvedValue({} as never);
     mockListApps.mockReset();
+    vi.stubEnv("POCKETID_BASE_URL", "https://id.example.test");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("requires admin", async () => {
@@ -56,19 +68,35 @@ describe("AdminAppsPage", () => {
     expect(mockRequireAdmin).toHaveBeenCalledWith("/admin/apps");
   });
 
-  it("lists each app with its description, linking to its own page", async () => {
-    mockListApps.mockResolvedValue([app({})]);
+  // Admin redesign: like the Apps page, each row leads with what the app is for.
+  it("leads each app with what it's for, linking to its own page", async () => {
+    mockListApps.mockResolvedValue([app({ category: "Photos" })]);
 
     render(await page());
 
-    expect(screen.getByRole("link", { name: "Immich" })).toHaveAttribute("href", "/admin/apps/client-1");
-    expect(screen.getByText("Keep your photos")).toBeInTheDocument();
+    const link = within(row("Immich")).getByRole("link", { name: /^Keep your photos/ });
+    expect(link).toHaveAttribute("href", "/admin/apps/client-1");
+    expect(link).toHaveTextContent("Immich · Photos");
+  });
+
+  it("falls back to the name, and files an app without a category under Other", async () => {
+    mockListApps.mockResolvedValue([app({ description: "" })]);
+
+    render(await page());
+
+    expect(within(row("Immich")).getByRole("link", { name: /^Immich/ })).toHaveTextContent(
+      "ImmichImmich · Other",
+    );
   });
 
   // SC 4.1.2: a column of identical switches needs each one's name to say
   // which app it is for, and its state said, not only drawn.
-  it("gives each app a Shown switch that says its state", async () => {
-    mockListApps.mockResolvedValue([app({}), app({ id: "client-2", name: "Sonarr", hidden: true })]);
+  it("gives each app a switch, and says in words where it stands", async () => {
+    mockListApps.mockResolvedValue([
+      app({}),
+      app({ id: "client-2", name: "Sonarr", hidden: true }),
+      app({ id: "client-3", name: "Internal", launchUrl: null }),
+    ]);
 
     render(await page());
 
@@ -80,18 +108,9 @@ describe("AdminAppsPage", () => {
       "aria-checked",
       "false",
     );
-  });
-
-  it("shows the category, or None", async () => {
-    mockListApps.mockResolvedValue([
-      app({ category: "Photos" }),
-      app({ id: "client-2", name: "Gitea", category: null }),
-    ]);
-
-    render(await page());
-
-    expect(within(row("Immich")).getByText("Photos")).toBeInTheDocument();
-    expect(within(row("Gitea")).getByText("None")).toBeInTheDocument();
+    expect(within(row("Immich")).getByText("On the Apps page")).toBeInTheDocument();
+    expect(within(row("Sonarr")).getByText("Hidden")).toBeInTheDocument();
+    expect(within(row("Internal")).getByText("On, but has no link yet")).toBeInTheDocument();
   });
 
   it("names who can use each app by group, or Everyone", async () => {
@@ -106,23 +125,39 @@ describe("AdminAppsPage", () => {
     expect(within(row("Wiki")).getByText("Everyone")).toBeInTheDocument();
   });
 
-  it("marks an app Ready, or says what PocketID is missing", async () => {
+  // What's broken comes first, in words, with a way to fix it.
+  it("lists the apps that need something from PocketID, above the rest", async () => {
     mockListApps.mockResolvedValue([
       app({}),
-      app({ id: "client-2", name: "Internal", description: "", launchUrl: null }),
+      app({ id: "c2", name: "Kids", description: "", launchUrl: null }),
+      app({ id: "c3", name: "Grafana", description: "" }),
+      app({ id: "c4", name: "Wiki", launchUrl: null }),
     ]);
 
     render(await page());
 
-    // Each status is rendered twice, as its column and under the name for
-    // narrow screens; CSS shows one or the other, never both.
-    expect(within(row("Immich")).getAllByText("Ready")).toHaveLength(2);
-    expect(within(row("Internal")).getAllByText("No link")).toHaveLength(2);
-    // Plus once more as the description line under the name.
-    expect(within(row("Internal")).getAllByText("No description")).toHaveLength(3);
+    const fix = screen.getByRole("region", { name: "3 apps need something from PocketID" });
+    expect(fix).toHaveTextContent("Kids has no link to open it and doesn’t say what it’s for.");
+    expect(fix).toHaveTextContent("Grafana doesn’t say what it’s for, so people only see its name.");
+    expect(fix).toHaveTextContent("Wiki has no link to open it, so it can’t be on the Apps page.");
+    expect(within(fix).getByRole("link", { name: "Fix Kids in PocketID" })).toHaveAttribute(
+      "href",
+      "https://id.example.test/settings/admin/oidc-clients/c2",
+    );
+    expect(fix.compareDocumentPosition(screen.getByRole("list", { name: "Apps" }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
-  it("counts apps, shown ones, and those needing a fix", async () => {
+  it("says nothing needs fixing when nothing does", async () => {
+    mockListApps.mockResolvedValue([app({})]);
+
+    render(await page());
+
+    expect(screen.queryByRole("region", { name: /need/ })).not.toBeInTheDocument();
+  });
+
+  it("counts the apps people actually see on the Apps page", async () => {
     mockListApps.mockResolvedValue([
       app({}),
       app({ id: "c2", name: "B", hidden: true }),
@@ -131,14 +166,14 @@ describe("AdminAppsPage", () => {
 
     render(await page());
 
-    expect(screen.getByText("3 apps · 2 shown · 1 needs a fix")).toBeInTheDocument();
+    expect(screen.getByText("On the Apps page: 1 of 3")).toBeInTheDocument();
   });
 
   it.each([
     ["shown", ["Immich"]],
     ["hidden", ["Sonarr", "Internal"]],
-    ["fix", ["Internal"]],
-    // Unknown values are user input, not a filter.
+    // Unknown values are user input, not a filter; "fix" was one once.
+    ["fix", ["Immich", "Sonarr", "Internal"]],
     ["nonsense", ["Immich", "Sonarr", "Internal"]],
   ])("filters with ?show=%s", async (show, expected) => {
     mockListApps.mockResolvedValue([
@@ -158,15 +193,23 @@ describe("AdminAppsPage", () => {
     render(await page("hidden"));
 
     const filters = screen.getByRole("navigation", { name: "Filter apps" });
-    expect(within(filters).getByRole("link", { name: "Hidden (0)" })).toHaveAttribute(
+    expect(within(filters).getByRole("link", { name: "Hidden" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(within(filters).getByRole("link", { name: "All (1)" })).not.toHaveAttribute("aria-current");
+    expect(within(filters).getByRole("link", { name: "All" })).not.toHaveAttribute("aria-current");
     expect(screen.getByText("No apps match this filter.")).toBeInTheDocument();
   });
 
-  // WCAG 2.2 SC 2.4.2 Page Titled.
+  it("heads the page Apps, as its tab does", async () => {
+    mockListApps.mockResolvedValue([]);
+
+    render(await page());
+
+    expect(screen.getByRole("heading", { level: 1, name: "Apps" })).toBeInTheDocument();
+  });
+
+  // WCAG 2.2 SC 2.4.2 Page Titled: distinct from the public Apps page's.
   it("declares its own page title", async () => {
     expect((await generateMetadata()).title).toBe("App catalog");
   });
