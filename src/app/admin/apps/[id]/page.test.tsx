@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { notFound } from "next/navigation";
 import AdminAppPage from "./page";
 import { requireAdmin } from "@/lib/auth/require-admin";
@@ -56,7 +56,8 @@ describe("AdminAppPage", () => {
     expect(notFound).toHaveBeenCalled();
   });
 
-  it("offers what the portal sets: the Shown switch and the category", async () => {
+  // Admin redesign: what the portal sets, said in words.
+  it("offers what the portal sets: the switch, saying where the app stands, and its heading", async () => {
     render(await page());
 
     expect(screen.getByRole("heading", { level: 1, name: "Immich" })).toBeInTheDocument();
@@ -64,31 +65,81 @@ describe("AdminAppPage", () => {
       "aria-checked",
       "true",
     );
-    expect(screen.getByRole("combobox", { name: "Filed under" })).toHaveValue("Photos");
+    expect(screen.getByText("Shown. Everyone signed in sees it, and can ask for it.")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Heading it sits under" })).toHaveValue("Photos");
     expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it.each([
+    [{ hidden: true }, "Hidden. Nobody sees it, and nobody can ask for it."],
+    [{ launchUrl: null }, "On, but it has no link yet, so it isn’t shown."],
+  ])("says where an app stands when it isn't shown (%o)", async (overrides, text) => {
+    mockListApps.mockResolvedValue([{ ...IMMICH, ...overrides }]);
+
+    render(await page());
+
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  // One click files the app under a heading already in use, so "Files"
+  // doesn't become "files" on the next app. Each is a plain form: no JS.
+  it("files the app under a heading already in use in one click", async () => {
+    mockListApps.mockResolvedValue([
+      IMMICH,
+      { ...IMMICH, id: "client-2", name: "Jellyfin", category: "Watch & listen" },
+    ]);
+
+    render(await page());
+
+    const picks = screen.getByRole("group", { name: "Headings already in use" });
+    const current = within(picks).getByRole("button", { name: "Photos" });
+    const other = within(picks).getByRole("button", { name: "Watch & listen" });
+    expect(current).toHaveAttribute("aria-pressed", "true");
+    expect(other).toHaveAttribute("aria-pressed", "false");
+    expect(other.closest("form")?.querySelector('input[name="category"]')).toHaveValue("Watch & listen");
+  });
+
+  it("previews the card people see on the Apps page, and under which heading", async () => {
+    render(await page());
+
+    const preview = screen.getByRole("complementary", { name: "What people see" });
+    expect(preview).toHaveTextContent("Keep your photos");
+    expect(preview).toHaveTextContent("Immich");
+    expect(preview).toHaveTextContent("Under “Photos” on the Apps page.");
+  });
+
+  it("says the card isn't on the Apps page while it's hidden", async () => {
+    mockListApps.mockResolvedValue([{ ...IMMICH, hidden: true, category: null }]);
+
+    render(await page());
+
+    expect(screen.getByRole("complementary", { name: "What people see" })).toHaveTextContent(
+      "Not on the Apps page right now.",
+    );
   });
 
   // ADR-0007: PocketID owns these, so they are shown, not editable, with
   // a way to the client's own page there.
-  it("shows what PocketID owns read-only, linking to the client there", async () => {
+  it("lists what PocketID owns read-only, linking to the client there", async () => {
     render(await page());
 
-    expect(screen.getByText("Keep your photos")).toBeInTheDocument();
-    expect(screen.getByText("https://photos.example.test")).toBeInTheDocument();
-    expect(screen.getByText("Family")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Change in PocketID" })).toHaveAttribute(
+    const pocketId = screen.getByRole("region", { name: "Set in PocketID" });
+    expect(pocketId).toHaveTextContent("What it’s for“Keep your photos”");
+    expect(pocketId).toHaveTextContent("Where it openshttps://photos.example.test");
+    expect(within(pocketId).getByText("Family")).toBeInTheDocument();
+    expect(within(pocketId).getByRole("link", { name: "Open in PocketID" })).toHaveAttribute(
       "href",
       "https://id.example.test/settings/admin/oidc-clients/client-1",
     );
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
   });
 
-  it("explains a missing description and link, and how to write one", async () => {
+  it("says what's missing in PocketID, and how to write it", async () => {
     mockListApps.mockResolvedValue([{ ...IMMICH, description: "", launchUrl: null }]);
 
     render(await page());
 
-    expect(screen.getByText(/No description, so people only see the name/)).toBeInTheDocument();
-    expect(screen.getByText(/No http\(s\) launch link/)).toBeInTheDocument();
+    expect(screen.getByText(/^Missing\. Add a description in PocketID that says what it’s for/)).toBeInTheDocument();
+    expect(screen.getByText(/^Missing\. Add a launch link \(http or https\)/)).toBeInTheDocument();
   });
 });
