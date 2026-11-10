@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-10
+
 ### Changed
 - **Admin pages: tabs on top, and a calmer Requests page.** The admin side
   menu is now three tabs above the page (Requests, Apps, History). Requests
