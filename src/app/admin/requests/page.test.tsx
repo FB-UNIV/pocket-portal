@@ -134,7 +134,7 @@ describe("AdminRequestsPage", () => {
     render(await AdminRequestsPage());
 
     expect(
-      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "Joins Media, which opens Jellyfin and Sonarr"),
+      screen.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Joins Media, which opens Jellyfin and Sonarr"),
     ).toBeInTheDocument();
   });
 
@@ -144,7 +144,7 @@ describe("AdminRequestsPage", () => {
     render(await AdminRequestsPage());
 
     expect(
-      screen.getByText((_, el) => el?.tagName === "P" && el.textContent === "Joins Media"),
+      screen.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Joins Media"),
     ).toBeInTheDocument();
   });
 
