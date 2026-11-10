@@ -10,6 +10,8 @@ const MAX_QUERY_LENGTH = 100;
 export interface BrowseParams {
   q?: string;
   category?: string;
+  // The app whose request form is open (?ask=<PocketID client id>).
+  ask?: string;
 }
 
 type Browsable = { name: string; description: string; category: string | null };
@@ -47,15 +49,19 @@ export function readBrowseParams(
     (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
   const q = first(params?.q).slice(0, MAX_QUERY_LENGTH);
   const category = first(params?.category);
-  return { ...(q && { q }), ...(category && { category }) };
+  const ask = first(params?.ask);
+  return { ...(q && { q }), ...(category && { category }), ...(ask && { ask }) };
 }
 
 // The /apps URL for a search and/or category, for the category links (which
-// keep the search) and the "show everything" link.
-export function browseHref({ q, category }: BrowseParams): string {
+// keep the search) and the "show everything" link; with `ask`, the same view
+// with one app's request form open (its Ask link), and without, closed again
+// (Cancel).
+export function browseHref({ q, category, ask }: BrowseParams): string {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (category) params.set("category", category);
+  if (ask) params.set("ask", ask);
   const query = params.toString();
   return query ? `/apps?${query}` : "/apps";
 }

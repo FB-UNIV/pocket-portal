@@ -158,8 +158,9 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
+    // (The leading "I" is the decorative letter mark.)
     expect(screen.getByRole("link", { name: "Open Immich" }).textContent).toBe(
-      "Your photos, backed upImmich",
+      "IYour photos, backed upImmich",
     );
   });
 
@@ -341,7 +342,7 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Approved, ready in a few minutes")).toBeInTheDocument();
+      expect(screen.getByText("Approved — ready in a few minutes")).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
     });
 

@@ -43,7 +43,8 @@ test.describe("authenticated portal journeys", () => {
     // …the engineering-gated app the user can't reach is listed to ask for,
     // and pressing Ask opens its request form, ready to type in.
     await expect(page.getByText("Grafana (seed)")).toBeVisible();
-    await page.getByRole("link", { name: "Ask for Grafana (seed)" }).click();
+    // "Ask again" if an earlier run's request was declined.
+    await page.getByRole("link", { name: /^Ask (again )?for Grafana \(seed\)$/ }).click();
     await expect(page).toHaveURL(/[?&]ask=/);
     await expect(
       page.getByRole("button", { name: "Send request for Grafana (seed)" }),

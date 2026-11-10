@@ -19,6 +19,7 @@ export function formLabels(
     reasonPlaceholder: t("reasonPlaceholder"),
     submit: t("submit"),
     submitName: t("submitLabel", { app: appName }),
+    cancel: t("cancel"),
     refusals: {
       already_active: t("already_active"),
       already_granted: t("already_granted"),

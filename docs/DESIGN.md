@@ -19,7 +19,7 @@ means nothing to them; "watch films and series" does. So:
   into filter links, next to a search that matches the name, the
   description and the category. Both are plain links and a GET form, so
   they work without JavaScript and give a URL someone can share.
-- **Plain words.** "Ask for access", "Waiting for an admin", "You won't need
+- **Plain words.** "Ask", "Send request", "Waiting for an admin", "You won't need
   another password". Avoid OIDC, client, scope and similar jargon on
   user-facing pages. Group names still appear where someone has to choose
   between two groups.
