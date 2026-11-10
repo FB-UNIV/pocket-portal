@@ -16,6 +16,10 @@ vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn() }));
 const mockRequireUser = vi.mocked(requireUser);
 const mockListUserCatalogApps = vi.mocked(listUserCatalogApps);
 const mockListUserAccessRequests = vi.mocked(listUserAccessRequests);
+// /apps?ask=<app id>: the one app whose request form is open.
+const asking = (id: string, more: Record<string, string> = {}) => ({
+  searchParams: Promise.resolve({ ask: id, ...more }),
+});
 
 describe("AppsPage", () => {
   beforeEach(() => {
@@ -60,10 +64,106 @@ describe("AppsPage", () => {
       "href",
       "https://photos.example.test",
     );
-    expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
   });
 
-  it("offers one Ask for access per app, with a role picker starting on the everyday role", async () => {
+  // The redesign: the request form stays closed until asked for, as a plain
+  // link (works without JavaScript), so the section is a short list.
+  it("lists an app to ask for with an Ask link, and no form until it's pressed", async () => {
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Sonarr",
+        description: "Find new episodes",
+        launchUrl: "https://sonarr.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: false,
+        allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
+      },
+    ]);
+
+    render(await AppsPage({ searchParams: Promise.resolve({ q: "episodes" }) }));
+
+    expect(screen.getByRole("heading", { level: 2, name: "Ask for more" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ask for Sonarr" })).toHaveAttribute(
+      "href",
+      "/apps?q=episodes&ask=client-1",
+    );
+    expect(screen.queryByRole("button", { name: /Send request/ })).not.toBeInTheDocument();
+  });
+
+  it("opens that one app's form, with a Cancel that keeps the search", async () => {
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Sonarr",
+        description: "Find new episodes",
+        launchUrl: "https://sonarr.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: false,
+        allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
+      },
+    ]);
+
+    render(await AppsPage(asking("client-1", { q: "episodes" })));
+
+    expect(screen.getByRole("button", { name: "Send request for Sonarr" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ask for Sonarr" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/apps?q=episodes");
+  });
+
+  it("ignores an ask for an app that can't be asked for", async () => {
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Immich",
+        description: "",
+        launchUrl: "https://photos.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: true,
+        allowedGroups: [],
+      },
+    ]);
+
+    render(await AppsPage(asking("client-1")));
+
+    expect(screen.queryByRole("button", { name: /Send request/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the page to its title, search and two sections: no intro, no tip", async () => {
+    mockListUserCatalogApps.mockResolvedValue([]);
+
+    render(await AppsPage());
+
+    expect(screen.queryByText(/New here\?/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Everything you can open/)).not.toBeInTheDocument();
+  });
+
+  it("leads each app card with what the app is for, then its name", async () => {
+    mockListUserCatalogApps.mockResolvedValue([
+      {
+        id: "client-1",
+        name: "Immich",
+        description: "Your photos, backed up",
+        launchUrl: "https://photos.example.test",
+        iconUrl: null,
+        category: null,
+        hasAccess: true,
+        allowedGroups: [],
+      },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.getByRole("link", { name: "Open Immich" }).textContent).toBe(
+      "Your photos, backed upImmich",
+    );
+  });
+
+  it("offers one request per app, with a role picker starting on the everyday role", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
     mockListUserCatalogApps.mockResolvedValue([
       {
@@ -81,10 +181,10 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    render(await AppsPage(asking("client-1")));
 
-    expect(screen.getAllByRole("button", { name: /Ask for access/ })).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Ask for access to Sonarr" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Send request/ })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Send request for Sonarr" })).toBeInTheDocument();
     const picker = screen.getByRole("combobox", { name: "Role" });
     expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual([
       "Media",
@@ -110,7 +210,7 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    render(await AppsPage(asking("client-1")));
 
     expect(screen.getByRole("combobox", { name: "Role" })).toHaveValue("g-users");
   });
@@ -130,9 +230,9 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    render(await AppsPage(asking("client-1")));
 
-    const messageField = screen.getByLabelText(/Why do you need it\?/);
+    const messageField = screen.getByLabelText(/Why\? \(optional\)/);
     expect(messageField).toBeInTheDocument();
     expect(messageField).not.toBeRequired();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -189,8 +289,9 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
+    // One role: the status needs no group name.
+    expect(screen.getByText("Waiting for an admin")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
   });
 
   // an approval or a denial used to be invisible -- the form simply
@@ -228,8 +329,8 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Not approved: Engineering")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Ask for access to Grafana" })).toBeInTheDocument();
+      expect(screen.getByText("Not approved")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Ask again for Grafana" })).toBeInTheDocument();
     });
 
     // The exact case that produced a 500: approved, session groups not caught
@@ -240,9 +341,8 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Approved for Engineering")).toBeInTheDocument();
-      expect(screen.getByText(/within a few minutes/i)).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
+      expect(screen.getByText("Approved, ready in a few minutes")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
     });
 
     // approved long ago and still not held -- the grant was taken away.
@@ -254,8 +354,8 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByText("Access through Engineering was removed")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Ask for access to Grafana" })).toBeInTheDocument();
+      expect(screen.getByText("Access removed")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Ask again for Grafana" })).toBeInTheDocument();
     });
 
     it("says nothing about a request whose access the user now actually holds", async () => {
@@ -269,7 +369,7 @@ describe("AppsPage", () => {
       render(await AppsPage());
 
       expect(screen.getByRole("link", { name: "Open Grafana" })).toBeInTheDocument();
-      expect(screen.queryByText(/Approved: Engineering/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Approved/)).not.toBeInTheDocument();
     });
   });
 
@@ -309,7 +409,7 @@ describe("AppsPage", () => {
     render(await AppsPage());
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Apps");
-    expect(screen.getByRole("heading", { level: 2, name: "What you can use" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Ready to open" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Immich" })).toBeInTheDocument();
   });
 
@@ -344,13 +444,13 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    render(await AppsPage(asking("client-1")));
 
-    // Two groups on one app: a bare "Pending" would not say which.
-    expect(screen.getByText("Asked to join Media")).toBeInTheDocument();
+    // Two groups on one app: a bare "Waiting" would not say which.
+    expect(screen.getByText("Media: waiting for an admin")).toBeInTheDocument();
     // One role left, so no picker: the form asks for Media Admin.
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-    const form = screen.getByRole("button", { name: "Ask for access to Sonarr" }).closest("form")!;
+    const form = screen.getByRole("button", { name: "Send request for Sonarr" }).closest("form")!;
     expect(new FormData(form).get("group")).toBe("g2");
   });
 
@@ -387,8 +487,8 @@ describe("AppsPage", () => {
 
       expect(screen.getByRole("link", { name: "Open Immich" })).toBeInTheDocument();
       expect(screen.queryByText("Grafana")).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Ask for access/ })).not.toBeInTheDocument();
-      expect(screen.queryByText(/can be requested/)).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Ask for more" })).not.toBeInTheDocument();
     });
 
     it("says so when the user can open nothing", async () => {
@@ -416,7 +516,7 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    render(await AppsPage(asking("client-2")));
 
     expect(screen.getByLabelText(/\(required\)/)).toBeRequired();
     vi.unstubAllEnvs();
@@ -471,7 +571,7 @@ describe("AppsPage", () => {
       expect(screen.getByText(/1 app found\./)).toBeInTheDocument();
       expect(screen.getByRole("searchbox", { name: "Search apps" })).toHaveValue("photos");
       // Nothing usable matched, so that section steps aside.
-      expect(screen.queryByRole("heading", { name: "What you can use" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Ready to open" })).not.toBeInTheDocument();
     });
 
     it("filters by category, marks it current, and keeps it when searching again", async () => {
@@ -527,12 +627,18 @@ describe("AppsPage", () => {
       },
     ]);
 
-    render(await AppsPage());
+    const { unmount } = render(await AppsPage());
+    expect(screen.getByRole("link", { name: "Demander l’accès à Sonarr" })).toBeInTheDocument();
+    unmount();
+
+    render(await AppsPage(asking("client-2")));
 
     expect(screen.getByRole("heading", { level: 1, name: "Applications" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Ce que vous pouvez utiliser" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Prêtes à ouvrir" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "En demander d’autres" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ouvrir Immich" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Demander l’accès à Sonarr" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Envoyer la demande pour Sonarr" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Annuler" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Rôle" })).toBeInTheDocument();
     expect((await generateMetadata()).title).toBe("Applications");
   });
