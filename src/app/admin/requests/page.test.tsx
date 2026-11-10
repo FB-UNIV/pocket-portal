@@ -115,6 +115,21 @@ describe("AdminRequestsPage", () => {
     ).toBeInTheDocument();
   });
 
+  // Observed on PocketID 2.16: a user created with a first and last name
+  // can have an empty displayName.
+  it("uses the first and last name when PocketID has no display name", async () => {
+    mockListUsers.mockResolvedValue([
+      { ...ALICE, displayName: "", firstName: "Alice", lastName: "Martin" },
+    ]);
+    mockListPending.mockResolvedValue([request()]);
+
+    render(await AdminRequestsPage());
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Alice Martin wants Jellyfin" }),
+    ).toBeInTheDocument();
+  });
+
   it("puts what the app is for under the sentence", async () => {
     mockListAdminApps.mockResolvedValue([{ ...APP, description: "Watch films and series" }]);
     mockListPending.mockResolvedValue([request()]);
