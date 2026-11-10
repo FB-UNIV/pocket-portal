@@ -22,6 +22,9 @@ project-specific policy on when to bump what.
   yours). The "How it works" steps and the longer explanations are gone.
   With PocketID's branding switched off, a panel in the portal's colour
   takes the picture's place.
+- **A bigger sign-in picture.** On a wide screen the sign-in page grows
+  wider and the picture takes most of it. On a phone, as on PocketID's own
+  login page, the picture covers the whole screen behind the sign-in card.
 
 ### Added
 - **Your own words on the sign-in page.** `SIGNIN_HEADLINE_EN`/`_FR` and
