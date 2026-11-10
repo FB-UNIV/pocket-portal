@@ -26,6 +26,10 @@ export interface Branding {
   colors: BrandColors | null;
   name: string | null;
   logo: { light: string; dark: string };
+  // The sign-in page's picture. Always set: an untouched PocketID serves
+  // its own stock image here rather than a 404, and the public config
+  // doesn't say whether it's been replaced (observed on v2.16.0).
+  background: string;
 }
 
 // Only the space-separated form PocketID's picker writes. No alpha: a
@@ -189,6 +193,7 @@ export const getPocketIdBranding = cache(async (): Promise<Branding | null> => {
         light: `${baseUrl}/api/application-images/logo?light=true`,
         dark: `${baseUrl}/api/application-images/logo?light=false`,
       },
+      background: `${baseUrl}/api/application-images/background`,
     };
   } catch {
     return null;

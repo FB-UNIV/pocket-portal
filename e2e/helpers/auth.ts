@@ -70,7 +70,7 @@ export async function signInAsSeedUser(page: Page, username = "e2e-user"): Promi
   // Drive the portal's real sign-in: home -> PocketID /authorize (SSO via the
   // session above) -> /api/auth/callback -> back to the portal, signed in.
   await page.goto("/");
-  await page.getByRole("button", { name: "Sign in with PocketID" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("http://localhost:3000/**");
   await expect(page.getByText(/Signed in as/)).toBeVisible();
 }

@@ -11,18 +11,10 @@
   },
   "SignIn": {
     "title": "Bienvenue sur {name}",
-    "intro": "Un seul endroit pour toutes nos applications. Connectez-vous une fois, et tout ce que vous pouvez utiliser est à portée de clic. Pour le reste, il suffit de demander.",
-    "button": "Se connecter avec PocketID",
-    "passkeyHint": "Pas de mot de passe : votre téléphone ou votre ordinateur vous identifie, comme pour l’appli de votre banque.",
+    "tagline": "Toutes nos applications, une seule connexion.",
+    "button": "Se connecter",
     "firstTimeLead": "Première fois ?",
-    "firstTimeBody": "Utilisez le lien d’invitation qu’un administrateur vous a envoyé pour configurer votre connexion.",
-    "howItWorks": "Comment ça marche",
-    "step1Title": "Connectez-vous",
-    "step1Body": "Avec votre téléphone ou votre ordinateur. Aucun mot de passe à retenir.",
-    "step2Title": "Ouvrez ce dont vous avez besoin",
-    "step2Body": "Chaque application indique à quoi elle sert. Cliquez dessus, elle s’ouvre.",
-    "step3Title": "Demandez le reste",
-    "step3Body": "Il vous manque quelque chose ? Demandez-le, et un administrateur vous donne l’accès."
+    "firstTimeBody": "Utilisez le lien d’invitation que vous avez reçu."
   },
   "Home": {
     "greeting": "{name, select, __none {Bonjour.} other {Bonjour {name}.}} Que voulez-vous faire ?",

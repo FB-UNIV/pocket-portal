@@ -8,6 +8,19 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Changed
+- **A sign-in page that's mostly the button.** The page is down to a short
+  headline, one line and one big **Sign in** button, beside the login
+  background image set in PocketID (PocketID's own picture until you upload
+  yours). The "How it works" steps and the longer explanations are gone.
+  With PocketID's branding switched off, a panel in the portal's colour
+  takes the picture's place.
+
+### Added
+- **Your own words on the sign-in page.** `SIGNIN_HEADLINE_EN`/`_FR` and
+  `SIGNIN_TAGLINE_EN`/`_FR` replace the headline and the line under it, per
+  language; `SIGNIN_INVITE_HINT=false` drops the "First time?" line.
+
 ## [1.5.0] - 2026-11-09
 
 ### Added

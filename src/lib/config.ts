@@ -38,6 +38,18 @@ export interface ConfigVar {
   yaml: string;
 }
 
+// SIGNIN_HEADLINE_FR, branding.signInHeadlineFr.
+function signInVar(field: "HEADLINE" | "TAGLINE", locale: Locale): ConfigVar {
+  const suffix = locale.toUpperCase();
+  const camel = (word: string) => word[0] + word.slice(1).toLowerCase();
+  return {
+    name: `SIGNIN_${field}_${suffix}`,
+    required: false,
+    secret: false,
+    yaml: `branding.signIn${camel(field)}${camel(suffix)}`,
+  };
+}
+
 export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "POCKETID_BASE_URL", required: true, secret: false, yaml: "pocketid.baseUrl" },
   { name: "POCKETID_API_KEY", required: true, secret: true, yaml: "pocketid.apiKey" },
@@ -58,6 +70,12 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "OTEL_SERVICE_NAME", required: false, secret: false, yaml: "otel.serviceName" },
   { name: "PORTAL_NAME", required: false, secret: false, yaml: "branding.name" },
   { name: "DEFAULT_LOCALE", required: false, secret: false, yaml: "branding.defaultLocale" },
+  // The sign-in page's words, one per language the portal speaks.
+  ...LOCALES.flatMap((locale) => [
+    signInVar("HEADLINE", locale),
+    signInVar("TAGLINE", locale),
+  ]),
+  { name: "SIGNIN_INVITE_HINT", required: false, secret: false, yaml: "branding.signInInviteHint" },
   { name: "SMTP_HOST", required: false, secret: false, yaml: "smtp.host" },
   { name: "SMTP_FROM", required: false, secret: false, yaml: "smtp.from" },
   { name: "SMTP_PORT", required: false, secret: false, yaml: "smtp.port" },
@@ -318,6 +336,23 @@ export function readDefaultLocale(source: ConfigSource = configSource()): Locale
   return isLocale(value) ? value : DEFAULT_LOCALE;
 }
 
+// The deployer's sign-in headline and tagline in this language, if any.
+// Unset or blank leaves the page's translated defaults.
+export function readSignInText(
+  locale: Locale,
+  source: ConfigSource = configSource(),
+): { headline?: string; tagline?: string } {
+  const read = (field: string) =>
+    optional(source, `SIGNIN_${field}_${locale.toUpperCase()}`)?.trim() || undefined;
+  return { headline: read("HEADLINE"), tagline: read("TAGLINE") };
+}
+
+// Off drops the sign-in page's "First time? Use your invite link" line, for
+// a portal whose people don't arrive by invite.
+export function readSignInInviteHintEnabled(source: ConfigSource = configSource()): boolean {
+  return readBoolean(source, "SIGNIN_INVITE_HINT", true);
+}
+
 // Flags set away from their defaults, as NAME=value, for one startup log
 // line: support questions can then start from the log. Built from
 // what each reader actually returns, so an unrecognised value (which falls
@@ -330,6 +365,7 @@ export function nonDefaultFlags(source: ConfigSource = configSource()): string[]
     ["FEATURE_POCKETID_BRANDING", readPocketIdBrandingEnabled(source), true],
     ["FEATURE_AUDIT_LOG_PAGE", readAuditLogPageEnabled(source), true],
     ["WARN_POCKETID_SECRETS_READABLE", readSecretsWarningEnabled(source), true],
+    ["SIGNIN_INVITE_HINT", readSignInInviteHintEnabled(source), true],
   ];
   return flags.filter(([, value, fallback]) => value !== fallback).map(([name, value]) => `${name}=${value}`);
 }
@@ -447,6 +483,7 @@ export function validateConfig(source: ConfigSource = configSource()): string[] 
       "FEATURE_POCKETID_BRANDING",
       "FEATURE_AUDIT_LOG_PAGE",
       "WARN_POCKETID_SECRETS_READABLE",
+      "SIGNIN_INVITE_HINT",
     ].map((name) => flagProblem(source, name, [...TRUE_VALUES, ...FALSE_VALUES])),
   ].filter((problem): problem is string => problem !== undefined);
   return [...problems, ...smtpProblems(source), ...flags, ...productionSecretProblems(source)];
