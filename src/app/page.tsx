@@ -65,16 +65,26 @@ export default async function Home({
 
   const custom = readSignInText(locale);
 
+  const background = branding?.background;
+
   // The sign-in page is the button (sign-in redesign): a short headline and
-  // one line above it, a picture beside it, and nothing else to read.
+  // one line above it, a picture beside it, and nothing else to read. The
+  // picture takes most of a wide screen; on a phone, as on PocketID's own
+  // login page, it covers the whole screen behind a solid card.
   return (
     <div className="flex flex-1 flex-col">
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-6xl flex-1 flex-wrap items-stretch gap-12 px-6 pt-6 pb-12"
+        className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-12 px-6 pt-6 pb-12 lg:flex-row lg:items-stretch"
       >
-        <div className="flex flex-[1_1_380px] flex-col items-center justify-center gap-10 py-6 text-center">
+        <div
+          className={`flex flex-col items-center justify-center gap-10 text-center lg:min-w-[400px] lg:grow-[2] lg:basis-0 lg:py-6 ${
+            background
+              ? "my-auto rounded-[32px] bg-ground px-3 py-10 shadow-[0_24px_48px_-12px_rgb(0_0_0/0.45)] lg:my-0 lg:rounded-none lg:bg-transparent lg:px-0 lg:shadow-none"
+              : "py-6"
+          }`}
+        >
           <div className="flex flex-col gap-3">
             <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-[44px]">
               {custom.headline ?? tSignIn("title", { name })}
@@ -93,21 +103,21 @@ export default async function Home({
                 the key and the arrow are decoration. */}
             <button
               type="submit"
-              className="group flex min-h-24 w-full cursor-pointer items-center gap-5 rounded-full bg-brand py-0 pr-9 pl-4 text-left text-on-brand shadow-[0_2px_4px_rgb(31_27_22/0.12),0_28px_48px_-18px_rgb(31_27_22/0.55)] transition-[background-color,transform] duration-150 ease-out hover:bg-brand-hover active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:min-h-28"
+              className="group flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-full bg-brand py-0 pr-5 pl-3 text-left text-on-brand shadow-[0_2px_4px_rgb(31_27_22/0.12),0_28px_48px_-18px_rgb(31_27_22/0.55)] transition-[background-color,transform] duration-150 ease-out hover:bg-brand-hover active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 sm:min-h-24 sm:gap-5 sm:pr-9 sm:pl-4 xl:min-h-28"
             >
               <span
                 aria-hidden="true"
-                className="inline-flex h-16 w-16 flex-none items-center justify-center rounded-full bg-surface text-brand sm:h-20 sm:w-20"
+                className="inline-flex h-14 w-14 flex-none items-center justify-center rounded-full bg-surface text-brand sm:h-16 sm:w-16 xl:h-20 xl:w-20"
               >
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="8" cy="15" r="4" />
                   <path d="m10.85 12.15 8.65-8.65M18 5l2 2M15 8l2 2" />
                 </svg>
               </span>
-              <span className="flex-1 text-[28px] font-extrabold tracking-tight sm:text-[32px]">
+              <span className="flex-1 text-[22px] font-extrabold tracking-tight whitespace-nowrap sm:text-[28px] xl:text-[32px]">
                 {tSignIn("button")}
               </span>
-              <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="flex-none transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0">
+              <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="hidden h-7 w-7 flex-none min-[360px]:block sm:h-8 sm:w-8 transition-transform duration-150 group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </button>
@@ -121,14 +131,18 @@ export default async function Home({
           )}
         </div>
 
-        <div className="relative flex min-h-64 flex-[1_1_460px] overflow-hidden rounded-[32px] bg-brand md:min-h-[520px]">
-          {branding?.background ? (
+        <div
+          className={`overflow-hidden bg-brand lg:relative lg:flex lg:min-h-[640px] lg:grow-[3] lg:basis-0 lg:rounded-[32px] ${
+            background ? "fixed inset-0 -z-10 lg:inset-auto lg:z-auto" : "relative flex min-h-64 rounded-[32px]"
+          }`}
+        >
+          {background ? (
             // PocketID's login background. Decorative, and a plain <img> as
             // with the header logo: next/image would need PocketID's host in
             // remotePatterns. An untouched PocketID serves its stock image.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={branding.background}
+              src={background}
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
             />
