@@ -9,6 +9,13 @@ project-specific policy on when to bump what.
 ## [Unreleased]
 
 ### Changed
+- **A shorter, calmer Apps page.** The intro line and the "New here?" tip
+  are gone, and the search sits beside the title. App cards are bigger and
+  lead with what each app is for, with the whole card opening it. "Ask for
+  more" is now one compact list: each app shows where your request stands
+  as a small label ("Waiting for an admin", "Not approved"…), and the
+  request form only opens when you press **Ask**. It still works without
+  JavaScript: Ask is a plain link (`/apps?ask=…`).
 - **A sign-in page that's mostly the button.** The page is down to a short
   headline, one line and one big **Sign in** button, beside the login
   background image set in PocketID (PocketID's own picture until you upload

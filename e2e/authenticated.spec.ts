@@ -40,10 +40,15 @@ test.describe("authenticated portal journeys", () => {
     await expect(page.getByText("Sonarr (seed)")).toBeVisible();
     expect(await page.getByRole("link", { name: "Open" }).count()).toBeGreaterThanOrEqual(2);
 
-    // …the engineering-gated app the user can't reach shows a request form instead.
+    // …the engineering-gated app the user can't reach is listed to ask for,
+    // and pressing Ask opens its request form, ready to type in.
     await expect(page.getByText("Grafana (seed)")).toBeVisible();
+    // "Ask again" if an earlier run's request was declined.
+    await page.getByRole("link", { name: /^Ask (again )?for Grafana \(seed\)$/ }).click();
+    await expect(page).toHaveURL(/[?&]ask=/);
     await expect(
-      page.getByRole("button", { name: "Ask for access to Grafana (seed)" }),
+      page.getByRole("button", { name: "Send request for Grafana (seed)" }),
     ).toBeVisible();
+    await expect(page.getByLabel(/Why\?/)).toBeFocused();
   });
 });

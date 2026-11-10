@@ -79,6 +79,11 @@ describe("readBrowseParams", () => {
   it("copes with no params at all", () => {
     expect(readBrowseParams(undefined)).toEqual({});
   });
+
+  // ?ask=<app id>: which app's request form is open on /apps.
+  it("reads the app being asked for", () => {
+    expect(readBrowseParams({ ask: " client-1 " })).toEqual({ ask: "client-1" });
+  });
 });
 
 describe("browseHref", () => {
@@ -90,5 +95,9 @@ describe("browseHref", () => {
     expect(browseHref({ q: "films & tv", category: "Watch & listen" })).toBe(
       "/apps?q=films+%26+tv&category=Watch+%26+listen",
     );
+  });
+
+  it("adds the app being asked for after the filters", () => {
+    expect(browseHref({ q: "films", ask: "client 1" })).toBe("/apps?q=films&ask=client+1");
   });
 });

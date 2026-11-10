@@ -54,7 +54,7 @@ test.describe("a signed-in user whose browser asks for French", () => {
     await expect(page).toHaveTitle(/^Applications · /);
     await expect(page.getByRole("link", { name: "Ouvrir Immich (seed)" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Demander l’accès à Grafana (seed)" }),
+      page.getByRole("link", { name: "Demander l’accès à Grafana (seed)" }),
     ).toBeVisible();
   });
 });

@@ -4,7 +4,13 @@ import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
 import { listUserCatalogApps, type UserCatalogApp } from "@/lib/catalog/apps";
-import { browseHref, categoriesOf, filterApps, readBrowseParams } from "@/lib/catalog/browse";
+import {
+  browseHref,
+  categoriesOf,
+  filterApps,
+  readBrowseParams,
+  type BrowseParams,
+} from "@/lib/catalog/browse";
 import { listUserAccessRequests } from "@/lib/requests/access-requests";
 import {
   deriveRequestOutcome,
@@ -32,61 +38,32 @@ type AppsT = Awaited<ReturnType<typeof getTranslations<"Apps">>>;
 type AskT = AskFormT;
 
 
-// What the requester is told about one client+group pairing. Every state but
-// "pending" was previously invisible to them: an approval or a denial just
-// made the form reappear, indistinguishable from never having asked.
-//
-// Plain static text rather than a live region — this is page content on load,
-// not an update arriving mid-visit, so announcing it would talk over the user.
-// Every notice names its group: an app with two requestable groups otherwise
-// shows two bare badges with nothing to tell them apart.
-function OutcomeNotice({
+// One role's status, as a short pill beside the app. Every state but
+// "pending" used to be invisible to the requester: an approval or a denial
+// just made the form reappear. Plain text, not a live region: it's page
+// content on load, not an update arriving mid-visit. The group is named
+// only when the app has more than one, where a bare "Waiting" wouldn't say
+// which.
+function StatusPill({
   state,
-  friendlyName,
+  group,
   t,
 }: {
   state: RequestState;
-  friendlyName: string;
+  group: string | undefined;
   t: AppsT;
 }) {
-  const group = friendlyName;
-  const { label, detail, tone } = {
-    pending: {
-      label: t("pendingLabel", { group }),
-      detail: t("pendingDetail"),
-      tone: "tip",
-    },
-    settling: {
-      label: t("settlingLabel", { group }),
-      detail: t("settlingDetail"),
-      tone: "ok",
-    },
-    revoked: {
-      label: t("revokedLabel", { group }),
-      // Negative, not neutral: a quiet tone made a loss of access read as a
-      // benign in-progress state, or as though the app were still granted.
-      detail: t("revokedDetail"),
-      tone: "bad",
-    },
-    denied: {
-      label: t("deniedLabel", { group }),
-      detail: t("deniedDetail"),
-      tone: "bad",
-    },
+  const named = { group: group ?? "__none" };
+  const { label, tone } = {
+    pending: { label: t("statusPending", named), tone: "badge-tip" },
+    settling: { label: t("statusSettling", named), tone: "badge-ok" },
+    // Negative, not neutral: a quiet tone made a loss of access read as a
+    // benign in-progress state, or as though the app were still granted.
+    revoked: { label: t("statusRevoked", named), tone: "badge-bad" },
+    denied: { label: t("statusDenied", named), tone: "badge-bad" },
   }[state];
 
-  const toneClass = {
-    tip: "border-tip-line bg-tip text-on-tip",
-    ok: "border-ok-line bg-ok text-on-ok",
-    bad: "border-bad-line bg-bad text-on-bad",
-  }[tone];
-
-  return (
-    <div className={`flex flex-col gap-1 rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <span className="text-[15px] font-bold">{label}</span>
-      <p className="text-sm">{detail}</p>
-    </div>
-  );
+  return <span className={`badge ${tone} min-h-8 px-3 text-sm`}>{label}</span>;
 }
 
 // The "no results" line, naming whatever was searched for.
@@ -97,37 +74,35 @@ function nothingMatches(t: AppsT, { q, category }: { q?: string; category?: stri
   return t("nothingMatches");
 }
 
-// Leads with what the app is for when PocketID has a description, which is
-// what someone who doesn't know the app's name needs; the name is still the
+// What the app is for first, when PocketID has a description: that's what
+// someone who doesn't know the app's name needs. The name is still the
 // heading, so screen-reader users can jump from app to app by it.
-function AppIntro({ app }: { app: UserCatalogApp }) {
-  return (
-    <div className="flex items-start gap-4">
-      <AppMark name={app.name} iconUrl={app.iconUrl} />
-      <div className="flex min-w-0 flex-col gap-1">
-        {app.description ? (
-          <>
-            <h3 className="text-sm font-bold text-ink-muted">{app.name}</h3>
-            <p className="text-lg font-bold leading-snug tracking-tight">{app.description}</p>
-          </>
-        ) : (
-          <h3 className="text-lg font-bold leading-snug tracking-tight">{app.name}</h3>
-        )}
-      </div>
-    </div>
+function AppWords({ app, size }: { app: UserCatalogApp; size: "card" | "row" }) {
+  const big =
+    size === "card"
+      ? "text-xl font-extrabold leading-tight tracking-tight"
+      : "text-[17px] font-bold leading-snug";
+  return app.description ? (
+    <>
+      <span className={big}>{app.description}</span>
+      <h3 className="text-sm font-semibold text-ink-muted">{app.name}</h3>
+    </>
+  ) : (
+    <h3 className={big}>{app.name}</h3>
   );
 }
 
-// The ask part of one app's card: what already happened to each role the
-// user asked for, then a single form for the roles still open to them.
-// Pending and just-approved roles drop out of the picker (asking again
-// would be refused); declined and removed ones stay, since asking again is
-// allowed.
-function AskForApp({
+// One app to ask for: what it's for, where each role the user asked for
+// stands, and an Ask link that opens the request form in place
+// (/apps?ask=<id>, so it works without JavaScript). Pending and
+// just-approved roles drop out of the form (asking again would be refused);
+// declined and removed ones stay, and the link says "Ask again".
+function AskRow({
   app,
   myRequests,
   userGroups,
   reason,
+  browse,
   t,
   tForm,
 }: {
@@ -135,6 +110,7 @@ function AskForApp({
   myRequests: AccessRequest[];
   userGroups: string[];
   reason: AccessRequestReason;
+  browse: BrowseParams;
   t: AppsT;
   tForm: AskT;
 }) {
@@ -144,27 +120,57 @@ function AskForApp({
   }));
   const open = roles.filter(({ outcome }) => !outcome || outcome.canRequest).map(({ group }) => group);
   const preselected = defaultRole(open);
+  const again = roles.some(({ outcome }) => outcome?.canRequest);
+  const named = app.allowedGroups.length > 1;
+  const asking = browse.ask === app.id && preselected;
 
   return (
-    <div className="mt-auto flex flex-col gap-4">
-      {roles.map(({ group, outcome }) =>
-        outcome ? (
-          <OutcomeNotice key={group.id} state={outcome.state} friendlyName={group.friendlyName} t={t} />
-        ) : null,
-      )}
-      {/* Offered only where it can actually succeed. The action re-checks
-          server-side regardless. */}
-      {preselected && (
-        <RequestAccessForm
-          action={requestAppAccessAction.bind(null, app.id)}
-          appId={app.id}
-          roles={open.map(({ id, friendlyName }) => ({ id, friendlyName }))}
-          defaultRoleId={preselected.id}
-          reason={reason}
-          labels={formLabels(tForm, app.name, reason)}
-        />
-      )}
-    </div>
+    <li className="flex flex-col gap-4 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <AppMark name={app.name} iconUrl={app.iconUrl} size="sm" />
+        <div className="flex min-w-0 flex-[1_1_14rem] flex-col">
+          <AppWords app={app} size="row" />
+        </div>
+        {roles.map(({ group, outcome }) =>
+          outcome ? (
+            <StatusPill
+              key={group.id}
+              state={outcome.state}
+              group={named ? group.friendlyName : undefined}
+              t={t}
+            />
+          ) : null,
+        )}
+        {app.allowedGroups.length === 0 ? (
+          <p className="text-sm text-ink-muted">{t("noGroup")}</p>
+        ) : null}
+        {/* Offered only where it can actually succeed. The action re-checks
+            server-side regardless. The name carries the app (SC 2.4.4). */}
+        {preselected && !asking ? (
+          <Link
+            href={browseHref({ ...browse, ask: app.id })}
+            scroll={false}
+            aria-label={again ? t("askAgainApp", { name: app.name }) : t("askApp", { name: app.name })}
+            className="btn btn-secondary"
+          >
+            {again ? t("askAgain") : t("ask")}
+          </Link>
+        ) : null}
+      </div>
+      {asking ? (
+        <div className="rounded-[18px] bg-surface-muted p-4 sm:ml-14">
+          <RequestAccessForm
+            action={requestAppAccessAction.bind(null, app.id)}
+            appId={app.id}
+            roles={open.map(({ id, friendlyName }) => ({ id, friendlyName }))}
+            defaultRoleId={preselected.id}
+            reason={reason}
+            labels={formLabels(tForm, app.name, reason)}
+            cancelHref={browseHref({ ...browse, ask: undefined })}
+          />
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -188,12 +194,13 @@ export default async function AppsPage({
   const visible = requestsEnabled ? catalog : catalog.filter((app) => app.hasAccess);
   const categories = categoriesOf(visible);
 
-  // ?q=…&category=… (see lib/catalog/browse.ts). A category no visible app
-  // has any more, say from an old bookmark, filters nothing out.
+  // ?q=…&category=…&ask=… (see lib/catalog/browse.ts). A category no
+  // visible app has any more, say from an old bookmark, filters nothing out.
   const params = readBrowseParams(await searchParams);
-  const browse = {
+  const browse: BrowseParams = {
     q: params.q,
     category: params.category && categories.includes(params.category) ? params.category : undefined,
+    ask: params.ask,
   };
   const filtering = Boolean(browse.q || browse.category);
   const shown = filterApps(visible, browse);
@@ -205,83 +212,66 @@ export default async function AppsPage({
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 pt-8 pb-20"
+        className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 pt-8 pb-20"
       >
-        <div className="flex flex-col gap-3">
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{t("title")}</h1>
-          <p className="max-w-2xl text-lg text-ink-muted">
-            {requestsEnabled ? t("intro") : t("introLauncher")}
-          </p>
-        </div>
-
-        <aside className="flex max-w-3xl items-start gap-3.5 rounded-2xl bg-tip px-5 py-4 text-on-tip">
-          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-px flex-none">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 11v5M12 8h.01" />
-          </svg>
-          <p className="text-[15px] leading-relaxed">
-            <strong className="font-bold">{t("tipLead")}</strong> {t("tipBody")}
-          </p>
-        </aside>
-
-        {visible.length > 0 && (
-          <div className="flex flex-col gap-4">
-            {/* A plain GET form: works without JavaScript, and the result is
-                a URL that can be bookmarked or sent to someone. */}
-            <form role="search" action="/apps" className="flex w-full max-w-xl items-center gap-2">
-              <label htmlFor="app-search" className="sr-only">
-                {t("searchLabel")}
-              </label>
-              <span className="relative flex-1">
-                <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
-                <input
-                  id="app-search"
-                  type="search"
-                  name="q"
-                  defaultValue={browse.q ?? ""}
-                  placeholder={t("searchPlaceholder")}
-                  className="field min-h-12 rounded-full pl-12 text-base"
-                />
-              </span>
-              {browse.category && <input type="hidden" name="category" value={browse.category} />}
-              <button type="submit" className="btn btn-secondary">
-                {t("searchButton")}
-              </button>
-            </form>
-
-            {categories.length > 0 && (
-              <nav aria-label={t("categoriesLabel")}>
-                <ul className="flex flex-wrap gap-2">
-                  {[undefined, ...categories].map((category) => (
-                    <li key={category ?? ""}>
-                      <Link
-                        href={browseHref({ q: browse.q, category })}
-                        aria-current={browse.category === category ? "page" : undefined}
-                        className="chip"
-                      >
-                        {category ?? t("everything")}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
-
-            {filtering && (
-              <p className="text-[15px] text-ink-muted">
-                {shown.length === 0
-                  ? nothingMatches(t, browse)
-                  : t("found", { count: shown.length })}{" "}
-                <Link href="/apps" className="font-semibold text-ink underline underline-offset-4">
-                  {t("showEverything")}
-                </Link>
-              </p>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+            <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{t("title")}</h1>
+            {visible.length > 0 && (
+              // A plain GET form: works without JavaScript, and the result is
+              // a URL that can be bookmarked or sent to someone. Enter submits.
+              <form role="search" action="/apps" className="flex w-full sm:w-auto sm:flex-[0_1_26rem]">
+                <label htmlFor="app-search" className="sr-only">
+                  {t("searchLabel")}
+                </label>
+                <span className="relative flex-1">
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-4.5 -translate-y-1/2 text-ink-muted">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                  <input
+                    id="app-search"
+                    type="search"
+                    name="q"
+                    defaultValue={browse.q ?? ""}
+                    placeholder={t("searchPlaceholder")}
+                    className="field min-h-13 rounded-full pl-12.5 text-base"
+                  />
+                </span>
+                {browse.category && <input type="hidden" name="category" value={browse.category} />}
+              </form>
             )}
           </div>
-        )}
+
+          {categories.length > 0 && (
+            <nav aria-label={t("categoriesLabel")}>
+              <ul className="flex flex-wrap gap-2">
+                {[undefined, ...categories].map((category) => (
+                  <li key={category ?? ""}>
+                    <Link
+                      href={browseHref({ q: browse.q, category })}
+                      aria-current={browse.category === category ? "page" : undefined}
+                      className="chip"
+                    >
+                      {category ?? t("everything")}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+
+          {filtering && (
+            <p className="text-[15px] text-ink-muted">
+              {shown.length === 0
+                ? nothingMatches(t, browse)
+                : t("found", { count: shown.length })}{" "}
+              <Link href="/apps" className="font-semibold text-ink underline underline-offset-4">
+                {t("showEverything")}
+              </Link>
+            </p>
+          )}
+        </div>
 
         {(!filtering || usable.length > 0) && (
           <section aria-labelledby="usable-h" className="flex flex-col gap-5">
@@ -293,23 +283,23 @@ export default async function AppsPage({
                 {requestsEnabled ? t("usableEmptyAsk") : t("usableEmptyAdmin")}
               </p>
             ) : (
-              <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
+              <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))]">
                 {usable.map((app) => (
                   <li key={app.id} className="flex">
-                    {/* SC 4.1.2 / 2.4.4: one "Open" per app is ambiguous out
+                    {/* SC 4.1.2 / 2.4.4: one link per app is ambiguous out
                         of context, so the accessible name carries the app. */}
                     <a
                       href={app.launchUrl}
                       aria-label={t("openApp", { name: app.name })}
-                      className="card card-link flex flex-1 flex-col gap-5 p-5 text-ink"
+                      className="card card-link relative flex flex-1 flex-col gap-4 rounded-3xl p-6 text-ink"
                     >
-                      <AppIntro app={app} />
-                      <span className="mt-auto flex items-center justify-between border-t border-line pt-3.5 text-sm font-semibold text-ink-muted">
-                        {t("open")}
-                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M7 17 17 7M9 7h8v8" />
-                        </svg>
+                      <AppMark name={app.name} iconUrl={app.iconUrl} />
+                      <span className="flex flex-col gap-1 pr-6">
+                        <AppWords app={app} size="card" />
                       </span>
+                      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="absolute top-6 right-6 text-ink-muted">
+                        <path d="M7 17 17 7M9 7h8v8" />
+                      </svg>
                     </a>
                   </li>
                 ))}
@@ -319,33 +309,22 @@ export default async function AppsPage({
         )}
 
         {requestsEnabled && askable.length > 0 && (
-          <section
-            aria-labelledby="ask-h"
-            className="flex flex-col gap-5 rounded-[28px] bg-surface-muted p-5 sm:p-7"
-          >
-            <div className="flex flex-col gap-1.5">
-              <h2 id="ask-h" className="text-2xl font-bold tracking-tight">
-                {t("askHeading")}
-              </h2>
-              <p className="text-[15px] text-ink-muted">{t("askIntro")}</p>
-            </div>
-            <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]">
+          <section aria-labelledby="ask-h" className="flex flex-col gap-4">
+            <h2 id="ask-h" className="text-2xl font-bold tracking-tight">
+              {t("askHeading")}
+            </h2>
+            <ul className="card divide-y divide-line overflow-hidden rounded-3xl">
               {askable.map((app) => (
-                <li key={app.id} className="card flex flex-col gap-5 p-5">
-                  <AppIntro app={app} />
-                  {app.allowedGroups.length === 0 ? (
-                    <p className="text-sm text-ink-muted">{t("noGroup")}</p>
-                  ) : (
-                    <AskForApp
-                      app={app}
-                      myRequests={myRequests}
-                      userGroups={session.user.groups}
-                      reason={reasonMode}
-                      t={t}
-                      tForm={tForm}
-                    />
-                  )}
-                </li>
+                <AskRow
+                  key={app.id}
+                  app={app}
+                  myRequests={myRequests}
+                  userGroups={session.user.groups}
+                  reason={reasonMode}
+                  browse={browse}
+                  t={t}
+                  tForm={tForm}
+                />
               ))}
             </ul>
           </section>

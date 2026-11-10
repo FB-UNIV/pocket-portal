@@ -8,7 +8,7 @@ import { translatorFor } from "@/i18n/translate";
 
 const USERS = { id: "g-users", friendlyName: "Sonarr users" };
 const ADMINS = { id: "g-admins", friendlyName: "Sonarr admins" };
-const ASK = { name: "Ask for access to Sonarr" };
+const ASK = { name: "Send request for Sonarr" };
 
 function renderForm({
   result = { ok: true },
@@ -42,11 +42,11 @@ function submitted(action: ReturnType<typeof vi.fn>): FormData {
 
 describe("RequestAccessForm", () => {
   // SC 2.5.3 / 2.4.6: one button per card, its name says which app.
-  it("has one Ask for access button that names the app", () => {
+  it("has one Send request button that names the app", () => {
     renderForm();
 
     const button = screen.getByRole("button", ASK);
-    expect(button).toHaveTextContent("Ask for access");
+    expect(button).toHaveTextContent("Send request");
     expect(button).toBeEnabled();
   });
 
@@ -78,7 +78,7 @@ describe("RequestAccessForm", () => {
   it("submits the typed reason with the role", async () => {
     const action = renderForm();
 
-    await userEvent.type(screen.getByLabelText(/Why do you need it\?/), "on call");
+    await userEvent.type(screen.getByLabelText(/Why\?/), "on call");
     await userEvent.click(screen.getByRole("button", ASK));
 
     const form = submitted(action);
@@ -89,7 +89,7 @@ describe("RequestAccessForm", () => {
   it("caps the reason at 500 characters", () => {
     renderForm();
 
-    expect(screen.getByLabelText(/Why do you need it\?/)).toHaveAttribute("maxLength", "500");
+    expect(screen.getByLabelText(/Why\?/)).toHaveAttribute("maxLength", "500");
   });
 
   it("says nothing extra once the request went through", async () => {
@@ -124,7 +124,7 @@ describe("RequestAccessForm", () => {
   it("marks the reason as required when the deployment asks for one", () => {
     renderForm({ reason: "required" });
 
-    expect(screen.getByLabelText(/Why do you need it\? \(required\)/)).toBeRequired();
+    expect(screen.getByLabelText(/Why\? \(required\)/)).toBeRequired();
   });
 
   it("leaves the reason out entirely when it's switched off", () => {
