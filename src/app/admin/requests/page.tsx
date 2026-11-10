@@ -33,9 +33,11 @@ function listOf(names: string[], and: string): string {
 async function displayNames(config: PocketIdConfig): Promise<Map<string, string>> {
   try {
     const users = await listPocketIdUsers(config);
-    return new Map(
-      users.filter((user) => user.displayName.trim()).map((user) => [user.id, user.displayName.trim()]),
-    );
+    const named = users.map((user) => {
+      const full = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+      return [user.id, user.displayName.trim() || full] as const;
+    });
+    return new Map(named.filter(([, name]) => name));
   } catch {
     return new Map();
   }
