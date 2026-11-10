@@ -47,7 +47,13 @@ export async function SiteHeader({
         {t("skipLink")}
       </a>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
+      {/* Signed out, the page under it is the sign-in page, which is wider
+          so its picture can be big: the header lines up with it. */}
+      <div
+        className={`mx-auto flex w-full flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4 ${
+          user ? "max-w-6xl" : "max-w-[1440px]"
+        }`}
+      >
         <Link
           href="/"
           className="flex min-h-11 items-center gap-2.5 text-lg font-bold tracking-tight text-ink no-underline"
