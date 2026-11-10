@@ -11,18 +11,10 @@
   },
   "SignIn": {
     "title": "Welcome to {name}",
-    "intro": "One place for the apps we run. Sign in once, and everything you can use is a click away. Anything else, you can ask for.",
-    "button": "Sign in with PocketID",
-    "passkeyHint": "No password: your phone or computer unlocks it, like it does for your banking app.",
+    "tagline": "All our apps, one sign-in.",
+    "button": "Sign in",
     "firstTimeLead": "First time?",
-    "firstTimeBody": "Use the invite link an admin sent you to set up your sign-in.",
-    "howItWorks": "How it works",
-    "step1Title": "Sign in",
-    "step1Body": "With your phone or computer. No password to remember.",
-    "step2Title": "Open what you need",
-    "step2Body": "Each app says what it’s for. Click it and it opens.",
-    "step3Title": "Ask for the rest",
-    "step3Body": "Missing something? Ask, and an admin lets you in."
+    "firstTimeBody": "Use the invite link you were sent."
   },
   "Home": {
     "greeting": "{name, select, __none {Hi there.} other {Hi {name}.}} What would you like to do?",

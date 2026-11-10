@@ -66,6 +66,9 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `FEATURE_POCKETID_BRANDING` | no | `true` | `false` keeps the portal's own look |
 | `PORTAL_NAME` | no | PocketID's app name, else `Pocket Portal` | Name shown in the header and page titles |
 | `DEFAULT_LOCALE` | no | `en` | Language for people who haven't picked one and whose browser asks for neither: `en` or `fr` |
+| `SIGNIN_HEADLINE_EN` / `SIGNIN_HEADLINE_FR` | no | Welcome to *portal name* | Sign-in page headline, per language |
+| `SIGNIN_TAGLINE_EN` / `SIGNIN_TAGLINE_FR` | no | All our apps, one sign-in. | The line under it, per language |
+| `SIGNIN_INVITE_HINT` | no | `true` | `false` drops the sign-in page's "First time? Use the invite link" line |
 | `FEATURE_AUDIT_LOG_PAGE` | no | `true` | `false` hides `/admin/audit`; events are still recorded |
 | `WARN_POCKETID_SECRETS_READABLE` | no | `true` | `false` hides the admin banner; the startup log still warns |
 | `CONFIG_FILE` | no | | Path to an optional YAML config file (below) |
