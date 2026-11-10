@@ -109,7 +109,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       // it's reached the way an admin would: from the catalog.
       test("/admin/apps/[id]", async ({ page }) => {
         await page.goto("/admin/apps");
-        await page.getByRole("table").getByRole("link").first().click();
+        await page.getByRole("list", { name: "Apps" }).getByRole("link").first().click();
         await expect(page).toHaveURL(/\/admin\/apps\/[^/]+$/);
         await expect(page.getByRole("heading", { name: "Set here" })).toBeVisible();
         await expectNoViolations(page);

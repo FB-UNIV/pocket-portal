@@ -15,6 +15,13 @@ project-specific policy on when to bump what.
   name PocketID has for the person (their email if it has none), with what
   the app is for, the group approving adds them to, and "asked today,
   08:15 UTC" for recent requests. Approve and Decline sit on the right.
+- **Admin Apps page: what needs fixing first, then one list.** Apps missing
+  a link or a description are listed at the top in plain words ("Grafana
+  doesn't say what it's for, so people only see its name"), each with a
+  **Fix in PocketID** link. Below, one list leads with what each app is
+  for, who can use it, and a switch that says where the app stands ("On the
+  Apps page", "On, but has no link yet", "Hidden"). The "Need a fix" filter
+  and the intro paragraph are gone.
 - **A shorter, calmer Apps page.** The intro line and the "New here?" tip
   are gone, and the search sits beside the title. App cards are bigger and
   lead with what each app is for, with the whole card opening it. "Ask for

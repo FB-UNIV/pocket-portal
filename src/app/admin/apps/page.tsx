@@ -4,10 +4,11 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
 import { listAdminCatalogApps, type CatalogApp } from "@/lib/catalog/apps";
-import { appProblems } from "@/lib/catalog/health";
+import { appProblems, type AppProblem } from "@/lib/catalog/health";
+import { pocketIdClientUrl } from "./pocketid-url";
 import { AppMark } from "@/app/_components/app-mark";
 import { getTranslations } from "@/i18n/server";
-import { HealthBadges, ShownSwitch, WhoCanUse } from "./app-parts";
+import { ShownSwitch, WhoCanUse } from "./app-parts";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("AdminApps");
@@ -18,12 +19,22 @@ const FILTERS = {
   all: { label: "filterAll", keep: () => true },
   shown: { label: "filterShown", keep: (app: CatalogApp) => !app.hidden },
   hidden: { label: "filterHidden", keep: (app: CatalogApp) => app.hidden },
-  fix: { label: "filterFix", keep: (app: CatalogApp) => appProblems(app).length > 0 },
 } as const;
 type Filter = keyof typeof FILTERS;
 
 function filterHref(filter: Filter): string {
   return filter === "all" ? "/admin/apps" : `/admin/apps?show=${filter}`;
+}
+
+// What to fix, as one sentence per app.
+const FIX_KEYS = {
+  both: "fixBoth",
+  "no-link": "fixNoLink",
+  "no-description": "fixNoDescription",
+} as const;
+
+function fixKey(problems: AppProblem[]): (typeof FIX_KEYS)[keyof typeof FIX_KEYS] {
+  return FIX_KEYS[problems.length > 1 ? "both" : problems[0]];
 }
 
 export default async function AdminAppsPage({
@@ -43,100 +54,118 @@ export default async function AdminAppsPage({
     getTranslations("AdminApps"),
   ]);
   const listed = apps.filter(FILTERS[filter].keep);
-  const shownCount = apps.filter(FILTERS.shown.keep).length;
-  const fixCount = apps.filter(FILTERS.fix.keep).length;
+  // What people actually see: shown, and with a link to open it by.
+  const onAppsPage = apps.filter((app) => !app.hidden && app.launchUrl).length;
+  const toFix = apps
+    .map((app) => ({ app, problems: appProblems(app) }))
+    .filter(({ problems }) => problems.length > 0);
 
   return (
-    <main id="main-content" tabIndex={-1} className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{t("title")}</h1>
-        <p className="mt-2 max-w-2xl text-ink-muted">{t("intro")}</p>
-        <p className="mt-3 text-sm font-semibold tabular-nums">
-          {t("summary", { apps: apps.length, shown: shownCount, fix: fixCount })}
-        </p>
-      </div>
-
-      <nav aria-label={t("filterLabel")}>
-        <ul className="flex flex-wrap gap-2">
-          {(Object.keys(FILTERS) as Filter[]).map((key) => (
-            <li key={key}>
-              <Link
-                href={filterHref(key)}
-                aria-current={key === filter ? "page" : undefined}
-                className="chip tabular-nums"
-              >
-                {t(FILTERS[key].label)} ({apps.filter(FILTERS[key].keep).length})
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      {listed.length === 0 ? (
-        <div className="card p-6">
-          <p className="text-ink-muted">
-            {apps.length === 0 ? t("emptyNone") : t("emptyFilter")}
+    <main id="main-content" tabIndex={-1} className="flex flex-col gap-7">
+      <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div>
+          <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-[44px] sm:leading-[1.05]">
+            {t("heading")}
+          </h1>
+          <p className="mt-2 text-lg text-ink-muted tabular-nums">
+            {t("summary", { listed: onAppsPage, apps: apps.length })}
           </p>
         </div>
+        <nav aria-label={t("filterLabel")}>
+          <ul className="flex flex-wrap gap-2">
+            {(Object.keys(FILTERS) as Filter[]).map((key) => (
+              <li key={key}>
+                <Link
+                  href={filterHref(key)}
+                  aria-current={key === filter ? "page" : undefined}
+                  className="chip"
+                >
+                  {t(FILTERS[key].label)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+
+      {toFix.length > 0 ? (
+        <section
+          aria-labelledby="to-fix"
+          className="flex flex-col gap-3 rounded-3xl border border-tip-line bg-tip px-5 py-5 text-on-tip sm:px-6"
+        >
+          <h2 id="to-fix" className="flex items-center gap-2.5 text-lg font-bold">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+            {t("fixHeading", { count: toFix.length })}
+          </h2>
+          <ul className="flex flex-col gap-1.5">
+            {toFix.map(({ app, problems }) => {
+              const url = pocketIdClientUrl(app.id);
+              return (
+                <li key={app.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <p className="text-[15px]">
+                    {t(fixKey(problems), { app: app.name })}
+                  </p>
+                  {url ? (
+                    <a
+                      href={url}
+                      aria-label={t("fixInLabel", { app: app.name })}
+                      className="inline-flex min-h-9 items-center gap-1.5 text-sm font-bold text-on-tip underline-offset-4 hover:underline"
+                    >
+                      {t("fixIn")}
+                      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 17 17 7M9 7h8v8" />
+                      </svg>
+                    </a>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {listed.length === 0 ? (
+        <p className="card p-6 text-ink-muted">
+          {apps.length === 0 ? t("emptyNone") : t("emptyFilter")}
+        </p>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th scope="col">{t("columnApp")}</th>
-                {/* Narrow screens keep the name and the switch; the status
-                    moves under the name, and the rest is on the app's page. */}
-                <th scope="col" className="max-md:hidden">
-                  {t("columnCategory")}
-                </th>
-                <th scope="col" className="max-md:hidden">
-                  {t("columnWho")}
-                </th>
-                <th scope="col" className="max-md:hidden">
-                  {t("columnStatus")}
-                </th>
-                <th scope="col">{t("columnShown")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listed.map((app) => (
-                <tr key={app.id}>
-                  <td className="md:min-w-64">
-                    <div className="flex items-center gap-3">
-                      <AppMark name={app.name} iconUrl={app.iconUrl} size="sm" />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/admin/apps/${encodeURIComponent(app.id)}`}
-                          className="font-semibold text-ink underline-offset-4 hover:underline"
-                        >
-                          {app.name}
-                        </Link>
-                        <p className="line-clamp-1 text-sm text-ink-muted">
-                          {app.description || t("noDescription")}
-                        </p>
-                        <div className="mt-1.5 md:hidden">
-                          <HealthBadges app={app} t={t} />
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap max-md:hidden">
-                    {app.category ?? <span className="text-ink-muted">{t("noCategory")}</span>}
-                  </td>
-                  <td className="max-md:hidden">
-                    <WhoCanUse app={app} t={t} />
-                  </td>
-                  <td className="max-md:hidden">
-                    <HealthBadges app={app} t={t} />
-                  </td>
-                  <td>
-                    <ShownSwitch app={app} t={t} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul aria-label={t("heading")} className="card divide-y divide-line overflow-hidden">
+          {listed.map((app) => {
+            const state = app.hidden ? "stateHidden" : app.launchUrl ? "stateListed" : "stateNoLink";
+            return (
+              <li key={app.id} className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 sm:px-6">
+                <AppMark name={app.name} iconUrl={app.iconUrl} size="sm" />
+                <Link
+                  href={`/admin/apps/${encodeURIComponent(app.id)}`}
+                  className="group flex min-w-0 flex-[1_1_10rem] flex-col text-ink no-underline"
+                >
+                  <span className="text-[17px] font-bold underline-offset-4 group-hover:underline">
+                    {app.description.trim() || app.name}
+                  </span>
+                  <span className="text-sm text-ink-muted">
+                    {app.name} · {app.category ?? t("otherCategory")}
+                  </span>
+                </Link>
+                <div className="flex-[0_1_14rem]">
+                  <WhoCanUse app={app} t={t} />
+                </div>
+                <div className="flex flex-[1_0_15rem] items-center justify-end gap-3">
+                  <span
+                    className={`text-sm font-semibold ${
+                      state === "stateListed" ? "text-on-ok" : state === "stateNoLink" ? "text-on-tip" : "text-ink-muted"
+                    }`}
+                  >
+                    {t(state)}
+                  </span>
+                  <ShownSwitch app={app} t={t} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </main>
   );
