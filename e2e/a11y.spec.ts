@@ -111,7 +111,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         await page.goto("/admin/apps");
         await page.getByRole("list", { name: "Apps" }).getByRole("link").first().click();
         await expect(page).toHaveURL(/\/admin\/apps\/[^/]+$/);
-        await expect(page.getByRole("heading", { name: "Set here" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "On the Apps page" })).toBeVisible();
         await expectNoViolations(page);
       });
     });

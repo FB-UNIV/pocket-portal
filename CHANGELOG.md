@@ -22,6 +22,12 @@ project-specific policy on when to bump what.
   for, who can use it, and a switch that says where the app stands ("On the
   Apps page", "On, but has no link yet", "Hidden"). The "Need a fix" filter
   and the intro paragraph are gone.
+- **Admin Edit app page: a preview and a checklist.** Beside the settings,
+  the card people see on the Apps page, faded while it isn't shown, and
+  the heading it sits under. Headings already in use are one click away.
+  What PocketID holds (what it's for, where it opens, who can use it) is a
+  ✓/! checklist that says what's missing and how to write it, with **Open in
+  PocketID**. The switch says in words where the app stands.
 - **A shorter, calmer Apps page.** The intro line and the "New here?" tip
   are gone, and the search sits beside the title. App cards are bigger and
   lead with what each app is for, with the whole card opening it. "Ask for

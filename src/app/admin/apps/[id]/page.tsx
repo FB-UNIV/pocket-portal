@@ -9,7 +9,7 @@ import { categoriesOf, MAX_CATEGORY_LENGTH } from "@/lib/catalog/browse";
 import { pocketIdClientUrl } from "../pocketid-url";
 import { AppMark } from "@/app/_components/app-mark";
 import { setAppCategoryAction } from "../actions";
-import { HealthBadges, ShownSwitch, WhoCanUse } from "../app-parts";
+import { ShownSwitch, WhoCanUse } from "../app-parts";
 import { getTranslations } from "@/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,114 +35,158 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
   const categories = categoriesOf(apps);
   const pocketIdUrl = pocketIdClientUrl(app.id);
 
-  return (
-    <main id="main-content" tabIndex={-1} className="flex max-w-3xl flex-col gap-6">
-      <Link
-        href="/admin/apps"
-        className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-ink-muted underline-offset-4 hover:text-ink hover:underline"
-      >
-        {t("back")}
-      </Link>
+  const listed = !app.hidden && Boolean(app.launchUrl);
+  const state = app.hidden ? "stateHidden" : app.launchUrl ? "stateListed" : "stateNoLink";
+  const description = app.description.trim();
 
-      <div className="flex items-center gap-4">
-        <AppMark name={app.name} iconUrl={app.iconUrl} />
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink break-words">{app.name}</h1>
-          <HealthBadges app={app} t={tApps} />
+  return (
+    <main id="main-content" tabIndex={-1} className="flex flex-col gap-7">
+      <div className="flex flex-col gap-3">
+        <Link
+          href="/admin/apps"
+          className="inline-flex min-h-11 items-center self-start text-sm font-semibold text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+        >
+          {t("back")}
+        </Link>
+        <div className="flex items-center gap-4">
+          <AppMark name={app.name} iconUrl={app.iconUrl} />
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink break-words sm:text-4xl">{app.name}</h1>
         </div>
       </div>
 
-      <section aria-labelledby="set-here" className="card flex flex-col gap-5 p-6">
-        <h2 id="set-here" className="text-lg font-bold">
-          {t("setHere")}
-        </h2>
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[1_1_28rem] flex-col gap-6">
+          <section aria-labelledby="on-apps-page" className="card flex flex-col gap-5 p-6">
+            <h2 id="on-apps-page" className="text-lg font-bold">
+              {t("onAppsPage")}
+            </h2>
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold">{t("showLabel")}</p>
-            <p className="text-sm text-ink-muted">
-              {app.hidden ? t("hiddenNote") : app.launchUrl ? t("shownNote") : t("noLinkNote")}
-            </p>
-          </div>
-          <ShownSwitch app={app} t={tApps} />
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-semibold">{t("showLabel")}</p>
+                <p
+                  className={`text-sm ${
+                    state === "stateListed" ? "text-on-ok" : state === "stateNoLink" ? "text-on-tip" : "text-ink-muted"
+                  }`}
+                >
+                  {t(state)}
+                </p>
+              </div>
+              <ShownSwitch app={app} t={tApps} />
+            </div>
+
+            <div className="flex flex-col gap-2.5 border-t border-line pt-5">
+              <label htmlFor="category" className="font-semibold">
+                {t("categoryLabel")}
+              </label>
+              <p id="category-hint" className="text-sm text-ink-muted">
+                {t("categoryHint")}
+              </p>
+              {categories.length > 0 ? (
+                // One click files it under a heading already in use, so
+                // "Files" doesn't become "files" on the next app. Each pick is
+                // its own form, so it works before (or without) JavaScript.
+                <div role="group" aria-label={t("categoryPicks")} className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <form key={category} action={setAppCategoryAction.bind(null, app.id)}>
+                      <input type="hidden" name="category" value={category} />
+                      <button
+                        type="submit"
+                        aria-pressed={category === app.category}
+                        className="chip cursor-pointer aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-ground"
+                      >
+                        {category}
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              ) : null}
+              <form action={setAppCategoryAction.bind(null, app.id)} className="flex flex-wrap gap-2">
+                <input
+                  id="category"
+                  name="category"
+                  defaultValue={app.category ?? ""}
+                  list="category-suggestions"
+                  maxLength={MAX_CATEGORY_LENGTH}
+                  placeholder={t("categoryPlaceholder")}
+                  aria-describedby="category-hint"
+                  className="field max-w-xs"
+                />
+                <button type="submit" className="btn btn-primary">
+                  {t("save")}
+                </button>
+                <datalist id="category-suggestions">
+                  {categories.map((category) => (
+                    <option key={category} value={category} />
+                  ))}
+                </datalist>
+              </form>
+            </div>
+          </section>
+
+          <section aria-labelledby="in-pocketid" className="card flex flex-col px-6 pt-4 pb-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
+              <h2 id="in-pocketid" className="text-lg font-bold">
+                {t("inPocketId")}
+              </h2>
+              {pocketIdUrl ? (
+                <a href={pocketIdUrl} className="btn btn-secondary">
+                  {t("openInPocketId")}
+                </a>
+              ) : null}
+            </div>
+            <ul className="divide-y divide-line">
+              <Check ok={Boolean(description)} label={t("whatFor")}>
+                {description ? t("quoted", { text: description }) : t("missingDescription")}
+              </Check>
+              <Check ok={Boolean(app.launchUrl)} label={t("whereOpens")}>
+                {app.launchUrl ? <span className="break-all">{app.launchUrl}</span> : t("missingLink")}
+              </Check>
+              <Check ok label={t("whoCanUse")}>
+                <WhoCanUse app={app} t={tApps} />
+              </Check>
+            </ul>
+          </section>
         </div>
 
-        <form
-          action={setAppCategoryAction.bind(null, app.id)}
-          className="flex flex-col gap-2 border-t border-line pt-5"
-        >
-          <label htmlFor="category" className="font-semibold">
-            {t("categoryLabel")}
-          </label>
-          <p id="category-hint" className="text-sm text-ink-muted">
-            {t("categoryHint")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <input
-              id="category"
-              name="category"
-              defaultValue={app.category ?? ""}
-              list="category-suggestions"
-              maxLength={MAX_CATEGORY_LENGTH}
-              placeholder={t("categoryPlaceholder")}
-              aria-describedby="category-hint"
-              className="field max-w-xs"
-            />
-            <button type="submit" className="btn btn-primary">
-              {t("save")}
-            </button>
-          </div>
-          {/* Offered as suggestions, so "Files" doesn't become "files" on
-              the next app. */}
-          <datalist id="category-suggestions">
-            {categories.map((category) => (
-              <option key={category} value={category} />
-            ))}
-          </datalist>
-        </form>
-      </section>
-
-      <section aria-labelledby="from-pocketid" className="card flex flex-col gap-5 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="from-pocketid" className="text-lg font-bold">
-            {t("fromPocketId")}
+        {/* The card as the Apps page draws it, faded while nobody sees it. */}
+        <aside aria-labelledby="preview" className="flex flex-[0_1_21rem] flex-col gap-3 max-lg:basis-full lg:sticky lg:top-6">
+          <h2 id="preview" className="text-sm font-bold tracking-wide text-ink-muted uppercase">
+            {t("preview")}
           </h2>
-          {pocketIdUrl ? (
-            <a href={pocketIdUrl} className="btn btn-secondary">
-              {t("changeInPocketId")}
-            </a>
-          ) : null}
-        </div>
-
-        <dl className="grid gap-4 sm:grid-cols-[10rem_1fr]">
-          <dt className="text-sm font-semibold text-ink-muted">{t("whatFor")}</dt>
-          <dd>
-            {app.description ? (
-              app.description
-            ) : (
-              <p className="rounded-2xl border border-tip-line bg-tip px-4 py-3 text-sm text-on-tip">
-                {t("noDescriptionTip")}
-              </p>
-            )}
-          </dd>
-
-          <dt className="text-sm font-semibold text-ink-muted">{t("opensAt")}</dt>
-          <dd>
-            {app.launchUrl ? (
-              <span className="break-all">{app.launchUrl}</span>
-            ) : (
-              <p className="rounded-2xl border border-tip-line bg-tip px-4 py-3 text-sm text-on-tip">
-                {t("noLinkTip")}
-              </p>
-            )}
-          </dd>
-
-          <dt className="text-sm font-semibold text-ink-muted">{t("whoCanUse")}</dt>
-          <dd>
-            <WhoCanUse app={app} t={tApps} />
-          </dd>
-        </dl>
-      </section>
+          <div className={`card flex flex-col gap-4 p-6 ${listed ? "" : "opacity-50"}`}>
+            <AppMark name={app.name} iconUrl={app.iconUrl} />
+            <div className="flex flex-col gap-1">
+              <p className="text-xl leading-tight font-extrabold tracking-tight">{description || app.name}</p>
+              {description ? <p className="text-sm font-semibold text-ink-muted">{app.name}</p> : null}
+            </div>
+          </div>
+          <p className="text-sm text-ink-muted">
+            {listed
+              ? t("previewUnder", { category: app.category ?? tApps("otherCategory") })
+              : t("previewOff")}
+          </p>
+        </aside>
+      </div>
     </main>
+  );
+}
+
+// One line of what PocketID holds: a check when it's there, an exclamation
+// mark when it's missing. The words say which; the mark only backs them.
+function Check({ ok, label, children }: { ok: boolean; label: string; children: React.ReactNode }) {
+  return (
+    <li className="grid grid-cols-[1.75rem_1fr] gap-x-3 gap-y-1 py-4">
+      <span
+        aria-hidden="true"
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-[15px] font-extrabold ${
+          ok ? "bg-ok text-on-ok" : "bg-tip text-on-tip"
+        }`}
+      >
+        {ok ? "✓" : "!"}
+      </span>
+      <p className="self-center font-semibold">{label}</p>
+      <div className={`col-start-2 text-sm ${ok ? "text-ink-muted" : "text-on-tip"}`}>{children}</div>
+    </li>
   );
 }
