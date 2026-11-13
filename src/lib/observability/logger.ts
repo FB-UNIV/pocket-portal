@@ -75,8 +75,22 @@ function destination(stream?: Stream): Stream {
   };
 }
 
-// Top level and one level down (`config.apiKey`, `headers.authorization`).
-const SECRET_KEYS = ["apiKey", "clientSecret", "password", "pass", "secret", "token"];
+// Top level and up to two levels down (`config.apiKey`,
+// `metadata.account.access_token`, `headers.authorization`).
+const SECRET_KEYS = [
+  "apiKey",
+  "clientSecret",
+  "password",
+  "pass",
+  "secret",
+  "token",
+  // OAuth/OIDC, as Auth.js and token endpoints name them.
+  "access_token",
+  "refresh_token",
+  "id_token",
+  "code_verifier",
+  "client_secret",
+];
 const HEADER_KEYS = ["authorization", "cookie", '"x-api-key"', '"set-cookie"'];
 const REDACTED_PATHS = [
   ...SECRET_KEYS,

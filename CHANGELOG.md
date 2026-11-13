@@ -8,6 +8,18 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Security
+- **Sign-in tokens no longer reach the logs at `LOG_LEVEL=debug`.** Each
+  sign-in logged an "Auth.js: authorization result" line holding the
+  user's access, ID and refresh tokens, email and groups: Auth.js passes
+  them to a custom logger's debug even with its own debug option off, and
+  the portal forwarded them. It now logs only the message, and redaction
+  also covers OAuth token fields (`access_token`, `refresh_token`,
+  `id_token`, `code_verifier`, `client_secret`). If you ran with
+  `LOG_LEVEL=debug`, delete those logs, and have affected users sign out
+  and revoke the portal's sessions in PocketID: the refresh tokens in them
+  outlive the access tokens.
+
 ## [1.7.0] - 2026-11-13
 
 ### Added
