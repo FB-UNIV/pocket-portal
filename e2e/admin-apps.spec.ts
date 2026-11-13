@@ -59,7 +59,9 @@ test("an admin posts news that its audience reads on the dashboard", async ({ br
     await userPage.goto("/");
     const article = userPage.getByRole("region", { name: "News" }).getByRole("article", { name: title });
     await expect(article.locator("strong")).toHaveText("10pm");
-    // Shown as text, never run.
+    // Shown as text, never run. (The probe is this test's own string, not
+    // data reaching a page: Semgrep's script-tag rule can't tell.)
+    // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag
     await expect(article.getByText("<script>alert(1)</script>")).toBeVisible();
   } finally {
     await adminPage.getByRole("button", { name: "Delete this post" }).click();
