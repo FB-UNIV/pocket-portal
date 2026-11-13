@@ -446,7 +446,15 @@ describe("config", () => {
     it("marks the secrets, which a config file must never hold", () => {
       const secrets = CONFIG_VARS.filter((v) => v.secret).map((v) => v.name);
       expect(secrets.sort()).toEqual(
-        ["AUTH_SECRET", "DATABASE_URL", "METRICS_TOKEN", "POCKETID_API_KEY", "POCKETID_OIDC_CLIENT_SECRET", "SMTP_PASSWORD"].sort(),
+        [
+          "AUTH_SECRET",
+          "DATABASE_URL",
+          "JELLYFIN_API_KEY",
+          "METRICS_TOKEN",
+          "POCKETID_API_KEY",
+          "POCKETID_OIDC_CLIENT_SECRET",
+          "SMTP_PASSWORD",
+        ].sort(),
       );
     });
 

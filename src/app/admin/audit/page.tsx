@@ -53,6 +53,8 @@ const EVENTS = {
   "news.created": { message: "evNewsCreated", tone: "muted", mark: "+" },
   "news.updated": { message: "evNewsUpdated", tone: "muted", mark: "·" },
   "news.deleted": { message: "evNewsDeleted", tone: "muted", mark: "–" },
+  // Integrations (#23): settings changed (never a key; that's not here).
+  "integration.updated": { message: "evIntegrationUpdated", tone: "muted", mark: "·" },
 } as const;
 
 const TONES = {

@@ -50,6 +50,7 @@ services:
       LOG_REQUESTS: ${LOG_REQUESTS:-}
       # /api/metrics is served only to this bearer token; unset = off.
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
       # Access-request emails; unset SMTP_HOST = no email.
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}

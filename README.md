@@ -55,6 +55,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `POCKET_PORTAL_TAG` | yes | | Image tag to run, a release such as `vX.Y.Z` |
 | `AUTH_URL` | recommended | Host header | Public origin, pins OIDC redirects |
 | `METRICS_TOKEN` | no | metrics off | Bearer token that unlocks `/api/metrics` |
+| `JELLYFIN_API_KEY` | no | Jellyfin widget off | Server-wide API key (Jellyfin: Dashboard → API Keys) for the "New on Jellyfin" dashboard widget; address and linked app are set on `/admin/integrations`. `JELLYFIN_API_KEY_FILE` for a secret file |
 | `SMTP_HOST` | no | email off | SMTP server for access-request emails |
 | `SMTP_FROM` | with `SMTP_HOST` | | Sender address |
 | `NOTIFY_ADMIN_EMAILS` | no | PocketID's admins | Comma-separated addresses that hear about new access requests, instead of every enabled PocketID admin with an address (read from PocketID on each request) |
@@ -124,12 +125,14 @@ Before going live:
 | `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
 | `/admin/news` | admins | Post news to everyone or to chosen groups; pin it, or show it until a date |
+| `/admin/integrations` | admins | Point the portal at Jellyfin, choose who sees it, test the connection |
 | `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
 | `/admin/audit` | admins | History: every request and decision, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
 | `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
 | `/api/news/images/[id]` | signed in, and the post is for them | A news post's picture (`nosniff`, sandboxed, private cache) |
+| `/api/integrations/jellyfin/posters/[itemId]` | signed in, and can open the app Jellyfin is linked to | Jellyfin posters, relayed (`nosniff`, sandboxed, private cache) |
 
 ## Documentation
 

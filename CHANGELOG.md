@@ -68,6 +68,13 @@ project-specific policy on when to bump what.
   SVG files are refused, whatever they're named. Pictures are only shown
   to people who can read the post, and go with it when it's deleted. Adds
   the `news_images` table; server actions now accept bodies up to 6 MB.
+- **New on Jellyfin, on the dashboard.** With `JELLYFIN_API_KEY` set and
+  Jellyfin's address saved on the new **Integrations** admin tab (with a
+  **Test the connection** button), people who can open Jellyfin see its
+  newest films and episodes on their dashboard, each opening in Jellyfin.
+  Everything is fetched by the portal, posters included, so the key never
+  reaches a browser; if Jellyfin is down, its card says so and the rest of
+  the dashboard carries on. Adds the `integrations` table (ADR-0013).
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

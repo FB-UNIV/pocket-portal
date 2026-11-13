@@ -7,6 +7,7 @@ import { getLocale, getTranslations } from "@/i18n/server";
 import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
 import { WelcomeChecklist } from "./_dashboard/welcome";
 import { News } from "./_dashboard/news";
+import { MediaWidget } from "./_dashboard/media";
 import { completeTourAction } from "./_dashboard/actions";
 import { GuidedTour } from "./_components/guided-tour";
 import { getDb } from "@/lib/db/client";
@@ -112,6 +113,11 @@ export default async function Home({
           {/* Nothing while it loads, and nothing without news (#22). */}
           <Suspense fallback={null}>
             <News userGroups={session.user.groups} />
+          </Suspense>
+          {/* Integration widgets (#23): nothing while loading, nothing when
+              off or not theirs, an "isn't answering" card when it's down. */}
+          <Suspense fallback={null}>
+            <MediaWidget userGroups={session.user.groups} />
           </Suspense>
         </main>
       </div>

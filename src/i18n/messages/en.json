@@ -44,6 +44,12 @@
     "pinned": "Pinned",
     "none": "No news right now."
   },
+  "Media": {
+    "heading": "New on {app}",
+    "unavailable": "{app} isn’t answering right now.",
+    "unavailableDetail": "It’s usually brief, and the rest of the page still works.",
+    "tryAgain": "Try again"
+  },
   "Welcome": {
     "heading": "Getting started",
     "progress": "{done} of {total} done",
@@ -129,7 +135,8 @@
     "catalog": "Apps",
     "history": "History",
     "waiting": ", {count} waiting",
-    "news": "News"
+    "news": "News",
+    "integrations": "Integrations"
   },
   "AdminNews": {
     "title": "News",
@@ -173,6 +180,25 @@
     "problemNoPicture": "Choose a picture to upload.",
     "problemTooBig": "That picture is over 5 MB.",
     "problemNotAnImage": "That isn’t a PNG, JPEG, WebP or GIF picture."
+  },
+  "AdminIntegrations": {
+    "title": "Integrations",
+    "jellyfinHint": "Shows what’s new on Jellyfin on the dashboard of people who can open it.",
+    "keySet": "API key: set (JELLYFIN_API_KEY).",
+    "keyMissing": "API key: not set. Create one in Jellyfin (Dashboard → API Keys) and give it to the portal as JELLYFIN_API_KEY (or JELLYFIN_API_KEY_FILE); until then nothing shows.",
+    "baseUrlLabel": "Jellyfin’s address",
+    "linkedLabel": "Shown to people who can open",
+    "linkedHint": "Usually Jellyfin’s own app in PocketID.",
+    "enabledLabel": "Show it on the dashboard",
+    "save": "Save",
+    "saved": "Saved.",
+    "test": "Test the connection",
+    "testOk": "Connected: {detail}.",
+    "testFail": "Couldn’t connect: {detail}.",
+    "testNoKey": "no API key is set",
+    "testNotSetUp": "save Jellyfin’s address first",
+    "problemBadUrl": "Give an address that starts with https:// or http://, with no password in it.",
+    "problemUnknownApp": "That app isn’t in PocketID any more."
   },
   "AdminApps": {
     "title": "App catalog",
@@ -290,7 +316,8 @@
     "somePost": "a post",
     "evNewsCreated": "{actor} <muted>posted</muted> {title}",
     "evNewsUpdated": "{actor} <muted>edited</muted> {title}",
-    "evNewsDeleted": "{actor} <muted>deleted</muted> {title}"
+    "evNewsDeleted": "{actor} <muted>deleted</muted> {title}",
+    "evIntegrationUpdated": "{actor} <muted>changed an integration’s settings</muted>"
   },
   "SecretsBanner": {
     "label": "Security warning",

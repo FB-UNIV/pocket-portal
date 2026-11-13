@@ -127,6 +127,13 @@
       "when": 1794580378299,
       "tag": "0017_add-news-images",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794581176494,
+      "tag": "0018_add-integrations",
+      "breakpoints": true
     }
   ]
 }
