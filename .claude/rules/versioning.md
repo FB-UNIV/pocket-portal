@@ -47,22 +47,27 @@ A PR that changes the version:
 2. Adds an entry under `## [Unreleased]` in `CHANGELOG.md` (format:
    [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)), or renames
    `[Unreleased]` to the new version + date if the PR is itself the release.
-3. After merge, **wait for `docker-build.yml`'s `build` job to finish on
-   `main`** (it pushes and scans the image for this commit), then tag the
-   merge commit: `git tag vX.Y.Z && git push origin vX.Y.Z`. Pushing that
-   tag triggers `docker-build.yml`'s `promote-release` job, which
-   independently re-scans that exact commit's image (`dev-<sha>`) and, only
-   if it still passes, tags it `vX.Y.Z`, `vX.Y`, `vX` and `latest` on
-   `ghcr.io` and signs it (a pre-release such as `vX.Y.Z-rc.1` gets only
-   its own tag) — no rebuild, but it does
-   re-scan (against the current vulnerability database, not a stale
-   build-time snapshot) rather than trusting the `build` job's earlier
-   result, since that job pushes the commit's image *before* scanning it
-   and this job has no way to know whether that scan passed. If you tag
-   before the `build` job finishes, `promote-release` fails loudly
-   (nothing to retag yet); **re-run the failed `promote-release` job**
-   once `build` is green — pushing the same tag again does *not*
-   re-trigger anything, since nothing about the ref changed.
+3. After merge, tag the merge commit:
+   `git tag vX.Y.Z && git push origin vX.Y.Z`. You don't need to wait for
+   the image build: the tag's run waits in that commit's concurrency group
+   until `docker-build.yml`'s `build` job for it is done. `build` pushes the
+   commit's image by digest and names it `dev-<sha>` only once it's been
+   scanned and signed. The tag then triggers `promote-release`, which,
+   before touching the registry, refuses the tag unless:
+   - the commit is on `main`,
+   - `package.json` there says this version, and
+   - the image carries the signature `main`'s own build of that commit made.
+
+   It then re-scans that exact image against today's vulnerability
+   database (the build's scan may be weeks old), and only if it still
+   passes tags it `vX.Y.Z`, `vX.Y`, `vX` and `latest` on `ghcr.io` and
+   signs it (a pre-release such as `vX.Y.Z-rc.1` gets only its own tag).
+   No rebuild. If the commit's build failed, there's no `dev-<sha>` and
+   `promote-release` fails loudly; fix `main`, then **re-run the failed
+   `promote-release` job**. Pushing the same tag again does nothing,
+   and a `v*` tag can't be moved or deleted once pushed (the "Release
+   tags are immutable" ruleset): a wrong release is fixed by the next
+   version, never by re-pointing a tag.
 
    `vX.Y.Z` is deliberately *not* derived from `package.json` on every
    push to `main` — it only ever moves in direct response to a git tag

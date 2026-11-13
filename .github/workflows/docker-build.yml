@@ -6,12 +6,17 @@ on:
     tags: ["v*"]
   pull_request:
 
+# Every job states what it needs; nothing gets the default token.
+permissions: {}
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  # Only a PR's superseded runs are cancelled. On main every commit needs its
-  # own scanned `dev-<sha>` image (promote-release releases exactly that
-  # one), so builds queue: cancelling left commits #25, #27 and #44 without
-  # an image, and a tag on such a commit has nothing to promote.
+  # A PR: one group, and a newer push cancels the older run. main and tags:
+  # one group per commit. GitHub keeps only one *waiting* run per group and
+  # cancels the one a newer run replaces, so a single group for main
+  # silently dropped queued builds (11 of 14 merges on Nov 13 got no image).
+  # Per commit, no push can drop another commit's build, and a release
+  # tag's run waits in its commit's group until that commit's build is done.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -48,9 +53,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Every merge to main: build for amd64 and arm64, scan, sign, and tag
-  # `dev-<sha>` plus a moving `dev`. Never `latest` or a version: those
-  # come only from promote-release below, on a release tag.
+  # Every merge to main: build for amd64 and arm64, push by digest, scan,
+  # sign, and only then tag `dev-<sha>` (and `dev` if it's still main's
+  # newest commit). Never `latest` or a version: those come only from
+  # promote-release below, on a release tag.
   # The npm-level SBOM (CycloneDX) for this commit, attested onto its image
   # by `build` below. A job of its own, holding no write permission: it
   # installs the dependency tree (`--ignore-scripts`, so no package code
@@ -119,11 +125,8 @@ jobs:
         id: image
         run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      # dev-<full sha> first (priority 300), so tags[0] below is the
-      # per-commit tag, pushed before the scan, and never the floating
-      # `dev`. The full sha: a short one can collide across history, and
-      # promote-release looks the image up by it. latest=false: `latest`
-      # means the newest stable release, never a main build.
+      # Only its OCI labels are used (source, revision, version...): the
+      # tags are set by hand once the image has been scanned and signed.
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
@@ -134,17 +137,18 @@ jobs:
             type=sha,prefix=dev-,format=long,priority=300
             type=raw,value=dev
 
-      # One build, pushed once by its per-commit tag, and scanned by its
-      # registry digest: a separate `load: true` build for scanning can't
-      # carry attestations, so its digest never matches what's published.
-      - name: Build and push (per-commit tag only, not yet `dev`)
+      # One build, pushed by digest only, with no tag: nothing pullable by
+      # name exists until the scan and signature below pass (a failure
+      # leaves an untagged digest, never an unscanned `dev-<sha>`). Scanned
+      # by that registry digest: a separate `load: true` build can't carry
+      # attestations, so its digest never matches what's published.
+      - name: Build and push by digest (no tag until scanned)
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
           sbom: true
           provenance: true
@@ -194,18 +198,28 @@ jobs:
           sbom-path: sbom.cdx.json
           push-to-registry: true
 
-      # Only once scanned and signed: move `dev` to that exact digest.
-      # `imagetools create` only writes a manifest, no rebuild.
-      - name: Promote the scanned digest to dev
+      # Only once scanned, signed and attested: name that exact digest.
+      # `dev-<full sha>` always (a short sha can collide, and promote-release
+      # looks the image up by it). `dev` only if this commit is still main's
+      # newest: builds of different commits run side by side now, and an
+      # older one finishing last must not drag `dev` backwards; the newer
+      # commit's own build moves it. `imagetools create` only writes a
+      # manifest, no rebuild.
+      - name: Tag the scanned digest (dev-<sha>, and dev if newest)
         env:
-          TAGS: ${{ steps.meta.outputs.tags }}
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ steps.image.outputs.name }}
           SOURCE: ${{ steps.image.outputs.name }}@${{ steps.build.outputs.digest }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
-          tag_args=()
-          while IFS= read -r tag; do
-            [ -n "$tag" ] && tag_args+=(--tag "$tag")
-          done <<< "$TAGS"
-          docker buildx imagetools create "${tag_args[@]}" "$SOURCE"
+          tags=(--tag "$IMAGE:dev-$COMMIT_SHA")
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" = "$COMMIT_SHA" ]; then
+            tags+=(--tag "$IMAGE:dev")
+          else
+            echo "::notice::main has moved on to $head; that commit's build moves dev."
+          fi
+          docker buildx imagetools create "${tags[@]}" "$SOURCE"
 
   # A release: `git tag vX.Y.Z && git push origin vX.Y.Z` (see
   # .claude/rules/versioning.md), never an ordinary push to main. No
@@ -278,9 +292,10 @@ jobs:
         run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       # dev-<sha> is a tag, and a re-run of `build` could move it mid-job:
-      # resolve it to one digest here, and scan, tag and sign only that.
-      # Tagging before `build` finishes fails here loudly (nothing to find);
-      # re-run this job then.
+      # resolve it to one digest here, and check, scan, tag and sign only
+      # that. This run waits in its commit's concurrency group while that
+      # commit's build runs; if the build failed or never ran, there's
+      # nothing to find and this fails loudly.
       - name: Resolve the commit's image to a digest
         id: src
         env:
@@ -291,9 +306,38 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "ref=$IMAGE@$digest" >> "$GITHUB_OUTPUT"
 
-      # The build job pushes dev-<sha> *before* scanning it, and this job
-      # can't know whether that scan passed: without its own scan, a tag on
-      # a scan-failed commit would publish it.
+      # A tag is a claim, so check it before acting on it: the commit must
+      # be on main, its package.json must be this version, and the image
+      # must carry the signature main's own build of *that commit* made
+      # (this workflow, on refs/heads/main, triggered by a push, at that
+      # sha). Anything else pushed under `dev-<sha>` is refused.
+      - name: Check the tag names a release of main, built by main's pipeline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          REF: ${{ steps.src.outputs.ref }}
+        run: |
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$COMMIT_SHA...main" --jq .status)
+          if [ "$status" != identical ] && [ "$status" != ahead ]; then
+            echo "::error::$TAG_NAME is on $COMMIT_SHA, which isn't on main ($status); not releasing it."
+            exit 1
+          fi
+          version=$(gh api "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$COMMIT_SHA" --jq .content | base64 -d | jq -r .version)
+          if [ "v$version" != "$TAG_NAME" ]; then
+            echo "::error::package.json at $COMMIT_SHA says $version, not ${TAG_NAME#v}; not releasing it."
+            exit 1
+          fi
+          cosign verify "$REF" \
+            --certificate-identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/docker-build.yml@refs/heads/main" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-github-workflow-repository "$GITHUB_REPOSITORY" \
+            --certificate-github-workflow-ref refs/heads/main \
+            --certificate-github-workflow-trigger push \
+            --certificate-github-workflow-sha "$COMMIT_SHA" > /dev/null
+
+      # Re-scanned against today's vulnerability database: the build's own
+      # scan may be weeks old by release time.
       - name: Scan the commit's image (amd64)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:

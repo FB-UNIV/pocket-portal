@@ -85,10 +85,13 @@ A newer push to the same PR cancels the PR's runs still in progress.
 
 ## Main: the image pipeline
 
-Each merge to `main` builds one multi-arch image and only labels it `dev`
-once it's been scanned, signed and given its SBOM. `main` builds **queue**
-rather than cancel each other: every commit needs its own image, since a
-release promotes exactly that one.
+Each merge to `main` builds one multi-arch image, pushed by digest with no
+tag, and names it `dev-<sha>` only once it's been scanned, signed and
+given its SBOM. Every commit on `main` gets its own concurrency group, so
+no later push can cancel or drop its build: every commit needs its own
+image, since a release promotes exactly that one. (With one group for all
+of `main`, GitHub replaced queued runs, and 11 of 14 merges on Nov 13 got
+no image.)
 
 ```mermaid
 flowchart TB
@@ -102,11 +105,11 @@ flowchart TB
 
   subgraph build["build"]
     B1["Build linux/amd64 + linux/arm64<br/>BuildKit SBOM (OS packages) + provenance"]
-    B2["Push as :dev-&lt;full sha&gt; only"]
+    B2["Push by digest, no tag"]
     B3["Trivy scan amd64 and arm64<br/>fails on CRITICAL / HIGH"]
     B4["cosign sign the digest<br/>(keyless, GitHub OIDC)"]
     B5["actions/attest-sbom<br/>npm SBOM onto the digest"]
-    B6["Move :dev to that digest"]
+    B6["Tag :dev-&lt;full sha&gt;<br/>and :dev if still main's newest commit"]
     B1 --> B2 --> B3 --> B4 --> B5 --> B6
   end
 
@@ -121,9 +124,12 @@ permissions (push to GHCR, OIDC for signing, attestations) but installs
 nothing from npm itself.
 
 The image is pushed **before** it's scanned (so the scan reads the exact
-registry digest), which is why only the per-commit tag exists until the
-end: `dev` moves only if every step passed. A failure anywhere leaves
-`dev` on the previous good build.
+registry digest), but by digest only: no tag points at it until every
+step has passed. A failure anywhere leaves an untagged digest, never an
+unscanned `dev-<sha>`, and `dev` on the previous good build. Since builds
+of different commits can now run side by side, `dev` moves only if the
+commit is still `main`'s newest when its build finishes; otherwise the
+newer commit's build moves it.
 
 ## Release
 
@@ -141,13 +147,14 @@ sequenceDiagram
   participant REG as ghcr.io
   participant RS as release-sbom.yml
 
-  M->>GH: wait for main's image build on the release commit
   M->>GH: git push origin vX.Y.Z
-  GH->>PR: push of tag v*
+  GH->>PR: push of tag v* (waits for that commit's build)
   PR->>PR: tag is vX.Y.Z or vX.Y.Z-pre?
   PR->>PR: which of latest / vX / vX.Y move?<br/>(only for the newest stable in that range)
   PR->>REG: resolve :dev-<sha> to its digest
-  Note over PR,REG: missing = the build hadn't finished:<br/>re-run this job once it has
+  Note over PR,REG: missing = that commit's build failed:<br/>fix main, then re-run this job
+  PR->>GH: commit on main? package.json = this version?
+  PR->>REG: cosign verify: signed by main's build of that commit
   PR->>REG: Trivy re-scan amd64 + arm64,<br/>against today's vulnerability database
   PR->>REG: tag the same digest vX.Y.Z (+ floating tags)
   PR->>REG: check the tag landed on the scanned digest, then cosign sign
@@ -158,7 +165,9 @@ sequenceDiagram
 ```
 
 A pre-release (`v1.2.0-rc.1`) gets only its own tag. Version tags never
-move once created: `vX.Y.Z` only ever comes from its own git tag.
+move once created: `vX.Y.Z` only ever comes from its own git tag, and the
+"Release tags are immutable" ruleset stops a `v*` git tag from being moved
+or deleted.
 
 ## Nightly
 
