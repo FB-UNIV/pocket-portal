@@ -81,3 +81,25 @@ describe("safeHref", () => {
     expect(safeHref(href)).toBeNull();
   });
 });
+
+// Pictures in a post: only the portal's own, uploaded ones (#22). Anything
+// else would load from another site (a tracking pixel), so it isn't an
+// image; its words are kept.
+describe("renderMarkdown pictures", () => {
+  const ID = "0b1f6a2e-1c1e-4b0a-9d3c-2f6e8c9a1b2c";
+
+  it("shows a picture uploaded to the post", () => {
+    expect(html(`![The new dashboard](/api/news/images/${ID})`)).toBe(
+      `<p><img src="/api/news/images/${ID}" alt="The new dashboard" loading="lazy"/></p>`,
+    );
+  });
+
+  it.each([
+    "![x](https://tracker.example.test/pixel.gif)",
+    "![x](/api/news/images/not-an-id)",
+    "![x](javascript:alert(1))",
+    "![x](/api/news/images/0b1f6a2e-1c1e-4b0a-9d3c-2f6e8c9a1b2c/../../../x)",
+  ])("never shows another picture: %s", (md) => {
+    expect(html(md)).not.toContain("<img");
+  });
+});
