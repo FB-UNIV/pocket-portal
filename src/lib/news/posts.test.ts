@@ -11,6 +11,7 @@ const post = (overrides: Partial<NewsPost> = {}): NewsPost => ({
   pinned: false,
   expiresAt: null,
   audienceGroups: [],
+  coverImageId: null,
   createdAt: new Date("2026-11-13T09:00:00Z"),
   updatedAt: new Date("2026-11-13T09:00:00Z"),
   ...overrides,

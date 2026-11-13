@@ -7,7 +7,8 @@ import type { ReactNode } from "react";
 //
 //   paragraphs (blank line between), line breaks, "# heading",
 //   "- item" / "1. item" lists, **bold**, *italic* or _italic_, `code`,
-//   [text](https://… or /path or mailto:…)
+//   [text](https://… or /path or mailto:…), ![words](a picture uploaded
+//   to a post: /api/news/images/<id>)
 //
 // Anything else is shown as typed.
 
@@ -29,10 +30,13 @@ export function safeHref(raw: string): string | null {
   return null;
 }
 
+const OWN_PICTURE = /^\/api\/news\/images\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // The earliest inline construct in `text`, as [match, kind]; code first so
 // its contents are never read as anything else.
-const INLINE: [RegExp, "code" | "link" | "strong" | "em"][] = [
+const INLINE: [RegExp, "code" | "image" | "link" | "strong" | "em"][] = [
   [/`([^`\n]+)`/, "code"],
+  [/!\[([^\]\n]*)\]\(([^)\n]*)\)/, "image"],
   [/\[([^\]\n]+)\]\(([^)\n]*)\)/, "link"],
   [/\*\*([^*\n]+?)\*\*/, "strong"],
   [/(?<![\w*])\*(?!\s)([^*\n]+?)\*(?![\w*])/, "em"],
@@ -57,6 +61,13 @@ function inline(text: string, key = "i"): ReactNode[] {
     if (match.index > 0) out.push(rest.slice(0, match.index));
     const k = `${key}-${n++}`;
     if (kind === "code") out.push(<code key={k}>{match[1]}</code>);
+    else if (kind === "image") {
+      // Only a picture uploaded to a post (#22): anything else would load
+      // from another site, a tracking pixel at best. Its words stay.
+      const src = match[2].trim();
+      if (OWN_PICTURE.test(src)) out.push(<img key={k} src={src} alt={match[1]} loading="lazy" />);
+      else if (match[1]) out.push(match[1]);
+    }
     else if (kind === "strong") out.push(<strong key={k}>{inline(match[1], k)}</strong>);
     else if (kind === "em") out.push(<em key={k}>{inline(match[1], k)}</em>);
     else {

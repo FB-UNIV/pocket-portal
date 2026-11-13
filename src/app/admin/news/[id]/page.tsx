@@ -5,9 +5,10 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig, listPocketIdGroups } from "@/lib/pocketid/client";
 import { getPost } from "@/lib/news/store";
+import { listImages } from "@/lib/news/image-store";
 import { getLocale, getTranslations } from "@/i18n/server";
 import { NewsArticle } from "@/app/_dashboard/news";
-import { deletePostAction, updatePostAction } from "../actions";
+import { deleteImageAction, deletePostAction, setCoverAction, updatePostAction, uploadImageAction } from "../actions";
 import { PostForm, problemMessage } from "../post-form";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,8 +25,9 @@ export default async function EditPostPage({ params, searchParams }: PageProps<"
   // A malformed id would reach Postgres as a bad uuid.
   if (!UUID.test(id)) notFound();
 
-  const [post, groups, t, tNews, locale, query] = await Promise.all([
+  const [post, images, groups, t, tNews, locale, query] = await Promise.all([
     getPost(getDb(), id),
+    listImages(getDb(), id),
     listPocketIdGroups(getPocketIdConfig()),
     getTranslations("AdminNews"),
     getTranslations("News"),
@@ -54,6 +56,60 @@ export default async function EditPostPage({ params, searchParams }: PageProps<"
             problem={problemMessage(query?.problem, t)}
             t={t}
           />
+          <section aria-labelledby="pictures-h" className="card flex flex-col gap-4 p-6">
+            <div className="flex flex-col gap-1">
+              <h2 id="pictures-h" className="text-lg font-bold">
+                {t("picturesHeading")}
+              </h2>
+              <p className="text-sm text-ink-muted">{t("picturesHint")}</p>
+            </div>
+            {query?.picture === "added" ? (
+              <p role="status" className="badge badge-ok self-start">
+                {t("pictureAdded")}
+              </p>
+            ) : null}
+            <form action={uploadImageAction.bind(null, post.id)} className="flex flex-wrap items-end gap-2">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="picture" className="text-sm font-semibold">
+                  {t("pictureLabel")}
+                </label>
+                <input id="picture" name="picture" type="file" required accept="image/png,image/jpeg,image/webp,image/gif" />
+              </div>
+              <button type="submit" className="btn btn-secondary">
+                {t("upload")}
+              </button>
+            </form>
+            {images.length > 0 ? (
+              <ul className="flex flex-col divide-y divide-line">
+                {images.map((image, i) => {
+                  const src = `/api/news/images/${image.id}`;
+                  const cover = post.coverImageId === image.id;
+                  return (
+                    <li key={image.id} className="flex flex-wrap items-center gap-4 py-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- next/image is off (no sharp); see next.config.ts */}
+                      <img src={src} alt={t("pictureNumber", { n: images.length - i })} className="h-16 w-24 rounded-lg object-cover" />
+                      <div className="flex min-w-0 flex-[1_1_12rem] flex-col gap-1 text-sm">
+                        <span className="text-ink-muted">{t("pictureInPost")}</span>
+                        <code className="rounded bg-surface-muted px-1 break-all">{`![](${src})`}</code>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <form action={setCoverAction.bind(null, post.id, cover ? null : image.id)}>
+                          <button type="submit" className="btn btn-secondary">
+                            {cover ? t("removeCover") : t("useAsCover")}
+                          </button>
+                        </form>
+                        <form action={deleteImageAction.bind(null, post.id, image.id)}>
+                          <button type="submit" className="btn btn-quiet">
+                            {t("deletePicture")}
+                          </button>
+                        </form>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </section>
           <form action={deletePostAction.bind(null, post.id)}>
             <button type="submit" className="btn btn-secondary">
               {t("delete")}

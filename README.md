@@ -129,6 +129,7 @@ Before going live:
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
 | `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
+| `/api/news/images/[id]` | signed in, and the post is for them | A news post's picture (`nosniff`, sandboxed, private cache) |
 
 ## Documentation
 

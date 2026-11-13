@@ -12,6 +12,8 @@ export interface NewsPost {
   expiresAt: Date | null;
   // PocketID group names (as in the OIDC groups claim); empty: everyone.
   audienceGroups: string[];
+  // A picture of the post's own, shown above it (#22).
+  coverImageId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,7 +30,11 @@ export const MAX_TITLE_LENGTH = 120;
 export const MAX_BODY_LENGTH = 10_000;
 
 // Published, not expired, and for everyone or for one of their groups.
-export function isVisibleTo(post: NewsPost, userGroups: string[], now: Date): boolean {
+export function isVisibleTo(
+  post: Pick<NewsPost, "publishedAt" | "expiresAt" | "audienceGroups">,
+  userGroups: string[],
+  now: Date,
+): boolean {
   if (post.publishedAt > now) return false;
   if (post.expiresAt && post.expiresAt <= now) return false;
   return post.audienceGroups.length === 0 || post.audienceGroups.some((group) => userGroups.includes(group));

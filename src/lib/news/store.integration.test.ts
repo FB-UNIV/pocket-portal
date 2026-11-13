@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { createDb, type Db } from "@/lib/db/client";
 import { auditLog, newsPosts } from "@/lib/db/schema";
 import { createPost, deletePost, getPost, listAllPosts, listPostsFor, updatePost } from "./store";
+import { addImage, getImage, listImages, setCover } from "./image-store";
 
 // Requires a running test Postgres instance: npm run test-env:up.
 describe("news posts (integration)", () => {
@@ -85,5 +86,33 @@ describe("news posts (integration)", () => {
       .from(auditLog)
       .where(and(eq(auditLog.targetId, id), eq(auditLog.action, "news.created")));
     expect(audit.metadata).toMatchObject({ title: "Grafana upgrade" });
+  });
+
+  // Pictures (#22): kept with their post's visibility, and gone with it.
+  it("stores a post's pictures, sets one as its cover, and deletes them with the post", async () => {
+    const id = await create();
+    const imageId = await addImage(db, id, "image/png", Uint8Array.from([0x89, 0x50, 0x4e, 0x47]));
+
+    const image = await getImage(db, imageId);
+    expect(image?.contentType).toBe("image/png");
+    expect([...image!.bytes]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    expect(image?.post.audienceGroups).toEqual([group]);
+
+    await setCover(db, id, imageId);
+    expect((await getPost(db, id))?.coverImageId).toBe(imageId);
+
+    await deletePost(db, id, ADMIN);
+    expect(await getImage(db, imageId)).toBeNull();
+  });
+
+  it("won't use another post's picture as a cover", async () => {
+    const mine = await create();
+    const theirs = await create();
+    const theirPicture = await addImage(db, theirs, "image/png", Uint8Array.from([1]));
+
+    await setCover(db, mine, theirPicture);
+
+    expect((await getPost(db, mine))?.coverImageId).toBeNull();
+    expect((await listImages(db, theirs)).map((i) => i.id)).toEqual([theirPicture]);
   });
 });

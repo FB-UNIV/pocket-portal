@@ -62,6 +62,12 @@ project-specific policy on when to bump what.
   links), turned into the page on the server: nothing typed in a post can
   become a script, and links only go to web or mail addresses. Every change
   is in History. Adds the `news_posts` table.
+- **Pictures in news.** On a post's editor, upload PNG, JPEG, WebP or GIF
+  pictures (up to 5 MB) and use one as the post's cover, or put one in the
+  text. Where and with what a photo was taken is removed before it's kept.
+  SVG files are refused, whatever they're named. Pictures are only shown
+  to people who can read the post, and go with it when it's deleted. Adds
+  the `news_images` table; server actions now accept bodies up to 6 MB.
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 
