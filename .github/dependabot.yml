@@ -21,6 +21,25 @@ updates:
       # release accepts api 1.10.
       - dependency-name: "@opentelemetry/api"
         versions: [">=1.10.0"]
+      # The OpenTelemetry JS 0.300 line (instrumentation 0.301, sdk-logs 3.0)
+      # peers on api 1.10 (held back above), and @vercel/otel 2.3.0 peers on
+      # api-logs, sdk-logs and instrumentation ">=0.200.0 <0.300.0", so
+      # either makes `npm ci` fail with ERESOLVE (#43, #78). Drop these once
+      # an @vercel/otel release accepts 0.300.
+      - dependency-name: "@opentelemetry/instrumentation"
+        versions: [">=0.300.0"]
+      - dependency-name: "@opentelemetry/api-logs"
+        versions: [">=0.300.0"]
+      - dependency-name: "@opentelemetry/sdk-logs"
+        versions: [">=0.300.0"]
+      # Blocked upstream, tracked in #12 with the conditions to retry:
+      # eslint-config-next's react, import and jsx-a11y plugins still peer on
+      # eslint ^9, and typescript-eslint on typescript <6.1. Re-check there
+      # rather than closing a failing Dependabot PR every week.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: "/"
