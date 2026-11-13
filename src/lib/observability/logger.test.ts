@@ -119,6 +119,28 @@ describe("trace ids on log lines", () => {
   });
 });
 
+// Defence in depth (#4): nothing should log a credential, but if a config
+// or a headers object ever ends up in a log call, the secret doesn't.
+describe("redaction", () => {
+  it.each([
+    [{ apiKey: "pocketid-key" }, "apiKey"],
+    [{ config: { apiKey: "pocketid-key" } }, "config.apiKey"],
+    [{ headers: { "x-api-key": "pocketid-key" } }, "headers.x-api-key"],
+    [{ headers: { authorization: "Bearer pocketid-key" } }, "headers.authorization"],
+    [{ headers: { cookie: "authjs.session-token=pocketid-key" } }, "headers.cookie"],
+    [{ smtp: { auth: { pass: "pocketid-key" } } }, "smtp.auth.pass"],
+    [{ clientSecret: "pocketid-key" }, "clientSecret"],
+    [{ password: "pocketid-key" }, "password"],
+  ])("never writes %j", (fields, _where) => {
+    const { lines, stream } = capture();
+
+    createLogger("test-service", stream).info(fields, "something happened");
+
+    expect(lines[0]).not.toContain("pocketid-key");
+    expect(lines[0]).toContain("[redacted]");
+  });
+});
+
 describe("formatPretty", () => {
   it("puts an error's stack under the line", () => {
     const line = formatPretty({
