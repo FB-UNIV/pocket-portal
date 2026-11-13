@@ -152,9 +152,12 @@ async function deliver(
 // To NOTIFY_ADMIN_EMAILS when set, else every enabled PocketID admin with
 // an address, read live (ADR-0007).
 export function notifyNewAccessRequest(
-  request: NotifiedRequest,
+  // `alsoAsks`: prerequisites asked for with it (#19), by name, so one
+  // email covers both.
+  request: NotifiedRequest & { alsoAsks?: string[] },
   deps: Deps = DEFAULTS,
 ): Promise<void> {
+  const alsoAsks = request.alsoAsks ?? [];
   const requester = request.requesterEmail ?? request.requesterSubject;
   const group = request.pocketIdGroupName;
   const review = link(deps.env, "/admin/requests");
@@ -179,6 +182,7 @@ export function notifyNewAccessRequest(
         text: body(
           t("newBody", { requester, group }),
           request.message ? `${t("newReason")}\n${request.message}` : undefined,
+          alsoAsks.length > 0 && t("newAlsoAsks", { names: alsoAsks.join(", ") }),
           review && t("newReview", { url: review }),
         ),
       };

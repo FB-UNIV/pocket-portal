@@ -5,7 +5,10 @@ import { after } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig, getPocketIdUserGroups } from "@/lib/pocketid/client";
-import { listUserCatalogApps } from "@/lib/catalog/apps";
+import { listUserCatalogApps, type UserCatalogApp } from "@/lib/catalog/apps";
+import type { Db } from "@/lib/db/client";
+import { defaultRole } from "@/lib/requests/default-role";
+import type { AccessRequest } from "@/lib/requests/access-requests";
 import {
   createAccessRequest,
   listUserAccessRequests,
@@ -93,9 +96,15 @@ export async function requestAccessAction(
   // (clientId, groupId): this row can become a real grant, and a server
   // action is a callable RPC. The group's display name comes from the same
   // lookup, since the admin decides on it.
+  //
+  // A prerequisite another app here needs (ADR-0012) can be asked for too,
+  // even when it's hidden or has no link (a VPN usually is both).
   const apps = await listUserCatalogApps(getPocketIdConfig(), getDb(), session.user.groups);
-  const app = apps.find((a) => a.id === pocketIdClientId);
+  const listed = apps.find((a) => a.id === pocketIdClientId);
+  const app = listed ?? apps.flatMap((a) => a.requires).find((p) => p.id === pocketIdClientId);
   const group = app?.allowedGroups.find((g) => g.id === pocketIdGroupId);
+  // What else this app needs that the user lacks: asked for with it.
+  const prerequisites = listed ? missingPrerequisites(listed) : [];
 
   if (!app || !group) {
     return { ok: false, reason: "not_allowed" };
@@ -173,6 +182,7 @@ export async function requestAccessAction(
     //. Scheduled only once the reopen committed; see ADR-0011.
     if (reopened) {
       recordAccessRequestEvent("reopened");
+      const alsoAsks = await filePrerequisites(db, session, prerequisites, outcome.requestId, myRequests);
       after(() =>
         notifyNewAccessRequest({
           id: outcome.requestId,
@@ -180,6 +190,7 @@ export async function requestAccessAction(
           requesterEmail: session.user.email ?? null,
           pocketIdGroupName: group.name,
           message,
+          ...(alsoAsks.length > 0 ? { alsoAsks } : {}),
         }),
       );
     }
@@ -214,8 +225,11 @@ export async function requestAccessAction(
   });
   recordAccessRequestEvent("created");
 
+  const alsoAsks = await filePrerequisites(db, session, prerequisites, request.id, myRequests);
+
   // After the response (ADR-0011): the request is already filed, so a
-  // slow or broken mail server must not hold up or fail this action.
+  // slow or broken mail server must not hold up or fail this action. One
+  // email for the app and what it needs.
   after(() =>
     notifyNewAccessRequest({
       id: request.id,
@@ -223,12 +237,68 @@ export async function requestAccessAction(
       requesterEmail: session.user.email ?? null,
       pocketIdGroupName: group.name,
       message,
+      ...(alsoAsks.length > 0 ? { alsoAsks } : {}),
     }),
   );
 
   revalidatePath("/apps");
   revalidatePath("/admin/requests");
   return { ok: true };
+}
+
+// The prerequisites an app needs that the user doesn't have (ADR-0012).
+function missingPrerequisites(app: UserCatalogApp) {
+  return app.requires.filter((prerequisite) => !prerequisite.hasAccess);
+}
+
+type Session = Awaited<ReturnType<typeof requireUser>>;
+
+// Files a request for each missing prerequisite, linked to the app's
+// request (#19): its everyday role, like the form preselects. Skips one
+// already waiting or just granted, so asking twice doesn't double up.
+// Returns the names of those filed now, for the admins' email.
+async function filePrerequisites(
+  db: Db,
+  session: Session,
+  prerequisites: UserCatalogApp["requires"],
+  parentRequestId: string,
+  myRequests: AccessRequest[],
+): Promise<string[]> {
+  const filed: string[] = [];
+  for (const prerequisite of prerequisites) {
+    const active = prerequisite.allowedGroups.some((g) => {
+      const outcome = deriveRequestOutcome(myRequests, prerequisite.id, g.id, session.user.groups);
+      return outcome !== null && !outcome.canRequest;
+    });
+    const group = defaultRole(prerequisite.allowedGroups);
+    if (active || !group) continue;
+
+    const request = await createAccessRequest(db, {
+      requesterSubject: session.user.id,
+      requesterEmail: session.user.email ?? null,
+      pocketIdClientId: prerequisite.id,
+      pocketIdGroupId: group.id,
+      pocketIdGroupName: group.name,
+      message: null,
+      parentRequestId,
+    });
+    await writeAuditEvent(db, {
+      actorSubject: session.user.id,
+      actorEmail: session.user.email ?? undefined,
+      action: "access_request.created",
+      targetType: "access_request",
+      targetId: request.id,
+      metadata: {
+        pocketIdClientId: prerequisite.id,
+        pocketIdGroupId: group.id,
+        pocketIdGroupName: group.name,
+        parentRequestId,
+      },
+    });
+    recordAccessRequestEvent("created");
+    filed.push(prerequisite.name);
+  }
+  return filed;
 }
 
 // One form per app: the role (group) is a field, not part of the binding,
@@ -245,4 +315,12 @@ export async function requestAppAccessAction(
     return { ok: false, reason: "not_allowed" };
   }
   return requestAccessAction(pocketIdClientId, group, previous, formData);
+}
+
+// The "Ask for VPN" button under an app that needs it (#19): a plain form,
+// its everyday role and no reason (the page only offers it when a reason
+// isn't required). Every guard of requestAccessAction applies; the page
+// it comes back to says it's been asked for.
+export async function askForPrerequisiteAction(pocketIdClientId: string, pocketIdGroupId: string): Promise<void> {
+  await requestAccessAction(pocketIdClientId, pocketIdGroupId);
 }

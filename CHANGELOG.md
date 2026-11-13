@@ -34,6 +34,14 @@ project-specific policy on when to bump what.
   else it needs. The portal tells, it doesn't block: the app still opens.
   One level deep (an app that's needed can't need another), and every
   change is in History. Adds the `app_dependencies` table (ADR-0012).
+- **Asking for an app asks for what it needs too.** Asking for Grafana also
+  files a request for the VPN it needs, if the person doesn't have it and
+  hasn't asked yet: one email to admins covers both, and the queue shows
+  them together with **Approve both**, which grants the VPN first. Each can
+  still be approved or declined on its own. Under an app someone can open
+  but can't use yet, **Ask for VPN** asks in one click (not when a reason
+  is required). A needed app can be asked for and granted even when it's
+  hidden from the Apps page.
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

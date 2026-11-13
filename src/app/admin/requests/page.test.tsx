@@ -18,7 +18,7 @@ vi.mock("@/lib/pocketid/client", () => ({
   listPocketIdUsers: vi.fn(),
 }));
 vi.mock("@/lib/catalog/apps", () => ({ listAdminCatalogApps: vi.fn() }));
-vi.mock("./actions", () => ({ decideAccessRequestAction: vi.fn(), approveTogetherAction: vi.fn() }));
+vi.mock("./actions", () => ({ decideAccessRequestAction: vi.fn(), approveTogetherFormAction: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockListAdminApps = vi.mocked(listAdminCatalogApps);
@@ -59,6 +59,7 @@ function request(overrides: Partial<AccessRequest> = {}): AccessRequest {
     status: "pending",
     createdAt: new Date("2026-09-21T10:00:00Z"),
     decidedAt: null,
+    parentRequestId: null,
     ...overrides,
   };
 }

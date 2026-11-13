@@ -10,7 +10,7 @@ import { requestContext } from "@/lib/requests/request-context";
 import { utcDayParts } from "@/lib/format/utc-timestamp";
 import { readAccessRequestsEnabled } from "@/lib/config";
 import { AppMark } from "@/app/_components/app-mark";
-import { decideAccessRequestAction } from "./actions";
+import { approveTogetherFormAction, decideAccessRequestAction } from "./actions";
 import { RequestDecision } from "./request-decision";
 import { decisionLabels } from "./decision-labels";
 import { getLocale, getTranslations } from "@/i18n/server";
@@ -46,6 +46,20 @@ export default async function AdminRequestsPage() {
   const names = requests.length > 0 ? await pocketIdDisplayNames(config) : new Map<string, string>();
   const now = new Date();
 
+  // Requests filed together (#19) read together: each prerequisite right
+  // after the app that needs it, and that app offers to approve them all.
+  const pendingIds = new Set(requests.map((r) => r.id));
+  const childrenOf = new Map<string, typeof requests>();
+  for (const r of requests) {
+    if (r.parentRequestId && pendingIds.has(r.parentRequestId)) {
+      childrenOf.set(r.parentRequestId, [...(childrenOf.get(r.parentRequestId) ?? []), r]);
+    }
+  }
+  const ordered = requests
+    .filter((r) => !(r.parentRequestId && pendingIds.has(r.parentRequestId)))
+    .flatMap((r) => [r, ...(childrenOf.get(r.id) ?? [])]);
+  const byId = new Map(requests.map((r) => [r.id, r]));
+
   return (
     <main id="main-content" tabIndex={-1} className="flex flex-col gap-7">
       <div>
@@ -62,7 +76,7 @@ export default async function AdminRequestsPage() {
         <p className="card p-6 text-ink-muted">{t("caughtUpDetail")}</p>
       ) : (
         <ul className="card divide-y divide-line overflow-hidden">
-          {requests.map((request) => {
+          {ordered.map((request) => {
             const requester =
               names.get(request.requesterSubject) ??
               request.requesterEmail ??
@@ -71,6 +85,12 @@ export default async function AdminRequestsPage() {
             const grantable = isGrantable(apps, request);
             const appName = app?.name ?? groupLabel;
             const when = utcDayParts(request.createdAt, now, locale);
+            const parent = request.parentRequestId ? byId.get(request.parentRequestId) : undefined;
+            const parentApp = parent ? requestContext(apps, parent).app : null;
+            const children = childrenOf.get(request.id) ?? [];
+            // Offered only when every one of them could be granted.
+            const together =
+              children.length > 0 && grantable && children.every((child) => isGrantable(apps, child));
 
             return (
               <li key={request.id} className="flex flex-wrap items-start gap-x-5 gap-y-4 px-5 py-5 sm:px-6">
@@ -116,6 +136,12 @@ export default async function AdminRequestsPage() {
                     </p>
                   </div>
 
+                  {parent ? (
+                    <p className="text-sm font-semibold text-on-tip">
+                      {t("askedTogether", { app: parentApp?.name ?? parent.pocketIdGroupName })}
+                    </p>
+                  ) : null}
+
                   {request.message ? (
                     <blockquote className="max-w-xl self-start rounded-2xl rounded-tl-sm bg-surface-muted px-4 py-2.5 text-[15px]">
                       {t("note", { note: request.message })}
@@ -123,7 +149,18 @@ export default async function AdminRequestsPage() {
                   ) : null}
                 </div>
 
-                <div className="self-center">
+                <div className="flex flex-col items-end gap-2 self-center">
+                  {together ? (
+                    <form action={approveTogetherFormAction.bind(null, request.id)}>
+                      <button
+                        type="submit"
+                        aria-label={t("approveTogetherFor", { count: children.length + 1, requester })}
+                        className="btn btn-primary"
+                      >
+                        {t("approveTogether", { count: children.length + 1 })}
+                      </button>
+                    </form>
+                  ) : null}
                   <RequestDecision
                     approveAction={
                       grantable ? decideAccessRequestAction.bind(null, request.id, "approved") : undefined

@@ -52,6 +52,7 @@ const PENDING = {
   status: "pending",
   createdAt: new Date(),
   decidedAt: null,
+  parentRequestId: null,
 };
 
 const APP_WITH_GROUP = {

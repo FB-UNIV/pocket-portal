@@ -9,6 +9,7 @@ import {
   hasPendingAccessRequests,
   listPendingAccessRequests,
   listUserAccessRequests,
+  listLinkedPendingRequests,
   setAccessRequestStatus,
 } from "./access-requests";
 
@@ -415,5 +416,29 @@ describe("access requests (integration)", () => {
       .from(accessRequests)
       .where(eq(accessRequests.id, request.id));
     expect(row.status).toBe("approved");
+  });
+
+  // #19: a prerequisite asked for with the app that needs it.
+  it("links a prerequisite request to the app's, until it's decided", async () => {
+    const parent = await createAccessRequest(db, {
+      requesterSubject: "test-user-sub",
+      pocketIdClientId: "test-grafana",
+      pocketIdGroupId: "test-engineering",
+      pocketIdGroupName: "engineering",
+    });
+    const child = await createAccessRequest(db, {
+      requesterSubject: "test-user-sub",
+      pocketIdClientId: "test-vpn",
+      pocketIdGroupId: "test-vpn-group",
+      pocketIdGroupName: "vpn",
+      parentRequestId: parent.id,
+    });
+
+    expect(child.parentRequestId).toBe(parent.id);
+    expect(parent.parentRequestId).toBeNull();
+    expect((await listLinkedPendingRequests(db, parent.id)).map((r) => r.id)).toEqual([child.id]);
+
+    await setAccessRequestStatus(db, child.id, "approved");
+    expect(await listLinkedPendingRequests(db, parent.id)).toEqual([]);
   });
 });

@@ -1,5 +1,17 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, boolean, integer, jsonb, timestamp, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  boolean,
+  integer,
+  jsonb,
+  timestamp,
+  uuid,
+  index,
+  uniqueIndex,
+  primaryKey,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */
 // See docs/adr/0006-audit-trail-separate-from-logs.md: this is a permanent,
@@ -68,6 +80,12 @@ export const accessRequests = pgTable(
     // pending row has not been decided, and rows predating this column have
     // no honest value to backfill.
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // Filed together with another request (#19, ADR-0012): a prerequisite
+    // (the VPN) asked for with the app that needs it (Grafana), which is
+    // this column's target. Null for a request filed on its own.
+    parentRequestId: uuid("parent_request_id").references((): AnyPgColumn => accessRequests.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => [
     // One active (pending or approved) request per requester+client+group;

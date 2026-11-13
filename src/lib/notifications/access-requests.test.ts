@@ -288,7 +288,7 @@ describe("linked requests in the email", () => {
   it("says what else was asked for with the app", async () => {
     const d = deps();
 
-    await notifyNewAccessRequest(REQUEST, d, { alsoAsks: ["VPN"] });
+    await notifyNewAccessRequest({ ...REQUEST, alsoAsks: ["VPN"] }, d);
 
     expect(queued(d)[0].body).toContain("They also asked for VPN, which it needs.");
   });
@@ -296,7 +296,7 @@ describe("linked requests in the email", () => {
   it("writes it in the admin's language", async () => {
     const d = deps({ localeOf: vi.fn().mockResolvedValue("fr") });
 
-    await notifyNewAccessRequest(REQUEST, d, { alsoAsks: ["VPN"] });
+    await notifyNewAccessRequest({ ...REQUEST, alsoAsks: ["VPN"] }, d);
 
     expect(queued(d)[0].body).toContain("Cette personne a aussi demandé VPN, dont l’application a besoin.");
   });

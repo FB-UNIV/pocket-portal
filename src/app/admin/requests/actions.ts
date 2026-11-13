@@ -13,6 +13,7 @@ import { recordAccessRequestEvent, recordGrant } from "@/lib/observability/metri
 import { withSpan } from "@/lib/observability/tracing";
 import {
   getAccessRequestById,
+  listLinkedPendingRequests,
   setAccessRequestStatus,
   type AccessRequestDecision,
 } from "@/lib/requests/access-requests";
@@ -116,4 +117,28 @@ async function decide(
 
   revalidatePath("/admin/requests");
   return { ok: true };
+}
+
+// "Approve both" (#19): an app and the prerequisites asked for with it.
+// Prerequisites are granted first, each through the same guarded path as a
+// single approval, so a VPN membership never trails the app's. The first
+// that isn't granted (refused, or PocketID failing) stops the rest: the
+// app's request stays waiting, and anything already granted stays granted
+// (harmless alone, and in the audit trail).
+export async function approveTogetherAction(parentId: string): Promise<DecideAccessRequestResult> {
+  const session = await requireAdmin();
+  return withSpan("access_request.approve_together", {}, async () => {
+    const linked = await listLinkedPendingRequests(getDb(), parentId);
+    for (const request of linked) {
+      const result = await decide(session, request.id, "approved");
+      if (!result.ok) return result;
+    }
+    return decide(session, parentId, "approved");
+  });
+}
+
+// The queue's "Approve both" button, a plain form: a refusal or failure
+// shows on the page it comes back to (the requests stay waiting).
+export async function approveTogetherFormAction(parentId: string): Promise<void> {
+  await approveTogetherAction(parentId);
 }

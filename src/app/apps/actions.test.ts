@@ -85,6 +85,7 @@ function storedRequest(status: string, decidedAt: Date | null) {
     status,
     createdAt: new Date(Date.now() - 60_000),
     decidedAt,
+    parentRequestId: null,
   };
 }
 
@@ -629,7 +630,7 @@ describe("requestAccessAction with prerequisites", () => {
     await runAfterCallbacks();
 
     expect(mockNotifyNew).toHaveBeenCalledTimes(1);
-    expect(mockNotifyNew).toHaveBeenCalledWith(expect.objectContaining({ id: "req-grafana" }), { alsoAsks: ["VPN"] });
+    expect(mockNotifyNew).toHaveBeenCalledWith(expect.objectContaining({ id: "req-grafana", alsoAsks: ["VPN"] }));
   });
 
   it("skips a prerequisite the user already has", async () => {
