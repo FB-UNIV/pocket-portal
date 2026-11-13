@@ -84,7 +84,7 @@ function AppWords({ app, size }: { app: UserCatalogApp; size: "card" | "row" }) 
       : "text-[17px] font-bold leading-snug";
   return app.description ? (
     <>
-      <span className={big}>{app.description}</span>
+      <span className={big}>{app.description}</span>{" "}
       <h3 className="text-sm font-semibold text-ink-muted">{app.name}</h3>
     </>
   ) : (
@@ -286,11 +286,12 @@ export default async function AppsPage({
               <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))]">
                 {usable.map((app) => (
                   <li key={app.id} className="flex">
-                    {/* SC 4.1.2 / 2.4.4: one link per app is ambiguous out
-                        of context, so the accessible name carries the app. */}
+                    {/* The card's own words are its accessible name (what
+                        the app is for, then its name): it says where the
+                        link goes (SC 2.4.4) and contains everything the
+                        card shows (SC 2.5.3, label in name). */}
                     <a
                       href={app.launchUrl}
-                      aria-label={t("openApp", { name: app.name })}
                       className="card card-link relative flex flex-1 flex-col gap-4 rounded-3xl p-6 text-ink"
                     >
                       <AppMark name={app.name} iconUrl={app.iconUrl} />

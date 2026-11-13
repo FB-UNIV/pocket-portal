@@ -31,8 +31,7 @@
     "emptyTitle": "Vous n’avez encore aucune application.",
     "emptyAskBody": "Découvrez ce qui est disponible et demandez ce dont vous avez besoin. Un administrateur vous donne l’accès.",
     "emptyAskButton": "Demander une application",
-    "emptyAskAdmin": "Demandez l’accès à un administrateur.",
-    "open": "Ouvrir {name}"
+    "emptyAskAdmin": "Demandez l’accès à un administrateur."
   },
   "Apps": {
     "title": "Applications",
@@ -50,7 +49,6 @@
     "usableHeading": "Prêtes à ouvrir",
     "usableEmptyAsk": "Rien pour l’instant. Demandez une application ci-dessous, elle apparaîtra ici dès qu’un administrateur vous aura donné l’accès.",
     "usableEmptyAdmin": "Vous n’avez encore accès à aucune application. Demandez à un administrateur.",
-    "openApp": "Ouvrir {name}",
     "askHeading": "En demander d’autres",
     "noGroup": "Aucun groupe ne donne encore accès à cette application.",
     "ask": "Demander",
@@ -102,7 +100,7 @@
     "fixNoLink": "{app} n’a pas de lien pour l’ouvrir, elle ne peut donc pas être sur la page Applications.",
     "fixNoDescription": "{app} ne dit pas à quoi elle sert, on ne voit donc que son nom.",
     "fixIn": "Corriger dans PocketID",
-    "fixInLabel": "Corriger {app} dans PocketID",
+    "fixInLabel": "Corriger dans PocketID : {app}",
     "stateListed": "Sur la page Applications",
     "stateNoLink": "Activée, mais sans lien pour l’instant",
     "stateHidden": "Masquée",

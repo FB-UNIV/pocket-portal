@@ -21,8 +21,8 @@ test.describe("authenticated portal journeys", () => {
     await page.goto("/");
 
     const yourApps = page.getByRole("region", { name: "Your apps" });
-    await expect(yourApps.getByRole("link", { name: "Open Immich (seed)" })).toBeVisible();
-    await expect(yourApps.getByRole("link", { name: "Open Sonarr (seed)" })).toBeVisible();
+    await expect(yourApps.getByRole("link", { name: /^Immich \(seed\)/ })).toBeVisible();
+    await expect(yourApps.getByRole("link", { name: /^Sonarr \(seed\)/ })).toBeVisible();
     // Grafana is engineering-only: askable on /apps, never a launcher here.
     await expect(yourApps.getByText("Grafana (seed)")).toHaveCount(0);
     await expect(yourApps.getByRole("link", { name: "See all apps, or ask for more" })).toHaveAttribute(
@@ -34,11 +34,11 @@ test.describe("authenticated portal journeys", () => {
   test("Apps reflects the seeded access matrix for this user", async ({ page }) => {
     await page.goto("/apps");
 
-    // Open app (unrestricted) and media-gated app (user is in media) both show a
-    // launch link…
-    await expect(page.getByText("Immich (seed)")).toBeVisible();
-    await expect(page.getByText("Sonarr (seed)")).toBeVisible();
-    expect(await page.getByRole("link", { name: "Open" }).count()).toBeGreaterThanOrEqual(2);
+    // Open app (unrestricted) and media-gated app (user is in media) are both
+    // launch cards under "Ready to open", each named by its own words…
+    const ready = page.getByRole("region", { name: "Ready to open" });
+    await expect(ready.getByRole("link", { name: /Immich \(seed\)$/ })).toBeVisible();
+    await expect(ready.getByRole("link", { name: /Sonarr \(seed\)$/ })).toBeVisible();
 
     // …the engineering-gated app the user can't reach is listed to ask for,
     // and pressing Ask opens its request form, ready to type in.
