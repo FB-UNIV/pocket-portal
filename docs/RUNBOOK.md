@@ -326,6 +326,7 @@ fixed set, never from a request, so the number of series stays small.
 | `portal_pocketid_grants_total` | `outcome`: `granted`, `failed` (PocketID errored), `refused` (not a grantable group of a visible app) | Every attempt to add someone to a PocketID group |
 | `portal_notifications_total` | `kind`: `new_request`, `decision`; `outcome`: `sent`, `failed` | Notification emails, one per recipient |
 | `portal_pocketid_request_duration_seconds` | `endpoint` (a pattern: `GET /api/users/{id}`, never a URL), `outcome`: `2xx`, `4xx`, `5xx`, `error` (no answer) | PocketID API calls and their latency. Not the OIDC sign-in calls, and not the cached branding read |
+| `portal_web_vitals_seconds` | `name`: `TTFB`, `LCP`, `INP`; `route`: a page pattern | What people's browsers measured: time to first byte, when the main content appeared, and how long an interaction took to respond. See [Web Vitals](#web-vitals) |
 
 Starting points for alerts (thresholds are yours, see [Your decisions](#your-decisions)):
 
@@ -350,6 +351,32 @@ Grants only ever follow an approval, so
 portal can only count what it does itself: a membership change made with
 its API key outside the portal (a leaked key, say) shows up only in
 PocketID's own audit log, so watch that too.
+
+### Web Vitals
+
+Server latency stops when the response leaves; people wait for the
+network, the JavaScript and the rendering too. With metrics on
+(`METRICS_TOKEN`), browsers report three timings per page to
+`/api/web-vitals`: time to first byte (`TTFB`), when the main content
+appeared (`LCP`), and how long interactions took to respond (`INP`).
+`FEATURE_WEB_VITALS=false` turns this off and keeps the rest of the
+metrics.
+
+The endpoint is public, since the sign-in page has timings too. It
+accepts only those three names, the portal's own pages and a bounded
+value, refuses beacons from other sites and bodies over 512 bytes, and
+caps each replica at 30 a second (bursts of 120). Each label comes from a
+fixed set, so nobody can add series; the worst a script outside a browser
+can do is skew the numbers within that rate. It's same-origin, so the
+CSP (`connect-src 'self'`) already allows it.
+
+```promql
+# p75, the usual Web Vitals percentile, per page:
+histogram_quantile(0.75, sum by (le, name, route) (rate(portal_web_vitals_seconds_bucket[1h])))
+```
+
+Google's thresholds for "good": TTFB under 0.8 s, LCP under 2.5 s, INP
+under 200 ms. The buckets sit on those boundaries.
 
 ### Linking logs and traces
 

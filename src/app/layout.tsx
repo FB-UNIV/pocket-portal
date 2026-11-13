@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Figtree, Geist_Mono } from "next/font/google";
 import { auth } from "@/auth";
 import { brandStyleSheet, getPocketIdBranding, getPortalName } from "@/lib/pocketid/branding";
-import { readAccessRequestsEnabled } from "@/lib/config";
+import { readAccessRequestsEnabled, readWebVitalsEnabled } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { hasPendingAccessRequests } from "@/lib/requests/access-requests";
 import { showAccessRequestsLink } from "@/lib/requests/queue-link";
@@ -10,6 +10,7 @@ import { getLocale, getTranslations } from "@/i18n/server";
 import { IntlProvider } from "@/i18n/client-provider";
 import { MESSAGES } from "@/i18n/messages";
 import { SiteHeader } from "./_components/site-header";
+import { WebVitals } from "./_components/web-vitals";
 import "./globals.css";
 
 // Figtree: friendly and very legible at small sizes, for an audience that
@@ -84,6 +85,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <IntlProvider locale={locale} messages={{ Error: MESSAGES[locale].Error }}>
           {children}
         </IntlProvider>
+        {/* Only while Web Vitals are on (they need METRICS_TOKEN): otherwise
+            no script and nothing to beacon to. */}
+        {readWebVitalsEnabled() ? <WebVitals /> : null}
       </body>
     </html>
   );

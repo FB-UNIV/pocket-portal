@@ -20,6 +20,12 @@ project-specific policy on when to bump what.
   line leads to its trace and back. The RUNBOOK has alert examples,
   including one for a spike in grants, and the Grafana setup for linking
   logs and traces.
+- **Browser Web Vitals.** With metrics on, browsers report each page's time
+  to first byte, when its main content appeared, and how long interactions
+  took to respond, as `portal_web_vitals_seconds` by page. The endpoint
+  (`/api/web-vitals`) accepts only those three timings for the portal's own
+  pages, from the portal's own pages, and is rate-limited.
+  `FEATURE_WEB_VITALS=false` keeps metrics without it.
 
 ### Fixed
 - **App cards say what they show, for voice control and screen readers.**

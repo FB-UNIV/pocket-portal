@@ -103,6 +103,7 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
     yaml: "features.pocketIdBranding",
   },
   { name: "FEATURE_AUDIT_LOG_PAGE", required: false, secret: false, yaml: "features.auditLogPage" },
+  { name: "FEATURE_WEB_VITALS", required: false, secret: false, yaml: "features.webVitals" },
   {
     name: "WARN_POCKETID_SECRETS_READABLE",
     required: false,
@@ -310,6 +311,14 @@ export function readAuditLogPageEnabled(source: ConfigSource = configSource()): 
   return readBoolean(source, "FEATURE_AUDIT_LOG_PAGE", true);
 }
 
+// Browser Web Vitals (#16): on wherever metrics are, since /api/metrics is
+// the only place they go. Without METRICS_TOKEN there's no beacon script
+// and no /api/web-vitals, so the public endpoint only exists for a deployer
+// who already opted into metrics. Off keeps metrics without it.
+export function readWebVitalsEnabled(source: ConfigSource = configSource()): boolean {
+  return readBoolean(source, "FEATURE_WEB_VITALS", true) && Boolean(readMetricsToken(source));
+}
+
 // Off hides the readable-secrets admin banner for a deployer who has accepted the risk.
 // The startup warning still logs, so the choice leaves a trace.
 export function readSecretsWarningEnabled(source: ConfigSource = configSource()): boolean {
@@ -364,6 +373,9 @@ export function nonDefaultFlags(source: ConfigSource = configSource()): string[]
     ["FEATURE_EMAIL_NOTIFICATIONS", readEmailNotificationsEnabled(source), true],
     ["FEATURE_POCKETID_BRANDING", readPocketIdBrandingEnabled(source), true],
     ["FEATURE_AUDIT_LOG_PAGE", readAuditLogPageEnabled(source), true],
+    // The flag itself, not readWebVitalsEnabled: that also depends on
+    // METRICS_TOKEN, which isn't a flag.
+    ["FEATURE_WEB_VITALS", readBoolean(source, "FEATURE_WEB_VITALS", true), true],
     ["WARN_POCKETID_SECRETS_READABLE", readSecretsWarningEnabled(source), true],
     ["SIGNIN_INVITE_HINT", readSignInInviteHintEnabled(source), true],
   ];
@@ -482,6 +494,7 @@ export function validateConfig(source: ConfigSource = configSource()): string[] 
       "FEATURE_EMAIL_NOTIFICATIONS",
       "FEATURE_POCKETID_BRANDING",
       "FEATURE_AUDIT_LOG_PAGE",
+      "FEATURE_WEB_VITALS",
       "WARN_POCKETID_SECRETS_READABLE",
       "SIGNIN_INVITE_HINT",
     ].map((name) => flagProblem(source, name, [...TRUE_VALUES, ...FALSE_VALUES])),
