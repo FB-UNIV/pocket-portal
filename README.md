@@ -1,5 +1,7 @@
 # pocket-portal
 
+**Docs:** <https://fb-univ.github.io/pocket-portal/> (deploying, settings, development, architecture and decisions).
+
 A self-hosted portal for a homelab or small team, built on
 [PocketID](https://pocket-id.org). People sign in with a passkey, see the
 apps they can reach, and request access to the rest — an admin approves
@@ -42,6 +44,7 @@ PocketID. nginx and Traefik examples are in the
 Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 [config file](#config-file).
 
+<!-- #region settings -->
 <!-- AUTO-GENERATED: every variable in src/lib/config.ts's CONFIG_VARS must
      appear here; src/lib/config.test.ts fails otherwise. -->
 | Variable | Required | Default | Purpose |
@@ -88,6 +91,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | `http://localhost:4318` | OTLP collector for traces |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | no | `http/protobuf` | OTLP wire format: `http/protobuf` or `http/json` |
 <!-- /AUTO-GENERATED -->
+<!-- #endregion settings -->
 
 #### Config file
 
