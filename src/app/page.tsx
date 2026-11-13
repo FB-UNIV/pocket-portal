@@ -5,6 +5,7 @@ import { readSignInInviteHintEnabled, readSignInText } from "@/lib/config";
 import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
 import { getLocale, getTranslations } from "@/i18n/server";
 import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
+import { WelcomeChecklist } from "./_dashboard/welcome";
 
 // No `metadata` export: this page is the root layout's own segment, where
 // `title.template` deliberately doesn't apply, so it takes the layout's
@@ -55,6 +56,11 @@ export default async function Home({
               is its own <Suspense> and follows _dashboard/section.tsx, so
               one slow or broken source never blanks the page (see
               docs/ARCHITECTURE.md, "The dashboard"). */}
+          {/* Nothing while it loads: it appears once it's ready, and only
+              while something's left to do. */}
+          <Suspense fallback={null}>
+            <WelcomeChecklist userId={session.user.id} userGroups={session.user.groups} />
+          </Suspense>
           <Suspense fallback={<YourAppsLoading />}>
             <YourApps userGroups={session.user.groups} />
           </Suspense>

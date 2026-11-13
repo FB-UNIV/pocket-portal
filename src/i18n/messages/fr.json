@@ -20,6 +20,23 @@
     "greeting": "{name, select, __none {Bonjour.} other {Bonjour {name}.}} Que voulez-vous faire ?",
     "signedInAs": "Compte : {name}"
   },
+  "Welcome": {
+    "heading": "Pour bien commencer",
+    "progress": "{done} sur {total} fait",
+    "dismiss": "Masquer",
+    "doneLabel": "(fait)",
+    "tick": "C’est fait",
+    "undo": "Annuler",
+    "passkeyTitle": "Ajouter une clé d’accès de secours",
+    "passkeyBody": "Si vous perdez cet appareil, une deuxième clé d’accès (sur votre téléphone, par exemple) vous permet toujours d’entrer.",
+    "passkeyLink": "Ouvrir votre compte",
+    "prerequisiteTitle": "Obtenir {name}",
+    "prerequisiteBody": "{count, plural, one {{apps} en a besoin pour fonctionner.} other {{apps} en ont besoin pour fonctionner.}}",
+    "prerequisiteLink": "La demander",
+    "requestTitle": "Demander une application dont vous avez besoin",
+    "requestBody": "Voyez ce qui est disponible et demandez. Un administrateur vous donne l’accès.",
+    "requestLink": "Voir les applications"
+  },
   "YourApps": {
     "heading": "Vos applications",
     "loading": "Chargement de vos applications…",

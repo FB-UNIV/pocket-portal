@@ -20,6 +20,23 @@
     "greeting": "{name, select, __none {Hi there.} other {Hi {name}.}} What would you like to do?",
     "signedInAs": "Signed in as {name}"
   },
+  "Welcome": {
+    "heading": "Getting started",
+    "progress": "{done} of {total} done",
+    "dismiss": "Hide this",
+    "doneLabel": "(done)",
+    "tick": "I’ve done it",
+    "undo": "Undo",
+    "passkeyTitle": "Add a backup passkey",
+    "passkeyBody": "If you lose this device, a second passkey (on your phone, say) still lets you in.",
+    "passkeyLink": "Open your account",
+    "prerequisiteTitle": "Get {name}",
+    "prerequisiteBody": "{count, plural, one {{apps} only works with it.} other {{apps} only work with it.}}",
+    "prerequisiteLink": "Ask for it",
+    "requestTitle": "Ask for an app you need",
+    "requestBody": "See what’s available and ask. An admin lets you in.",
+    "requestLink": "See the apps"
+  },
   "YourApps": {
     "heading": "Your apps",
     "loading": "Loading your apps…",
