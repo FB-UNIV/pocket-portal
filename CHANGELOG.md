@@ -48,6 +48,12 @@ project-specific policy on when to bump what.
   (the VPN), and ask for an app. Items tick themselves as things happen,
   and the card goes once everything's done or when they hide it. Kept per
   person in Postgres (`user_onboarding`), so it follows them across devices.
+- **A short guided tour of the dashboard.** Offered once ("New here? A quick
+  look around takes a minute"), and from the checklist's **Look around the
+  dashboard**: four steps (your apps, all the apps, getting started,
+  signing out), each lighting up its part of the page. Fully usable with a
+  keyboard and a screen reader, and calmer with reduced motion. Built in,
+  with no new dependency.
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

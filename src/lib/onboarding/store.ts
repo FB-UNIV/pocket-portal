@@ -46,4 +46,14 @@ export async function dismissChecklist(db: Db, subject: string): Promise<void> {
       set: { checklistDismissedAt: sql`now()`, updatedAt: sql`now()` },
     });
 }
+
+export async function completeTour(db: Db, subject: string, version: number): Promise<void> {
+  await db
+    .insert(userOnboarding)
+    .values({ subject, tourCompletedAt: sql`now()`, tourVersion: version })
+    .onConflictDoUpdate({
+      target: userOnboarding.subject,
+      set: { tourCompletedAt: sql`now()`, tourVersion: version, updatedAt: sql`now()` },
+    });
+}
 /* v8 ignore stop */

@@ -20,6 +20,24 @@
     "greeting": "{name, select, __none {Hi there.} other {Hi {name}.}} What would you like to do?",
     "signedInAs": "Signed in as {name}"
   },
+  "Tour": {
+    "offer": "New here? A quick look around takes a minute.",
+    "start": "Take the tour",
+    "decline": "No thanks",
+    "next": "Next",
+    "back": "Back",
+    "done": "Done",
+    "close": "Close the tour",
+    "stepOf": "Step {step} of {total}",
+    "yourAppsTitle": "Your apps",
+    "yourAppsBody": "Everything you can open is here. Click one to go straight in.",
+    "allAppsTitle": "All the apps",
+    "allAppsBody": "See everything there is, by what it’s for, and ask for what you don’t have yet. An admin lets you in.",
+    "welcomeTitle": "Getting started",
+    "welcomeBody": "A few things to do first. They tick themselves off, and the list goes once they’re done.",
+    "accountTitle": "Signing out",
+    "accountBody": "Sign out here when you’re done, and change the language next to it."
+  },
   "Welcome": {
     "heading": "Getting started",
     "progress": "{done} of {total} done",
@@ -35,7 +53,10 @@
     "prerequisiteLink": "Ask for it",
     "requestTitle": "Ask for an app you need",
     "requestBody": "See what’s available and ask. An admin lets you in.",
-    "requestLink": "See the apps"
+    "requestLink": "See the apps",
+    "tourTitle": "Look around the dashboard",
+    "tourBody": "A short tour of where things are.",
+    "tourLink": "Take the tour"
   },
   "YourApps": {
     "heading": "Your apps",
