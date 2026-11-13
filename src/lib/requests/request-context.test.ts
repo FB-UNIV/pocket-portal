@@ -12,6 +12,7 @@ function app(overrides: Partial<CatalogApp>): CatalogApp {
     isGroupRestricted: true,
     allowedGroups: [],
     hidden: false,
+    requires: [],
     category: null,
     ...overrides,
   };

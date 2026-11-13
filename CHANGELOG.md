@@ -26,6 +26,14 @@ project-specific policy on when to bump what.
   (`/api/web-vitals`) accepts only those three timings for the portal's own
   pages, from the portal's own pages, and is rate-limited.
   `FEATURE_WEB_VITALS=false` keeps metrics without it.
+- **Apps that need another app.** On an app's admin page, **Needs another
+  app** says which apps it only works with, like a dashboard behind the
+  VPN (any app counts, even a hidden one with no link). People who can
+  open the app but don't have what it needs read "Needs VPN to work, which
+  you don't have yet" under its card, and someone asking for it reads what
+  else it needs. The portal tells, it doesn't block: the app still opens.
+  One level deep (an app that's needed can't need another), and every
+  change is in History. Adds the `app_dependencies` table (ADR-0012).
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

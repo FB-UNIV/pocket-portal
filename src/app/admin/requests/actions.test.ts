@@ -63,6 +63,7 @@ const APP_WITH_GROUP = {
   isGroupRestricted: true,
   allowedGroups: [{ id: "group-1", name: "engineering", friendlyName: "Engineering" }],
   hidden: false,
+  requires: [],
 };
 
 describe("decideAccessRequestAction", () => {

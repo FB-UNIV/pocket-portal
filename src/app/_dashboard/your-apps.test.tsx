@@ -22,6 +22,7 @@ const app = (overrides: Partial<UserCatalogApp> = {}): UserCatalogApp => ({
   launchUrl: "https://photos.example.test",
   iconUrl: null,
   hasAccess: true,
+  requires: [],
   allowedGroups: [],
   category: null,
   ...overrides,

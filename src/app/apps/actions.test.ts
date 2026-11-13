@@ -69,6 +69,7 @@ const CATALOG_APP = {
   iconUrl: null,
   category: null,
   hasAccess: false,
+  requires: [],
   allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
 };
 

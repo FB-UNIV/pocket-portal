@@ -58,7 +58,9 @@
     "statusPending": "{group, select, __none {Waiting for an admin} other {{group}: waiting for an admin}}",
     "statusSettling": "{group, select, __none {Approved — ready in a few minutes} other {{group}: approved — ready in a few minutes}}",
     "statusDenied": "{group, select, __none {Not approved} other {{group}: not approved}}",
-    "statusRevoked": "{group, select, __none {Access removed} other {{group}: access removed}}"
+    "statusRevoked": "{group, select, __none {Access removed} other {{group}: access removed}}",
+    "needsMissing": "Needs {names} to work, which you don’t have yet.",
+    "alsoNeeds": "Also needs {names} to work."
   },
   "AskForm": {
     "role": "Role",
@@ -129,7 +131,20 @@
     "whoCanUse": "Who can use it",
     "preview": "What people see",
     "previewUnder": "Under “{category}” on the Apps page.",
-    "previewOff": "Not on the Apps page right now."
+    "previewOff": "Not on the Apps page right now.",
+    "needsHeading": "Needs another app",
+    "needsHint": "For an app that only works with another one, like a dashboard behind the VPN. People see it on the Apps page. The portal doesn’t check it.",
+    "needsNothing": "Nothing else. It works on its own.",
+    "needsRemove": "Remove",
+    "needsRemoveApp": "Remove {name}",
+    "needsAddLabel": "Add an app it needs",
+    "needsAdd": "Add",
+    "needsNoCandidates": "No other app can be added: the rest already need one themselves.",
+    "neededBy": "{count, plural, one {{names} needs} other {{names} need}} this app, so it can’t need another one itself.",
+    "refusedSelf": "An app can’t need itself.",
+    "refusedPrerequisiteNeedsAnother": "That app needs another one itself, so it can’t be needed here.",
+    "refusedAppIsAPrerequisite": "Other apps need this one, so it can’t need another app itself.",
+    "refusedUnknownApp": "That app isn’t in PocketID any more."
   },
   "AdminRequests": {
     "title": "Requests",
@@ -168,6 +183,9 @@
     "evGrantFailed": "{actor} <muted>tried to add</muted> {requester} <muted>to</muted> {group}<muted>, but it failed.</muted>",
     "evGrantRejected": "{actor} <muted>tried to add</muted> {requester} <muted>to</muted> {group}<muted>, but PocketID refused.</muted>",
     "evEmailFailed": "<muted>The email to</muted> {recipient} <muted>about</muted> {group} <muted>couldn’t be sent.</muted>",
+    "evDependencyAdded": "{actor} <muted>said</muted> {app} <muted>needs</muted> {prerequisite}",
+    "evDependencyRemoved": "{actor} <muted>said</muted> {app} <muted>no longer needs</muted> {prerequisite}",
+    "someApp": "an app",
     "evUnknown": "{actor}: {action}",
     "someone": "someone",
     "someGroup": "a group",
