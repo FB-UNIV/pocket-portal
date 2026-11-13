@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-13
+
 ### Added
 - **Portal metrics, and traces that cover the whole request.**
   `/api/metrics` now also counts access requests (created, reopened,
