@@ -23,7 +23,7 @@ import {
   readAccessRequestsEnabled,
   type AccessRequestReason,
 } from "@/lib/config";
-import { requestAppAccessAction } from "./actions";
+import { askForPrerequisiteAction, requestAppAccessAction } from "./actions";
 import { RequestAccessForm } from "./request-access-form";
 import { formLabels, type AskFormT } from "./form-labels";
 import { AppMark } from "@/app/_components/app-mark";
@@ -323,9 +323,36 @@ export default async function AppsPage({
                         app's own words. The portal informs, it doesn't
                         enforce (ADR-0012): the card still opens the app. */}
                     {missingPrerequisites(app, locale) ? (
-                      <p className="px-2 text-sm font-semibold text-on-tip">
-                        {t("needsMissing", { names: missingPrerequisites(app, locale)! })}
-                      </p>
+                      <div className="flex flex-col gap-2 px-2">
+                        <p className="text-sm font-semibold text-on-tip">
+                          {t("needsMissing", { names: missingPrerequisites(app, locale)! })}
+                        </p>
+                        {/* Ask for it right here (#19): its everyday role, no
+                            reason, so not when a reason is required. */}
+                        {app.requires
+                          .filter((prerequisite) => !prerequisite.hasAccess)
+                          .map((prerequisite) => {
+                            const asked = myRequests.some(
+                              (r) => r.pocketIdClientId === prerequisite.id && r.status === "pending",
+                            );
+                            const role = defaultRole(prerequisite.allowedGroups);
+                            if (asked) {
+                              return (
+                                <p key={prerequisite.id} className="text-sm text-ink-muted">
+                                  {t("askedFor", { name: prerequisite.name })}
+                                </p>
+                              );
+                            }
+                            if (!requestsEnabled || reasonMode === "required" || !role) return null;
+                            return (
+                              <form key={prerequisite.id} action={askForPrerequisiteAction.bind(null, prerequisite.id, role.id)}>
+                                <button type="submit" className="btn btn-secondary">
+                                  {t("askFor", { name: prerequisite.name })}
+                                </button>
+                              </form>
+                            );
+                          })}
+                      </div>
                     ) : null}
                   </li>
                 ))}

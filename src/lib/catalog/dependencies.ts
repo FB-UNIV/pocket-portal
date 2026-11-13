@@ -3,6 +3,7 @@ import type { Db } from "@/lib/db/client";
 import { appDependencies } from "@/lib/db/schema";
 import { writeAuditEvent } from "@/lib/audit/log";
 import { hasAccessToClient, type AccessCheckClient } from "./access";
+import type { PocketIdUserGroup } from "@/lib/pocketid/client";
 
 // App dependencies (ADR-0012): an app can need other apps to be usable
 // (Grafana needs the VPN). Portal-side links between PocketID OIDC
@@ -34,6 +35,8 @@ export interface Prerequisite {
   id: string;
   name: string;
   hasAccess: boolean;
+  // Its groups, read live from PocketID: what asking for it can ask for.
+  allowedGroups: PocketIdUserGroup[];
 }
 
 // The apps `clientId` needs, named as PocketID names them, and whether the
@@ -50,7 +53,16 @@ export function prerequisitesOf(
     .filter((link) => link.clientId === clientId)
     .flatMap((link) => {
       const client = byId.get(link.requiresId);
-      return client ? [{ id: client.id, name: client.name, hasAccess: hasAccessToClient(userGroups, client) }] : [];
+      return client
+        ? [
+            {
+              id: client.id,
+              name: client.name,
+              hasAccess: hasAccessToClient(userGroups, client),
+              allowedGroups: client.allowedUserGroups,
+            },
+          ]
+        : [];
     });
 }
 

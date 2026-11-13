@@ -123,6 +123,13 @@ replica gets there first
 `FEATURE_ACCESS_REQUESTS=false` none of this appears: `/apps` lists only
 what the user can open.
 
+An app can need another app (Grafana needs the VPN;
+[ADR-0012](adr/0012-app-dependencies.md)). Asking for it files a linked
+request (`parent_request_id`) for each missing prerequisite, and the queue's
+**Approve both** grants prerequisites first through the same guarded path,
+stopping at the first one that isn't granted. A prerequisite is grantable
+while a visible app needs it, even when it's hidden itself.
+
 Three deliberate properties:
 
 - **The grant is real.** Approving calls PocketID's group-membership API; it

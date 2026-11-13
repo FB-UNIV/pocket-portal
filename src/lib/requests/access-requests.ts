@@ -16,6 +16,9 @@ export interface AccessRequest {
   // written before migration 0007. Lets the portal tell a grant that is still
   // reaching the user's session from one that was later revoked.
   decidedAt: Date | null;
+  // The request this one was filed with, when it's a prerequisite asked for
+  // together with the app that needs it (#19).
+  parentRequestId: string | null;
 }
 
 export interface CreateAccessRequestInput {
@@ -25,6 +28,7 @@ export interface CreateAccessRequestInput {
   pocketIdGroupId: string;
   pocketIdGroupName: string;
   message?: string | null;
+  parentRequestId?: string | null;
 }
 
 // A request's terminal states. "pending" is the initial state; the admin
@@ -53,6 +57,7 @@ export async function createAccessRequest(
       pocketIdGroupId: input.pocketIdGroupId,
       pocketIdGroupName: input.pocketIdGroupName,
       message: input.message ?? null,
+      parentRequestId: input.parentRequestId ?? null,
     })
     .onConflictDoNothing({
       target: [
@@ -84,6 +89,16 @@ export async function listUserAccessRequests(
   requesterSubject: string,
 ): Promise<AccessRequest[]> {
   return db.select().from(accessRequests).where(eq(accessRequests.requesterSubject, requesterSubject));
+}
+
+// Pending requests filed together with `parentId` (its prerequisites),
+// oldest first.
+export async function listLinkedPendingRequests(db: Db, parentId: string): Promise<AccessRequest[]> {
+  return db
+    .select()
+    .from(accessRequests)
+    .where(and(eq(accessRequests.parentRequestId, parentId), eq(accessRequests.status, "pending")))
+    .orderBy(accessRequests.createdAt);
 }
 
 // The admin approval dashboard's queue: every request still awaiting a

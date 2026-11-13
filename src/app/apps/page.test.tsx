@@ -11,7 +11,7 @@ vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("@/lib/catalog/apps", () => ({ listUserCatalogApps: vi.fn() }));
 vi.mock("@/lib/requests/access-requests", () => ({ listUserAccessRequests: vi.fn() }));
-vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn() }));
+vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn(), askForPrerequisiteAction: vi.fn() }));
 
 const mockRequireUser = vi.mocked(requireUser);
 const mockListUserCatalogApps = vi.mocked(listUserCatalogApps);
@@ -306,6 +306,7 @@ describe("AppsPage", () => {
         status: "pending",
         createdAt: new Date(),
         decidedAt: null,
+        parentRequestId: null,
       },
     ]);
 
@@ -343,6 +344,7 @@ describe("AppsPage", () => {
         status,
         createdAt: new Date(Date.now() - 60_000),
         decidedAt,
+        parentRequestId: null,
       };
     }
 
@@ -466,6 +468,7 @@ describe("AppsPage", () => {
         status: "pending",
         createdAt: new Date(),
         decidedAt: null,
+        parentRequestId: null,
       },
     ]);
 
@@ -713,7 +716,7 @@ describe("AppsPage: apps that need another app", () => {
 
   it("says on the card when an app needs one the user doesn't have yet", async () => {
     mockListUserCatalogApps.mockReset().mockResolvedValue([
-      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: false }] },
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [] }] },
     ]);
 
     render(await AppsPage());
@@ -724,7 +727,7 @@ describe("AppsPage: apps that need another app", () => {
 
   it("says nothing once the user has it", async () => {
     mockListUserCatalogApps.mockReset().mockResolvedValue([
-      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: true }] },
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: true, allowedGroups: [] }] },
     ]);
 
     render(await AppsPage());
@@ -735,11 +738,75 @@ describe("AppsPage: apps that need another app", () => {
   it("tells someone asking for an app what else it needs", async () => {
     mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
     mockListUserCatalogApps.mockReset().mockResolvedValue([
-      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: false, requires: [{ id: "vpn", name: "VPN", hasAccess: false }] },
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: false, requires: [{ id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [] }] },
     ]);
 
     render(await AppsPage());
 
     expect(screen.getByText("Also needs VPN to work.")).toBeInTheDocument();
+  });
+});
+
+// #19: the note under a card offers to ask for what's missing, and says
+// once it's been asked for.
+describe("AppsPage: asking for what an app needs", () => {
+  const VPN = { id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [{ id: "g-vpn", name: "vpn", friendlyName: "VPN" }] };
+  const GRAFANA = {
+    id: "grafana",
+    name: "Grafana",
+    description: "",
+    iconUrl: null,
+    category: null,
+    launchUrl: "https://grafana.example.test",
+    hasAccess: true,
+    allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
+    requires: [VPN],
+  };
+
+  beforeEach(() => {
+    mockRequireUser.mockReset().mockResolvedValue({ user: { id: "user-1", groups: ["engineering"] }, expires: "" } as never);
+    mockListUserCatalogApps.mockReset().mockResolvedValue([GRAFANA]);
+    mockListUserAccessRequests.mockReset().mockResolvedValue([]);
+  });
+
+  it("offers to ask for the missing app right there", async () => {
+    render(await AppsPage());
+
+    expect(within(usableSection()!).getByRole("button", { name: "Ask for VPN" })).toBeInTheDocument();
+  });
+
+  it("says it's been asked for once it has", async () => {
+    mockListUserAccessRequests.mockResolvedValue([
+      {
+        id: "req-vpn",
+        requesterSubject: "user-1",
+        requesterEmail: null,
+        pocketIdClientId: "vpn",
+        pocketIdGroupId: "g-vpn",
+        pocketIdGroupName: "vpn",
+        message: null,
+        status: "pending",
+        createdAt: new Date(),
+        decidedAt: null,
+        parentRequestId: null,
+      },
+    ]);
+
+    render(await AppsPage());
+
+    expect(within(usableSection()!).getByText("You’ve asked for VPN.")).toBeInTheDocument();
+    expect(within(usableSection()!).queryByRole("button", { name: "Ask for VPN" })).not.toBeInTheDocument();
+  });
+
+  // A required reason can't be given with one click: say who to ask instead.
+  it("points to an admin when a reason is required", async () => {
+    vi.stubEnv("ACCESS_REQUEST_REASON", "required");
+    try {
+      render(await AppsPage());
+
+      expect(within(usableSection()!).queryByRole("button", { name: "Ask for VPN" })).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

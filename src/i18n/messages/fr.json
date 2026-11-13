@@ -60,7 +60,9 @@
     "statusDenied": "{group, select, __none {Non approuvé} other {{group} : non approuvé}}",
     "statusRevoked": "{group, select, __none {Accès retiré} other {{group} : accès retiré}}",
     "needsMissing": "A besoin de {names} pour fonctionner, que vous n’avez pas encore.",
-    "alsoNeeds": "A aussi besoin de {names} pour fonctionner."
+    "alsoNeeds": "A aussi besoin de {names} pour fonctionner.",
+    "askFor": "Demander {name}",
+    "askedFor": "Vous avez demandé {name}."
   },
   "AskForm": {
     "role": "Rôle",
@@ -164,7 +166,10 @@
     "approveLabel": "Approuver {requester} pour {group}",
     "declineLabel": "Refuser {requester} pour {group}",
     "cantApprove": "Impossible d’approuver : l’application est masquée, ou ce groupe lui a été retiré dans PocketID.",
-    "notGrantable": "Ce groupe ne peut plus être accordé pour cette application : elle est masquée, ou le groupe lui a été retiré dans PocketID. Refusez plutôt la demande."
+    "notGrantable": "Ce groupe ne peut plus être accordé pour cette application : elle est masquée, ou le groupe lui a été retiré dans PocketID. Refusez plutôt la demande.",
+    "askedTogether": "Demandée avec {app}, qui en a besoin.",
+    "approveTogether": "{count, plural, =2 {Approuver les deux} other {Approuver les #}}",
+    "approveTogetherFor": "{count, plural, =2 {Approuver les deux} other {Approuver les #}} pour {requester}"
   },
   "AdminAudit": {
     "title": "Historique",
@@ -227,6 +232,7 @@
     "newSubject": "Demande d’accès pour {group}",
     "newBody": "{requester} a demandé l’accès à {group}.",
     "newReason": "Son explication :",
+    "newAlsoAsks": "Cette personne a aussi demandé {names}, dont l’application a besoin.",
     "newReview": "Pour la traiter : {url}",
     "approvedSubject": "Accès à {group} accordé",
     "deniedSubject": "Accès à {group} refusé",
