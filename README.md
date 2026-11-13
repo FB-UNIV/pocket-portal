@@ -123,15 +123,16 @@ Before going live:
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone | Sign in; once signed in, the dashboard: launchers for your apps |
-| `/apps` | signed in | Browse the catalog, request access |
+| `/` | anyone | Sign in; once signed in, the dashboard: a welcome checklist and guided tour for newcomers, launchers for your apps, news, and what's new on Jellyfin |
+| `/apps` | signed in | Browse the catalog, ask for access (and for any app an app needs) |
 | `/news` | signed in | All the news this person may see (the dashboard shows the latest five) |
-| `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
+| `/admin/requests` | admins | Approve or decline requests; each says what approving opens, and requests filed together can be approved together |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
-| `/admin/news` | admins | Post news to everyone or to chosen groups; pin it, or show it until a date |
+| `/admin/apps/[id]` | admins | One app: shown, its category, the apps it needs, and its PocketID details with a link to edit them there |
+| `/admin/news` | admins | Every post: who sees it, pinned or expired |
+| `/admin/news/new`, `/admin/news/[id]` | admins | Write or edit a post (audience, pin, end date, pictures), with a preview as people see it |
 | `/admin/integrations` | admins | Point the portal at Jellyfin, choose who sees it, test the connection |
-| `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
-| `/admin/audit` | admins | History: every request and decision, newest first |
+| `/admin/audit` | admins | History: every request and decision, app links, news, integration changes and emails given up on, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
 | `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
