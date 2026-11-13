@@ -675,3 +675,51 @@ describe("AppsPage", () => {
     expect(screen.getByText(/1 application trouvée\./)).toBeInTheDocument();
   });
 });
+
+// ADR-0012: an app that only works with another one says so. The portal
+// doesn't enforce it: Open still works.
+describe("AppsPage: apps that need another app", () => {
+  const base = {
+    description: "",
+    iconUrl: null,
+    category: null,
+    allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
+  };
+
+  beforeEach(() => {
+    mockRequireUser.mockReset().mockResolvedValue({ user: { id: "user-1", groups: ["engineering"] }, expires: "" } as never);
+    mockListUserAccessRequests.mockReset().mockResolvedValue([]);
+  });
+
+  it("says on the card when an app needs one the user doesn't have yet", async () => {
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: false }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(openLink("Grafana")).toHaveAttribute("href", "https://grafana.example.test");
+    expect(within(usableSection()!).getByText("Needs VPN to work, which you don’t have yet.")).toBeInTheDocument();
+  });
+
+  it("says nothing once the user has it", async () => {
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: true }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.queryByText(/Needs VPN/)).not.toBeInTheDocument();
+  });
+
+  it("tells someone asking for an app what else it needs", async () => {
+    mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: false, requires: [{ id: "vpn", name: "VPN", hasAccess: false }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.getByText("Also needs VPN to work.")).toBeInTheDocument();
+  });
+});

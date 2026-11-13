@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { setAppCategoryAction, setAppHiddenAction } from "./actions";
+import {
+  addAppDependencyAction,
+  removeAppDependencyAction,
+  setAppCategoryAction,
+  setAppHiddenAction,
+} from "./actions";
+import { addDependency, removeDependency } from "@/lib/catalog/dependencies";
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
 import { setAppCategory, setAppHidden } from "@/lib/catalog/apps";
@@ -9,6 +16,8 @@ vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn() }));
 vi.mock("@/lib/catalog/apps", () => ({ setAppHidden: vi.fn(), setAppCategory: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
+vi.mock("@/lib/catalog/dependencies", () => ({ addDependency: vi.fn(), removeDependency: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockGetDb = vi.mocked(getDb);
@@ -79,6 +88,62 @@ describe("setAppCategoryAction", () => {
     await setAppCategoryAction("client-1", form("Files"));
 
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps", "layout");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
+  });
+});
+
+// ADR-0012: links between apps, as the admin who made them (audited).
+describe("addAppDependencyAction / removeAppDependencyAction", () => {
+  const form = (requires?: string) => {
+    const data = new FormData();
+    if (requires !== undefined) data.set("requires", requires);
+    return data;
+  };
+
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({ user: { id: "admin-1", email: "admin@example.test" } } as never);
+    mockGetDb.mockReset().mockReturnValue("fake-db" as never);
+    vi.mocked(addDependency).mockReset().mockResolvedValue({ ok: true });
+    vi.mocked(removeDependency).mockReset();
+    vi.mocked(redirect).mockReset();
+    mockRevalidatePath.mockReset();
+  });
+
+  it("links the app to the one it needs, as the admin, and refreshes both pages", async () => {
+    await addAppDependencyAction("grafana", form("vpn"));
+
+    expect(addDependency).toHaveBeenCalledWith("fake-db", "grafana", "vpn", {
+      subject: "admin-1",
+      email: "admin@example.test",
+    });
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps", "layout");
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it("comes back to the app's page saying why, when the link is refused", async () => {
+    vi.mocked(addDependency).mockResolvedValue({ ok: false, reason: "app_is_a_prerequisite" });
+
+    await addAppDependencyAction("vpn", form("wifi"));
+
+    expect(redirect).toHaveBeenCalledWith("/admin/apps/vpn?refused=app_is_a_prerequisite");
+  });
+
+  it("does nothing without an app to link to", async () => {
+    await addAppDependencyAction("grafana", form());
+    await addAppDependencyAction("grafana", form(""));
+
+    expect(addDependency).not.toHaveBeenCalled();
+  });
+
+  it("removes a link, as the admin", async () => {
+    await removeAppDependencyAction("grafana", "vpn");
+
+    expect(mockRequireAdmin).toHaveBeenCalled();
+    expect(removeDependency).toHaveBeenCalledWith("fake-db", "grafana", "vpn", {
+      subject: "admin-1",
+      email: "admin@example.test",
+    });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
   });
 });

@@ -14,7 +14,12 @@ vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("@/lib/catalog/apps", () => ({ listAdminCatalogApps: vi.fn() }));
-vi.mock("../actions", () => ({ setAppHiddenAction: vi.fn(), setAppCategoryAction: vi.fn() }));
+vi.mock("../actions", () => ({
+  setAppHiddenAction: vi.fn(),
+  setAppCategoryAction: vi.fn(),
+  addAppDependencyAction: vi.fn(),
+  removeAppDependencyAction: vi.fn(),
+}));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockListApps = vi.mocked(listAdminCatalogApps);
@@ -29,10 +34,14 @@ const IMMICH: CatalogApp = {
   isGroupRestricted: true,
   allowedGroups: [{ id: "g1", name: "family", friendlyName: "Family" }],
   hidden: false,
+  requires: [],
 };
 
-const page = (id = "client-1") =>
-  AdminAppPage({ params: Promise.resolve({ id }) } as Parameters<typeof AdminAppPage>[0]);
+const page = (id = "client-1", searchParams: Record<string, string> = {}) =>
+  AdminAppPage({
+    params: Promise.resolve({ id }),
+    searchParams: Promise.resolve(searchParams),
+  } as Parameters<typeof AdminAppPage>[0]);
 
 describe("AdminAppPage", () => {
   beforeEach(() => {
@@ -141,5 +150,79 @@ describe("AdminAppPage", () => {
 
     expect(screen.getByText(/^Missing\. Add a description in PocketID that says what it’s for/)).toBeInTheDocument();
     expect(screen.getByText(/^Missing\. Add a launch link \(http or https\)/)).toBeInTheDocument();
+  });
+});
+
+// ADR-0012: an app can need other apps (Grafana needs the VPN), one level
+// deep. Edited here, next to the app's other settings.
+describe("AdminAppPage: apps it needs", () => {
+  const VPN: CatalogApp = { ...IMMICH, id: "vpn", name: "VPN", description: "", launchUrl: null, hidden: true };
+  const GRAFANA: CatalogApp = { ...IMMICH, id: "grafana", name: "Grafana", requires: [{ id: "vpn", name: "VPN" }] };
+  const WIKI: CatalogApp = { ...IMMICH, id: "wiki", name: "Wiki" };
+  const needs = () => screen.getByRole("region", { name: "Needs another app" });
+
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({} as never);
+    vi.stubEnv("POCKETID_BASE_URL", "https://id.example.test/");
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("lists what the app needs, each with a way to remove it", async () => {
+    mockListApps.mockReset().mockResolvedValue([GRAFANA, VPN, WIKI]);
+
+    render(await page("grafana"));
+
+    expect(within(needs()).getByText("VPN")).toBeInTheDocument();
+    expect(within(needs()).getByRole("button", { name: "Remove VPN" })).toBeInTheDocument();
+  });
+
+  // Hidden and link-less apps count: a VPN usually has neither a page nor
+  // a reason to be listed. Itself, what it already needs, and apps that
+  // need another app (no chains) aren't offered.
+  it("offers only the apps it could need", async () => {
+    const DASHBOARDS: CatalogApp = { ...IMMICH, id: "dash", name: "Dashboards", requires: [{ id: "wiki", name: "Wiki" }] };
+    mockListApps.mockReset().mockResolvedValue([GRAFANA, VPN, WIKI, DASHBOARDS]);
+
+    render(await page("grafana"));
+
+    const select = within(needs()).getByRole("combobox", { name: "Add an app it needs" });
+    expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual(["Wiki"]);
+    expect(within(needs()).getByRole("button", { name: "Add" })).toBeInTheDocument();
+  });
+
+  it("says when it needs nothing else", async () => {
+    mockListApps.mockReset().mockResolvedValue([WIKI, VPN]);
+
+    render(await page("wiki"));
+
+    expect(within(needs()).getByText("Nothing else. It works on its own.")).toBeInTheDocument();
+  });
+
+  it("explains that an app other apps need can't need one itself", async () => {
+    mockListApps.mockReset().mockResolvedValue([GRAFANA, VPN, WIKI]);
+
+    render(await page("vpn"));
+
+    expect(within(needs()).getByText("Grafana needs this app, so it can't need another one itself.")).toBeInTheDocument();
+    expect(within(needs()).queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("says why a link was refused", async () => {
+    mockListApps.mockReset().mockResolvedValue([WIKI, VPN]);
+
+    render(await page("wiki", { refused: "prerequisite_needs_another" }));
+
+    expect(within(needs()).getByRole("alert")).toHaveTextContent(
+      "That app needs another one itself, so it can't be needed here.",
+    );
+  });
+
+  it("ignores a refusal reason it doesn't know", async () => {
+    mockListApps.mockReset().mockResolvedValue([WIKI, VPN]);
+
+    render(await page("wiki", { refused: "<script>" }));
+
+    expect(within(needs()).queryByRole("alert")).not.toBeInTheDocument();
   });
 });
