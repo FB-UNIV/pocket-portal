@@ -1,7 +1,7 @@
 # ADR-0007: PocketID OIDC clients are the live app catalog, not a Postgres copy
 
 **Date**: 2026-09-21
-**Status**: accepted (amended 2026-11-06)
+**Status**: accepted (amended 2026-11-06, 2026-11-13 by [ADR-0012](0012-app-dependencies.md))
 **Deciders**: François Bouju
 
 ## Context
