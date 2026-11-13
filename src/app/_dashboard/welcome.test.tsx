@@ -30,7 +30,7 @@ describe("WelcomeChecklist (dashboard section)", () => {
   it("lists what's left to do, with how far along they are", async () => {
     render((await WelcomeChecklist({ userId: "user-1", userGroups: [] }))!);
 
-    expect(within(region()).getByText("0 of 2 done")).toBeInTheDocument();
+    expect(within(region()).getByText("0 of 3 done")).toBeInTheDocument();
     expect(within(region()).getByRole("heading", { name: "Add a backup passkey" })).toBeInTheDocument();
     expect(within(region()).getByRole("link", { name: "Open your account" })).toHaveAttribute(
       "href",
@@ -46,7 +46,7 @@ describe("WelcomeChecklist (dashboard section)", () => {
 
     render((await WelcomeChecklist({ userId: "user-1", userGroups: [] }))!);
 
-    expect(within(region()).getByText("1 of 2 done")).toBeInTheDocument();
+    expect(within(region()).getByText("1 of 3 done")).toBeInTheDocument();
     expect(within(region()).getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
@@ -75,7 +75,12 @@ describe("WelcomeChecklist (dashboard section)", () => {
     vi.mocked(getOnboarding).mockResolvedValue({ ...NOT_STARTED, checklistDismissedAt: new Date() });
     expect(await WelcomeChecklist({ userId: "user-1", userGroups: [] })).toBeNull();
 
-    vi.mocked(getOnboarding).mockResolvedValue({ ...NOT_STARTED, tickedItems: ["backup-passkey"] });
+    vi.mocked(getOnboarding).mockResolvedValue({
+      ...NOT_STARTED,
+      tickedItems: ["backup-passkey"],
+      tourCompletedAt: new Date(),
+      tourVersion: 1,
+    });
     vi.mocked(listUserAccessRequests).mockResolvedValue([{ id: "r1" } as never]);
     expect(await WelcomeChecklist({ userId: "user-1", userGroups: [] })).toBeNull();
   });
@@ -94,9 +99,26 @@ describe("WelcomeChecklist (dashboard section)", () => {
       render((await WelcomeChecklist({ userId: "user-1", userGroups: [] }))!);
 
       expect(screen.getByRole("region", { name: "Pour bien commencer" })).toBeInTheDocument();
-      expect(screen.getByText("0 sur 2 fait")).toBeInTheDocument();
+      expect(screen.getByText("0 sur 3 fait")).toBeInTheDocument();
     } finally {
       setTestLocale("en");
     }
+  });
+});
+
+describe("WelcomeChecklist: the tour", () => {
+  beforeEach(() => {
+    vi.stubEnv("POCKETID_BASE_URL", "https://id.example.test/");
+    vi.mocked(listUserCatalogApps).mockReset().mockResolvedValue([]);
+    vi.mocked(listUserAccessRequests).mockReset().mockResolvedValue([]);
+    vi.mocked(getOnboarding).mockReset().mockResolvedValue(NOT_STARTED);
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("offers to look around the dashboard, starting the tour", async () => {
+    render((await WelcomeChecklist({ userId: "user-1", userGroups: [] }))!);
+
+    expect(within(region()).getByRole("heading", { name: "Look around the dashboard" })).toBeInTheDocument();
+    expect(within(region()).getByRole("link", { name: "Take the tour" })).toHaveAttribute("href", "/?tour=1");
   });
 });

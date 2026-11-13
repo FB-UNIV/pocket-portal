@@ -43,6 +43,7 @@ export async function WelcomeChecklist({ userId, userGroups }: { userId: string;
     ticked: onboarding.tickedItems,
     requestsEnabled: readAccessRequestsEnabled(),
     accountUrl: pocketIdAccountUrl(),
+    tourTaken: onboarding.tourCompletedAt !== null,
   });
   if (!checklistVisible(items, onboarding.checklistDismissedAt)) return null;
 
@@ -93,7 +94,8 @@ function Item({ item, t, locale }: { item: ChecklistItem; t: WelcomeT; locale: s
       </div>
       <div className="flex flex-wrap items-center gap-2 self-center">
         {item.done ? null : (
-          // A plain anchor: PocketID's account page is another site.
+          // A plain anchor: PocketID's account page is another site, and
+          // /?tour=1 should reload the dashboard with the tour open.
           <a href={item.href} className="btn btn-secondary">
             {link}
           </a>
@@ -116,6 +118,9 @@ function words(item: ChecklistItem, t: WelcomeT, locale: string) {
   }
   if (item.id === "request-app") {
     return { title: t("requestTitle"), body: t("requestBody"), link: t("requestLink") };
+  }
+  if (item.id === "take-tour") {
+    return { title: t("tourTitle"), body: t("tourBody"), link: t("tourLink") };
   }
   const neededBy = item.neededBy ?? [];
   return {

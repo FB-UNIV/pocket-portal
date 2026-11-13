@@ -24,9 +24,17 @@ export interface ChecklistInput {
   // PocketID's own account page, where passkeys are added; null when the
   // portal doesn't know PocketID's address.
   accountUrl: string | null;
+  tourTaken: boolean;
 }
 
-export function buildChecklist({ apps, requestCount, ticked, requestsEnabled, accountUrl }: ChecklistInput): ChecklistItem[] {
+export function buildChecklist({
+  apps,
+  requestCount,
+  ticked,
+  requestsEnabled,
+  accountUrl,
+  tourTaken,
+}: ChecklistInput): ChecklistItem[] {
   const items: ChecklistItem[] = [];
 
   if (accountUrl) {
@@ -55,6 +63,8 @@ export function buildChecklist({ apps, requestCount, ticked, requestsEnabled, ac
   if (requestsEnabled) {
     items.push({ id: "request-app", done: requestCount > 0, href: "/apps" });
   }
+  // The guided tour, started from the dashboard itself (/?tour=1).
+  items.push({ id: "take-tour", done: tourTaken, href: "/?tour=1" });
   return items;
 }
 

@@ -32,7 +32,13 @@ export function DashboardSection({
 }) {
   const headingId = `${id}-h`;
   return (
-    <section aria-labelledby={headingId} aria-busy={busy || undefined} className="flex flex-col gap-5">
+    // data-tour: what the guided tour (lib/onboarding/tour.ts) points at.
+    <section
+      aria-labelledby={headingId}
+      aria-busy={busy || undefined}
+      data-tour={id}
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <h2 id={headingId} className="text-2xl font-bold tracking-tight">
           {heading}
