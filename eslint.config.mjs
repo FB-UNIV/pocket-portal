@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The docs site (#8) is its own package, linted by nobody but VitePress.
+    "docs/node_modules/**",
+    "docs/.vitepress/**",
   ]),
 ]);
 

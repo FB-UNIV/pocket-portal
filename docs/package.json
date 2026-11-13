@@ -1,0 +1,14 @@
+{
+  "name": "pocket-portal-docs",
+  "private": true,
+  "type": "module",
+  "description": "The docs site (#8): renders docs/ with VitePress. Its own package, so its tooling stays out of the app's dependencies, image and SBOM.",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

@@ -1,5 +1,7 @@
 # pocket-portal
 
+**Docs:** <https://fb-univ.github.io/pocket-portal/> (deploying, settings, development, architecture and decisions).
+
 A self-hosted portal for a homelab or small team, built on
 [PocketID](https://pocket-id.org). People sign in with a passkey, see the
 apps they can reach, and request access to the rest — an admin approves
@@ -42,6 +44,7 @@ PocketID. nginx and Traefik examples are in the
 Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 [config file](#config-file).
 
+<!-- #region settings -->
 <!-- AUTO-GENERATED: every variable in src/lib/config.ts's CONFIG_VARS must
      appear here; src/lib/config.test.ts fails otherwise. -->
 | Variable | Required | Default | Purpose |
@@ -88,6 +91,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | `http://localhost:4318` | OTLP collector for traces |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | no | `http/protobuf` | OTLP wire format: `http/protobuf` or `http/json` |
 <!-- /AUTO-GENERATED -->
+<!-- #endregion settings -->
 
 #### Config file
 
@@ -119,15 +123,16 @@ Before going live:
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone | Sign in; once signed in, the dashboard: launchers for your apps |
-| `/apps` | signed in | Browse the catalog, request access |
+| `/` | anyone | Sign in; once signed in, the dashboard: a welcome checklist and guided tour for newcomers, launchers for your apps, news, and what's new on Jellyfin |
+| `/apps` | signed in | Browse the catalog, ask for access (and for any app an app needs) |
 | `/news` | signed in | All the news this person may see (the dashboard shows the latest five) |
-| `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
+| `/admin/requests` | admins | Approve or decline requests; each says what approving opens, and requests filed together can be approved together |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
-| `/admin/news` | admins | Post news to everyone or to chosen groups; pin it, or show it until a date |
+| `/admin/apps/[id]` | admins | One app: shown, its category, the apps it needs, and its PocketID details with a link to edit them there |
+| `/admin/news` | admins | Every post: who sees it, pinned or expired |
+| `/admin/news/new`, `/admin/news/[id]` | admins | Write or edit a post (audience, pin, end date, pictures), with a preview as people see it |
 | `/admin/integrations` | admins | Point the portal at Jellyfin, choose who sees it, test the connection |
-| `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
-| `/admin/audit` | admins | History: every request and decision, newest first |
+| `/admin/audit` | admins | History: every request and decision, app links, news, integration changes and emails given up on, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
 | `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
