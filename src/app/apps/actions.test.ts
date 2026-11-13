@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { requestAccessAction, requestAppAccessAction } from "./actions";
+import { recordAccessRequestEvent } from "@/lib/observability/metrics";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdUserGroups } from "@/lib/pocketid/client";
@@ -33,6 +34,7 @@ vi.mock("@/lib/audit/log", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/notifications/access-requests", () => ({ notifyNewAccessRequest: vi.fn() }));
+vi.mock("@/lib/observability/metrics", () => ({ recordAccessRequestEvent: vi.fn() }));
 
 const mockRequireUser = vi.mocked(requireUser);
 const mockGetDb = vi.mocked(getDb);
@@ -179,6 +181,14 @@ describe("requestAccessAction", () => {
     );
   });
 
+  it("counts the new request (#16)", async () => {
+    vi.mocked(recordAccessRequestEvent).mockReset();
+
+    await requestAccessAction("client-1", "g1");
+
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("created");
+  });
+
   it("handles a requester with no email — records null on the request, undefined on the audit", async () => {
     mockRequireUser.mockResolvedValue({
       user: { id: "user-1", email: null, groups: [] },
@@ -313,6 +323,7 @@ describe("requestAccessAction", () => {
       TX,
       expect.objectContaining({ action: "access_request.reopened", targetId: "req-1" }),
     );
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("reopened");
   });
 
   // The revoked card carries a reason field, so whatever the user just typed

@@ -9,6 +9,7 @@ import { getAccessRequestById, setAccessRequestStatus } from "@/lib/requests/acc
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyAccessRequestDecision } from "@/lib/notifications/access-requests";
+import { recordAccessRequestEvent, recordGrant } from "@/lib/observability/metrics";
 
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn() }));
@@ -22,6 +23,7 @@ vi.mock("@/lib/requests/access-requests", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/notifications/access-requests", () => ({ notifyAccessRequestDecision: vi.fn() }));
+vi.mock("@/lib/observability/metrics", () => ({ recordAccessRequestEvent: vi.fn(), recordGrant: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockGetDb = vi.mocked(getDb);
@@ -78,6 +80,8 @@ describe("decideAccessRequestAction", () => {
     mockRevalidate.mockReset();
     mockAfter.mockReset();
     mockNotifyDecision.mockReset();
+    vi.mocked(recordAccessRequestEvent).mockReset();
+    vi.mocked(recordGrant).mockReset();
   });
 
   it("requires admin", async () => {
@@ -220,5 +224,63 @@ describe("decideAccessRequestAction", () => {
     await decideAccessRequestAction("req-1", "approved");
 
     expect(mockAfter).not.toHaveBeenCalled();
+  });
+});
+
+// Metrics (#16): decisions and grants are counted once they're final, so a
+// spike in grants, or grants failing, can be alerted on (#4).
+describe("decideAccessRequestAction metrics", () => {
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({
+      user: { id: "admin-1", email: "admin@example.test", groups: [], isAdmin: true },
+      expires: "",
+    } as never);
+    mockGetDb.mockReset().mockReturnValue({ transaction: (cb: (tx: unknown) => unknown) => cb(TX) } as never);
+    mockAddUserToGroup.mockReset().mockResolvedValue(undefined);
+    mockListAdminApps.mockReset().mockResolvedValue([APP_WITH_GROUP]);
+    mockGetById.mockReset().mockResolvedValue({ ...PENDING });
+    vi.mocked(recordAccessRequestEvent).mockReset();
+    vi.mocked(recordGrant).mockReset();
+  });
+
+  it("counts an approval and its grant", async () => {
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).toHaveBeenCalledWith("granted");
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("approved");
+  });
+
+  it("counts a denial, and no grant", async () => {
+    await decideAccessRequestAction("req-1", "denied");
+
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("denied");
+    expect(recordGrant).not.toHaveBeenCalled();
+  });
+
+  it("counts a failed grant, and no approval", async () => {
+    mockAddUserToGroup.mockRejectedValue(new Error("PocketID 503"));
+
+    await expect(decideAccessRequestAction("req-1", "approved")).rejects.toThrow();
+
+    expect(recordGrant).toHaveBeenCalledWith("failed");
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+
+  it("counts a refused grant, and no approval", async () => {
+    mockListAdminApps.mockResolvedValue([{ ...APP_WITH_GROUP, allowedGroups: [] }]);
+
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).toHaveBeenCalledWith("refused");
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+
+  it("counts nothing for a stale click", async () => {
+    mockGetById.mockResolvedValue({ ...PENDING, status: "approved" });
+
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).not.toHaveBeenCalled();
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
   });
 });
