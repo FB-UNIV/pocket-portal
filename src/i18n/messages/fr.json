@@ -58,7 +58,9 @@
     "statusPending": "{group, select, __none {En attente d’un administrateur} other {{group} : en attente d’un administrateur}}",
     "statusSettling": "{group, select, __none {Approuvé — prêt dans quelques minutes} other {{group} : approuvé — prêt dans quelques minutes}}",
     "statusDenied": "{group, select, __none {Non approuvé} other {{group} : non approuvé}}",
-    "statusRevoked": "{group, select, __none {Accès retiré} other {{group} : accès retiré}}"
+    "statusRevoked": "{group, select, __none {Accès retiré} other {{group} : accès retiré}}",
+    "needsMissing": "A besoin de {names} pour fonctionner, que vous n’avez pas encore.",
+    "alsoNeeds": "A aussi besoin de {names} pour fonctionner."
   },
   "AskForm": {
     "role": "Rôle",
@@ -129,7 +131,20 @@
     "whoCanUse": "Qui peut l’utiliser",
     "preview": "Ce que les gens voient",
     "previewUnder": "Dans « {category} » sur la page Applications.",
-    "previewOff": "Pas sur la page Applications pour l’instant."
+    "previewOff": "Pas sur la page Applications pour l’instant.",
+    "needsHeading": "A besoin d’une autre application",
+    "needsHint": "Pour une application qui ne fonctionne qu’avec une autre, comme un tableau de bord derrière le VPN. Les utilisateurs le voient sur la page Applications. Le portail ne le vérifie pas.",
+    "needsNothing": "Rien d’autre. Elle fonctionne seule.",
+    "needsRemove": "Retirer",
+    "needsRemoveApp": "Retirer {name}",
+    "needsAddLabel": "Ajouter une application dont elle a besoin",
+    "needsAdd": "Ajouter",
+    "needsNoCandidates": "Aucune autre application ne peut être ajoutée : les autres ont déjà besoin d’une application.",
+    "neededBy": "{count, plural, one {{names} a besoin} other {{names} ont besoin}} de cette application, elle ne peut donc pas avoir besoin d’une autre.",
+    "refusedSelf": "Une application ne peut pas avoir besoin d’elle-même.",
+    "refusedPrerequisiteNeedsAnother": "Cette application a elle-même besoin d’une autre, elle ne peut donc pas être requise ici.",
+    "refusedAppIsAPrerequisite": "D’autres applications ont besoin de celle-ci, elle ne peut donc pas avoir besoin d’une autre.",
+    "refusedUnknownApp": "Cette application n’est plus dans PocketID."
   },
   "AdminRequests": {
     "title": "Demandes",
@@ -168,6 +183,9 @@
     "evGrantFailed": "{actor} <muted>a essayé d’ajouter</muted> {requester} <muted>à</muted> {group}<muted>, mais cela a échoué.</muted>",
     "evGrantRejected": "{actor} <muted>a essayé d’ajouter</muted> {requester} <muted>à</muted> {group}<muted>, mais PocketID a refusé.</muted>",
     "evEmailFailed": "<muted>L’e-mail à</muted> {recipient} <muted>au sujet de</muted> {group} <muted>n’a pas pu être envoyé.</muted>",
+    "evDependencyAdded": "{actor} <muted>a indiqué que</muted> {app} <muted>a besoin de</muted> {prerequisite}",
+    "evDependencyRemoved": "{actor} <muted>a indiqué que</muted> {app} <muted>n’a plus besoin de</muted> {prerequisite}",
+    "someApp": "une application",
     "evUnknown": "{actor} : {action}",
     "someone": "quelqu’un",
     "someGroup": "un groupe",

@@ -204,7 +204,7 @@ describe("AdminAppPage: apps it needs", () => {
 
     render(await page("vpn"));
 
-    expect(within(needs()).getByText("Grafana needs this app, so it can't need another one itself.")).toBeInTheDocument();
+    expect(within(needs()).getByText("Grafana needs this app, so it can’t need another one itself.")).toBeInTheDocument();
     expect(within(needs()).queryByRole("combobox")).not.toBeInTheDocument();
   });
 
@@ -214,7 +214,7 @@ describe("AdminAppPage: apps it needs", () => {
     render(await page("wiki", { refused: "prerequisite_needs_another" }));
 
     expect(within(needs()).getByRole("alert")).toHaveTextContent(
-      "That app needs another one itself, so it can't be needed here.",
+      "That app needs another one itself, so it can’t be needed here.",
     );
   });
 

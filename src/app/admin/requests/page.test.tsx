@@ -43,6 +43,7 @@ const APP = {
   isGroupRestricted: true,
   allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
   hidden: false,
+  requires: [],
 };
 const mockListPending = vi.mocked(listPendingAccessRequests);
 

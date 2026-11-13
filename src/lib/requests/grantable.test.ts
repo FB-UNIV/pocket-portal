@@ -12,6 +12,7 @@ const APP: CatalogApp = {
   isGroupRestricted: true,
   allowedGroups: [{ id: "group-1", name: "engineering", friendlyName: "Engineering" }],
   hidden: false,
+  requires: [],
 };
 const REQUEST = { pocketIdClientId: "client-1", pocketIdGroupId: "group-1" };
 

@@ -8,8 +8,9 @@
 | [0004](0004-portal-oidc-login.md) | Portal authenticates end users via PocketID OIDC | accepted | 2026-09-20 |
 | [0005](0005-observability-stack.md) | Observability stack — Pino, OpenTelemetry, prom-client | accepted (amended 2026-09-22) | 2026-09-20 |
 | [0006](0006-audit-trail-separate-from-logs.md) | Audit trail as a dedicated Postgres table, separate from application logs | accepted | 2026-09-20 |
-| [0007](0007-pocketid-live-catalog.md) | PocketID OIDC clients are the live app catalog, not a Postgres copy | accepted (amended 2026-11-06) | 2026-09-21 |
+| [0007](0007-pocketid-live-catalog.md) | PocketID OIDC clients are the live app catalog, not a Postgres copy | accepted (amended 2026-11-06, 2026-11-13 by [0012](0012-app-dependencies.md)) | 2026-09-21 |
 | [0008](0008-semantic-versioning.md) | Adopt Semantic Versioning for releases | accepted (amended 2026-09-22) | 2026-09-21 |
 | [0009](0009-email-notifications-inline-after-response.md) | Email notifications sent inline, after the response | superseded by [0011](0011-email-notifications-through-an-outbox.md) | 2026-09-24 |
 | [0010](0010-inherit-pocketid-branding-not-theme.md) | Inherit PocketID's branding, not its theme | accepted | 2026-11-06 |
 | [0011](0011-email-notifications-through-an-outbox.md) | Email notifications through a Postgres outbox | accepted | 2026-11-13 |
+| [0012](0012-app-dependencies.md) | App dependencies are portal-side links between PocketID clients | accepted | 2026-11-13 |

@@ -9,6 +9,7 @@ import {
 import { hasAccessToClient } from "./access";
 import { safeLaunchUrl } from "./launch-url";
 import { withSpan } from "@/lib/observability/tracing";
+import { listDependencies, prerequisitesOf, type DependencyLink, type Prerequisite } from "./dependencies";
 
 export interface CatalogApp {
   id: string;
@@ -20,6 +21,8 @@ export interface CatalogApp {
   allowedGroups: PocketIdUserGroup[];
   hidden: boolean;
   category: string | null;
+  // The apps this one needs to be usable (ADR-0012), named from PocketID.
+  requires: { id: string; name: string }[];
 }
 
 export interface UserCatalogApp {
@@ -31,6 +34,9 @@ export interface UserCatalogApp {
   hasAccess: boolean;
   allowedGroups: PocketIdUserGroup[];
   category: string | null;
+  // The apps this one needs (ADR-0012), and whether the user has each.
+  // Prerequisites can be hidden or have no link (a VPN): they count anyway.
+  requires: Prerequisite[];
 }
 
 /* v8 ignore start -- exercised by the integration suite (real PocketID + Postgres), not unit mocks */
@@ -44,16 +50,19 @@ function fetchClientsWithOverrides(
   clients: PocketIdOidcClient[];
   hiddenIds: Set<string>;
   categories: Map<string, string>;
+  links: DependencyLink[];
 }> {
   return withSpan("catalog.build", { "portal.catalog.view": view }, async (span) => {
-    const [clients, overrides] = await Promise.all([
+    const [clients, overrides, links] = await Promise.all([
       listPocketIdOidcClients(pocketId),
       db.select().from(appOverrides),
+      listDependencies(db),
     ]);
     span.setAttribute("portal.catalog.clients", clients.length);
 
     return {
       clients,
+      links,
       hiddenIds: new Set(overrides.filter((o) => o.hidden).map((o) => o.pocketIdClientId)),
       categories: new Map(
         overrides.flatMap((o) => (o.category ? [[o.pocketIdClientId, o.category] as const] : [])),
@@ -69,7 +78,7 @@ export async function listAdminCatalogApps(
   pocketId: PocketIdConfig,
   db: Db,
 ): Promise<CatalogApp[]> {
-  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db, "admin");
+  const { clients, hiddenIds, categories, links } = await fetchClientsWithOverrides(pocketId, db, "admin");
 
   return clients.map((client) => ({
     id: client.id,
@@ -81,6 +90,7 @@ export async function listAdminCatalogApps(
     allowedGroups: client.allowedUserGroups,
     hidden: hiddenIds.has(client.id),
     category: categories.get(client.id) ?? null,
+    requires: prerequisitesOf(links, clients, client.id, []).map(({ id, name }) => ({ id, name })),
   }));
 }
 
@@ -94,7 +104,7 @@ export async function listUserCatalogApps(
   db: Db,
   userGroups: string[],
 ): Promise<UserCatalogApp[]> {
-  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db, "user");
+  const { clients, hiddenIds, categories, links } = await fetchClientsWithOverrides(pocketId, db, "user");
 
   return clients.flatMap((client) => {
     const launchUrl = safeLaunchUrl(client.launchURL);
@@ -110,6 +120,7 @@ export async function listUserCatalogApps(
         hasAccess: hasAccessToClient(userGroups, client),
         allowedGroups: client.allowedUserGroups,
         category: categories.get(client.id) ?? null,
+        requires: prerequisitesOf(links, clients, client.id, userGroups),
       },
     ];
   });

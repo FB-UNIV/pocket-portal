@@ -168,6 +168,7 @@ transaction as the change it records wherever that coupling matters:
 | `access_request.reopened` | a user re-requests a grant that was revoked |
 | `access_request.grant_failed` | the PocketID grant attempt failed for any reason — refusal, timeout, unreachable; the request stays pending |
 | `access_request.grant_rejected` | the target group is no longer a grantable group of its client |
+| `app_dependency.added` / `app_dependency.removed` | an admin says an app needs, or no longer needs, another ([ADR-0012](adr/0012-app-dependencies.md)); with both apps' names at the time |
 | `notification.failed` | an email was given up on after its last attempt ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)); written by `system`, with the recipient and the last error |
 
 The two `grant_*` actions exist so a request that never became access still

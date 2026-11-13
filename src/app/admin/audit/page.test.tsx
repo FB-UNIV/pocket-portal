@@ -175,6 +175,21 @@ describe("AdminAuditPage", () => {
     expect(within(events()[0]).getByText("550 no such user")).toBeInTheDocument();
   });
 
+  // ADR-0012: links between apps, by the names they had then.
+  it.each([
+    ["app_dependency.added", "Ada Admin said Grafana needs VPN"],
+    ["app_dependency.removed", "Ada Admin said Grafana no longer needs VPN"],
+  ])("tells %s", async (action, text) => {
+    mockList.mockResolvedValue({
+      entries: [entry({ action, metadata: { requiresPocketIdClientId: "vpn", appName: "Grafana", requiresName: "VPN" } })],
+      nextCursor: null,
+    });
+
+    await renderPage();
+
+    expect(events()[0]).toHaveTextContent(text);
+  });
+
   it("still tells an event with no metadata", async () => {
     mockList.mockResolvedValue({ entries: [entry({ metadata: null })], nextCursor: null });
 

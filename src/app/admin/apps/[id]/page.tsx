@@ -8,9 +8,9 @@ import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { categoriesOf, MAX_CATEGORY_LENGTH } from "@/lib/catalog/browse";
 import { pocketIdClientUrl } from "../pocketid-url";
 import { AppMark } from "@/app/_components/app-mark";
-import { setAppCategoryAction } from "../actions";
+import { addAppDependencyAction, removeAppDependencyAction, setAppCategoryAction } from "../actions";
 import { ShownSwitch, WhoCanUse } from "../app-parts";
-import { getTranslations } from "@/i18n/server";
+import { getLocale, getTranslations } from "@/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("AdminApp");
@@ -20,14 +20,25 @@ export async function generateMetadata(): Promise<Metadata> {
 // One app: what the portal sets (shown, category) next to what PocketID
 // owns (name, description, link, groups; ADR-0007), which is read-only here
 // and links out to PocketID's own page for the client.
-export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[id]">) {
+// Why a link was refused (?refused=, from addAppDependencyAction). An
+// allowlist: the query is user input.
+const REFUSALS = {
+  self: "refusedSelf",
+  prerequisite_needs_another: "refusedPrerequisiteNeedsAnother",
+  app_is_a_prerequisite: "refusedAppIsAPrerequisite",
+  unknown_app: "refusedUnknownApp",
+} as const;
+
+export default async function AdminAppPage({ params, searchParams }: PageProps<"/admin/apps/[id]">) {
   const { id } = await params;
   await requireAdmin(`/admin/apps/${encodeURIComponent(id)}`);
 
-  const [apps, t, tApps] = await Promise.all([
+  const [apps, t, tApps, locale, query] = await Promise.all([
     listAdminCatalogApps(getPocketIdConfig(), getDb()),
     getTranslations("AdminApp"),
     getTranslations("AdminApps"),
+    getLocale(),
+    searchParams,
   ]);
   const app = apps.find((a) => a.id === id);
   if (!app) notFound();
@@ -38,6 +49,19 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
   const listed = !app.hidden && Boolean(app.launchUrl);
   const state = app.hidden ? "stateHidden" : app.launchUrl ? "stateListed" : "stateNoLink";
   const description = app.description.trim();
+
+  // ADR-0012, one level deep: an app other apps need can't need one itself,
+  // and it can only need apps that don't need one. Hidden and link-less
+  // apps count (a VPN usually is both).
+  const neededBy = apps.filter((other) => other.requires.some((r) => r.id === app.id));
+  const candidates = apps.filter(
+    (other) => other.id !== app.id && other.requires.length === 0 && !app.requires.some((r) => r.id === other.id),
+  );
+  const refused = typeof query?.refused === "string" && Object.hasOwn(REFUSALS, query.refused)
+    ? REFUSALS[query.refused as keyof typeof REFUSALS]
+    : null;
+  const names = (list: { name: string }[]) =>
+    new Intl.ListFormat(locale, { type: "conjunction" }).format(list.map((a) => a.name));
 
   return (
     <main id="main-content" tabIndex={-1} className="flex flex-col gap-7">
@@ -122,6 +146,67 @@ export default async function AdminAppPage({ params }: PageProps<"/admin/apps/[i
                 </datalist>
               </form>
             </div>
+          </section>
+
+          <section aria-labelledby="needs" className="card flex flex-col gap-4 p-6">
+            <div className="flex flex-col gap-1">
+              <h2 id="needs" className="text-lg font-bold">
+                {t("needsHeading")}
+              </h2>
+              <p className="text-sm text-ink-muted">{t("needsHint")}</p>
+            </div>
+            {refused ? (
+              <p role="alert" className="rounded-xl border border-bad-line bg-bad px-4 py-3 text-sm font-semibold text-on-bad">
+                {t(refused)}
+              </p>
+            ) : null}
+            {neededBy.length > 0 ? (
+              <p className="text-[15px]">{t("neededBy", { names: names(neededBy), count: neededBy.length })}</p>
+            ) : (
+              <>
+                {app.requires.length === 0 ? (
+                  <p className="text-[15px] text-ink-muted">{t("needsNothing")}</p>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-line">
+                    {app.requires.map((prerequisite) => (
+                      <li key={prerequisite.id} className="flex items-center justify-between gap-4 py-2.5">
+                        <span className="font-semibold">{prerequisite.name}</span>
+                        <form action={removeAppDependencyAction.bind(null, app.id, prerequisite.id)}>
+                          <button
+                            type="submit"
+                            aria-label={t("needsRemoveApp", { name: prerequisite.name })}
+                            className="btn btn-secondary"
+                          >
+                            {t("needsRemove")}
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {candidates.length > 0 ? (
+                  <form action={addAppDependencyAction.bind(null, app.id)} className="flex flex-wrap items-end gap-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="requires" className="text-sm font-semibold">
+                        {t("needsAddLabel")}
+                      </label>
+                      <select id="requires" name="requires" className="field max-w-xs">
+                        {candidates.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                      {t("needsAdd")}
+                    </button>
+                  </form>
+                ) : (
+                  <p className="text-sm text-ink-muted">{t("needsNoCandidates")}</p>
+                )}
+              </>
+            )}
           </section>
 
           <section aria-labelledby="in-pocketid" className="card flex flex-col px-6 pt-4 pb-2">

@@ -27,7 +27,7 @@ import { requestAppAccessAction } from "./actions";
 import { RequestAccessForm } from "./request-access-form";
 import { formLabels, type AskFormT } from "./form-labels";
 import { AppMark } from "@/app/_components/app-mark";
-import { getTranslations } from "@/i18n/server";
+import { getLocale, getTranslations } from "@/i18n/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Apps");
@@ -97,8 +97,17 @@ function AppWords({ app, size }: { app: UserCatalogApp; size: "card" | "row" }) 
 // (/apps?ask=<id>, so it works without JavaScript). Pending and
 // just-approved roles drop out of the form (asking again would be refused);
 // declined and removed ones stay, and the link says "Ask again".
+// The apps an app needs and the user doesn't have yet (ADR-0012), as one
+// phrase: "VPN", "VPN and Wifi". Null when there are none.
+function missingPrerequisites(app: UserCatalogApp, locale: string): string | null {
+  const missing = app.requires.filter((prerequisite) => !prerequisite.hasAccess);
+  if (missing.length === 0) return null;
+  return new Intl.ListFormat(locale, { type: "conjunction" }).format(missing.map((p) => p.name));
+}
+
 function AskRow({
   app,
+  locale,
   myRequests,
   userGroups,
   reason,
@@ -107,6 +116,7 @@ function AskRow({
   tForm,
 }: {
   app: UserCatalogApp;
+  locale: string;
   myRequests: AccessRequest[];
   userGroups: string[];
   reason: AccessRequestReason;
@@ -130,6 +140,11 @@ function AskRow({
         <AppMark name={app.name} iconUrl={app.iconUrl} size="sm" />
         <div className="flex min-w-0 flex-[1_1_14rem] flex-col">
           <AppWords app={app} size="row" />
+          {/* What else it takes to use it, so nobody is surprised once
+              they're in (ADR-0012). */}
+          {missingPrerequisites(app, locale) ? (
+            <p className="mt-1 text-sm text-on-tip">{t("alsoNeeds", { names: missingPrerequisites(app, locale)! })}</p>
+          ) : null}
         </div>
         {roles.map(({ group, outcome }) =>
           outcome ? (
@@ -184,11 +199,12 @@ export default async function AppsPage({
   const reasonMode = readAccessRequestReason();
 
   const db = getDb();
-  const [catalog, myRequests, t, tForm] = await Promise.all([
+  const [catalog, myRequests, t, tForm, locale] = await Promise.all([
     listUserCatalogApps(getPocketIdConfig(), db, session.user.groups),
     listUserAccessRequests(db, session.user.id),
     getTranslations("Apps"),
     getTranslations("AskForm"),
+    getLocale(),
   ]);
   // Requests off: a pure launcher, listing only what can be opened.
   const visible = requestsEnabled ? catalog : catalog.filter((app) => app.hasAccess);
@@ -285,7 +301,7 @@ export default async function AppsPage({
             ) : (
               <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))]">
                 {usable.map((app) => (
-                  <li key={app.id} className="flex">
+                  <li key={app.id} className="flex flex-col gap-2">
                     {/* The card's own words are its accessible name (what
                         the app is for, then its name): it says where the
                         link goes (SC 2.4.4) and contains everything the
@@ -298,10 +314,19 @@ export default async function AppsPage({
                       <span className="flex flex-col gap-1 pr-6">
                         <AppWords app={app} size="card" />
                       </span>
+
                       <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="absolute top-6 right-6 text-ink-muted">
                         <path d="M7 17 17 7M9 7h8v8" />
                       </svg>
                     </a>
+                    {/* Below the card, not in it, so the link's name stays the
+                        app's own words. The portal informs, it doesn't
+                        enforce (ADR-0012): the card still opens the app. */}
+                    {missingPrerequisites(app, locale) ? (
+                      <p className="px-2 text-sm font-semibold text-on-tip">
+                        {t("needsMissing", { names: missingPrerequisites(app, locale)! })}
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -319,6 +344,7 @@ export default async function AppsPage({
                 <AskRow
                   key={app.id}
                   app={app}
+                  locale={locale}
                   myRequests={myRequests}
                   userGroups={session.user.groups}
                   reason={reasonMode}

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, boolean, integer, jsonb, timestamp, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, integer, jsonb, timestamp, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */
 // See docs/adr/0006-audit-trail-separate-from-logs.md: this is a permanent,
@@ -101,6 +101,22 @@ export const sessionClaims = pgTable("session_claims", {
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
 });
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// An app that needs another app to be usable (ADR-0012): Grafana needs the
+// VPN. Both sides are PocketID OIDC client ids; which group grants the
+// prerequisite is read live from PocketID, never stored. One level deep:
+// lib/catalog/dependencies.ts checks it under a table lock.
+export const appDependencies = pgTable(
+  "app_dependencies",
+  {
+    pocketIdClientId: text("pocket_id_client_id").notNull(),
+    requiresPocketIdClientId: text("requires_pocket_id_client_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.pocketIdClientId, table.requiresPocketIdClientId] })],
+);
 /* v8 ignore stop */
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */

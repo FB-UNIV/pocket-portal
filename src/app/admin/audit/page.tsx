@@ -45,6 +45,10 @@ const EVENTS = {
   // An email the outbox gave up on (ADR-0011); written by the system, so
   // the sentence names who it was for rather than who did it.
   "notification.failed": { message: "evEmailFailed", tone: "bad", mark: "!" },
+  // An admin linking or unlinking two apps (ADR-0012), by the names they
+  // had then.
+  "app_dependency.added": { message: "evDependencyAdded", tone: "muted", mark: "+" },
+  "app_dependency.removed": { message: "evDependencyRemoved", tone: "muted", mark: "–" },
 } as const;
 
 const TONES = {
@@ -92,6 +96,8 @@ function EventSentence({
     : t("someone");
   const group = metadataString(entry.metadata, "pocketIdGroupName") ?? t("someGroup");
   const recipient = metadataString(entry.metadata, "recipientEmail") ?? t("someone");
+  const app = metadataString(entry.metadata, "appName") ?? t("someApp");
+  const prerequisite = metadataString(entry.metadata, "requiresName") ?? t("someApp");
   return (
     <>
       {t.rich(EVENTS[entry.action as keyof typeof EVENTS].message, {
@@ -99,6 +105,8 @@ function EventSentence({
         requester,
         group,
         recipient,
+        app,
+        prerequisite,
         // The sentence is bold, so the people and the group stand out; the
         // words between them are quieter.
         muted: (chunks) => <span className="font-normal text-ink-muted">{chunks}</span>,

@@ -9,12 +9,13 @@ import { addDependency, removeDependency } from "@/lib/catalog/dependencies";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
-import { setAppCategory, setAppHidden } from "@/lib/catalog/apps";
+import { listAdminCatalogApps, setAppCategory, setAppHidden } from "@/lib/catalog/apps";
 import { revalidatePath } from "next/cache";
 
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn() }));
-vi.mock("@/lib/catalog/apps", () => ({ setAppHidden: vi.fn(), setAppCategory: vi.fn() }));
+vi.mock("@/lib/catalog/apps", () => ({ setAppHidden: vi.fn(), setAppCategory: vi.fn(), listAdminCatalogApps: vi.fn() }));
+vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn() }));
 vi.mock("@/lib/catalog/dependencies", () => ({ addDependency: vi.fn(), removeDependency: vi.fn() }));
@@ -105,17 +106,27 @@ describe("addAppDependencyAction / removeAppDependencyAction", () => {
     mockGetDb.mockReset().mockReturnValue("fake-db" as never);
     vi.mocked(addDependency).mockReset().mockResolvedValue({ ok: true });
     vi.mocked(removeDependency).mockReset();
-    vi.mocked(redirect).mockReset();
+    vi.mocked(redirect).mockReset().mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+    vi.mocked(listAdminCatalogApps).mockReset().mockResolvedValue([
+      { id: "grafana", name: "Grafana" },
+      { id: "vpn", name: "VPN" },
+      { id: "wifi", name: "Wifi" },
+    ] as never);
     mockRevalidatePath.mockReset();
   });
 
-  it("links the app to the one it needs, as the admin, and refreshes both pages", async () => {
+  it("links the app to the one it needs, as the admin, naming both, and refreshes both pages", async () => {
     await addAppDependencyAction("grafana", form("vpn"));
 
-    expect(addDependency).toHaveBeenCalledWith("fake-db", "grafana", "vpn", {
-      subject: "admin-1",
-      email: "admin@example.test",
-    });
+    expect(addDependency).toHaveBeenCalledWith(
+      "fake-db",
+      "grafana",
+      "vpn",
+      { subject: "admin-1", email: "admin@example.test" },
+      { appName: "Grafana", requiresName: "VPN" },
+    );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/apps", "layout");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
     expect(redirect).not.toHaveBeenCalled();
@@ -124,9 +135,17 @@ describe("addAppDependencyAction / removeAppDependencyAction", () => {
   it("comes back to the app's page saying why, when the link is refused", async () => {
     vi.mocked(addDependency).mockResolvedValue({ ok: false, reason: "app_is_a_prerequisite" });
 
-    await addAppDependencyAction("vpn", form("wifi"));
+    await expect(addAppDependencyAction("vpn", form("wifi"))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(redirect).toHaveBeenCalledWith("/admin/apps/vpn?refused=app_is_a_prerequisite");
+  });
+
+  // A form is user input: only PocketID's own clients can be linked.
+  it("refuses an app PocketID doesn't have, writing nothing", async () => {
+    await expect(addAppDependencyAction("grafana", form("made-up"))).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith("/admin/apps/grafana?refused=unknown_app");
+    expect(addDependency).not.toHaveBeenCalled();
   });
 
   it("does nothing without an app to link to", async () => {
@@ -140,10 +159,13 @@ describe("addAppDependencyAction / removeAppDependencyAction", () => {
     await removeAppDependencyAction("grafana", "vpn");
 
     expect(mockRequireAdmin).toHaveBeenCalled();
-    expect(removeDependency).toHaveBeenCalledWith("fake-db", "grafana", "vpn", {
-      subject: "admin-1",
-      email: "admin@example.test",
-    });
+    expect(removeDependency).toHaveBeenCalledWith(
+      "fake-db",
+      "grafana",
+      "vpn",
+      { subject: "admin-1", email: "admin@example.test" },
+      { appName: "Grafana", requiresName: "VPN" },
+    );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/apps");
   });
 });
