@@ -27,6 +27,7 @@ function deps(overrides: Record<string, unknown> = {}) {
       { id: "4", email: null, isAdmin: true, disabled: false },
     ]),
     localeOf: vi.fn().mockResolvedValue("en"),
+    record: vi.fn(),
     ...overrides,
   };
 }
@@ -207,5 +208,50 @@ describe("email language", () => {
     expect(approved.subject).toBe("Accès à engineering accordé");
     expect(approved.text).toContain("Votre demande pour engineering a été approuvée.");
     expect(denied.subject).toBe("Accès à engineering refusé");
+  });
+});
+
+// portal_notifications_total (#16, #5): failures show up as a metric, not
+// only in the logs.
+describe("notification metrics", () => {
+  it("counts each email sent and each one that failed", async () => {
+    const d = deps({
+      listUsers: vi.fn().mockResolvedValue([
+        { id: "a", email: "a@example.test", isAdmin: true, disabled: false },
+        { id: "b", email: "b@example.test", isAdmin: true, disabled: false },
+      ]),
+      send: vi.fn().mockRejectedValueOnce(new Error("550 no such user")).mockResolvedValue(undefined),
+    });
+
+    await notifyNewAccessRequest(REQUEST, d);
+
+    expect(d.record.mock.calls).toEqual([
+      ["new_request", "failed"],
+      ["new_request", "sent"],
+    ]);
+  });
+
+  it("counts a failure when the recipients can't be read", async () => {
+    const d = deps({ listUsers: vi.fn().mockRejectedValue(new Error("503")) });
+
+    await notifyNewAccessRequest(REQUEST, d);
+
+    expect(d.record.mock.calls).toEqual([["new_request", "failed"]]);
+  });
+
+  it("counts the decision email under its own kind", async () => {
+    const d = deps();
+
+    await notifyAccessRequestDecision(REQUEST, "approved", d);
+
+    expect(d.record.mock.calls).toEqual([["decision", "sent"]]);
+  });
+
+  it("counts nothing while notifications are off", async () => {
+    const d = deps({ env: { ...ENV, SMTP_HOST: "" } });
+
+    await notifyNewAccessRequest(REQUEST, d);
+
+    expect(d.record).not.toHaveBeenCalled();
   });
 });

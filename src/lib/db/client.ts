@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { readDatabaseUrl } from "@/lib/config";
+import { traceSql } from "./trace-sql";
 
 export type Db = ReturnType<typeof createDb>;
 
@@ -15,8 +16,9 @@ export type DbTx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 // Takes an explicit connection string (not process.env.DATABASE_URL read
 // internally) so callers/tests control exactly which database they hit —
 // same pattern as getPocketIdConfig().
+// Every query is traced (statement shape only; see ./trace-sql).
 export function createDb(connectionString: string) {
-  const client = postgres(connectionString);
+  const client = traceSql(postgres(connectionString));
   return drizzle(client, { schema });
 }
 /* v8 ignore stop */

@@ -1,4 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { SpanStatusCode } from "@opentelemetry/api";
+import { recordSpans } from "@/test/otel";
 import { readMailConfig, sendMail } from "./mail";
 
 const sendMailMock = vi.fn();
@@ -93,5 +95,44 @@ describe("sendMail", () => {
     );
 
     expect(createTransport).toHaveBeenLastCalledWith(expect.objectContaining(expected));
+  });
+});
+
+// nodemailer isn't instrumented, so each send gets a span of its own (#16),
+// with how many it went to and never who.
+describe("sendMail tracing", () => {
+  const CONFIG = { host: "smtp.example.test", port: 587, tls: "starttls" as const, auth: undefined, from: "portal@example.test" };
+  const MESSAGE = { to: ["alice@example.test"], subject: "Hi", text: "Body" };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    sendMailMock.mockReset();
+  });
+
+  it("wraps each send in a span with the recipient count, and no address", async () => {
+    const spans = recordSpans();
+    sendMailMock.mockResolvedValue({});
+
+    await sendMail(CONFIG, MESSAGE);
+
+    expect(spans).toEqual([
+      expect.objectContaining({ name: "email.send", attributes: { "email.recipients": 1 }, ended: true }),
+    ]);
+    expect(JSON.stringify(spans)).not.toContain("alice@example.test");
+  });
+
+  // An SMTP error often quotes the address it refused.
+  it("marks the span failed by error type, without the message", async () => {
+    const spans = recordSpans();
+    sendMailMock.mockRejectedValue(new Error("550 <alice@example.test> no such user"));
+
+    await expect(sendMail(CONFIG, MESSAGE)).rejects.toThrow("550");
+
+    expect(spans[0]).toMatchObject({
+      status: { code: SpanStatusCode.ERROR },
+      attributes: expect.objectContaining({ "error.type": "Error" }),
+      ended: true,
+    });
+    expect(JSON.stringify(spans)).not.toContain("alice@example.test");
   });
 });

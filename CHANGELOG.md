@@ -8,6 +8,19 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Added
+- **Portal metrics, and traces that cover the whole request.**
+  `/api/metrics` now also counts access requests (created, reopened,
+  approved, denied), PocketID group grants (granted, failed, refused),
+  notification emails (sent, failed), and times every PocketID API call by
+  endpoint. Traces gain a span for every database query (the statement's
+  shape, never its values), each email send (the recipient count, never an
+  address), building the catalog, and deciding a request. Every log line
+  written during a request carries its `trace_id` and `span_id`, so a log
+  line leads to its trace and back. The RUNBOOK has alert examples,
+  including one for a spike in grants, and the Grafana setup for linking
+  logs and traces.
+
 ### Fixed
 - **App cards say what they show, for voice control and screen readers.**
   The app cards on the home page and the Apps page were announced as

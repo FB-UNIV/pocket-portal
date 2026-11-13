@@ -1,5 +1,6 @@
 import { MIN_POCKETID_VERSION } from "./version";
 import { readPocketIdApi } from "@/lib/config";
+import { pocketIdFetch } from "./fetch";
 
 // PocketID API client. Reference: https://pocket-id.org/docs/api
 // Stateless by design: config is read on every call, no module-level
@@ -16,7 +17,7 @@ export function getPocketIdConfig(): PocketIdConfig {
 
 /* v8 ignore start -- exercised by the integration suite (real container), not unit mocks */
 export async function checkPocketIdHealth(config: PocketIdConfig): Promise<boolean> {
-  const res = await fetch(`${config.baseUrl}/healthz`);
+  const res = await pocketIdFetch("GET /healthz", `${config.baseUrl}/healthz`);
   return res.status === 204;
 }
 /* v8 ignore stop */
@@ -42,9 +43,12 @@ const MAX_PAGE_SIZE = 100;
 // client vanishing from the catalog. Stops at `totalPages` rather than at the
 // first empty page: verified live, asking for a page past the end returns
 // the last page again, so "loop until empty" would never end.
+// The list endpoints this reads; each is also its metric's endpoint label.
+type ListPath = "/api/users" | "/api/user-groups" | "/api/oidc/clients";
+
 export async function listAllPages<T>(
   config: PocketIdConfig,
-  path: string,
+  path: ListPath,
   what: string,
   pageSize = MAX_PAGE_SIZE,
 ): Promise<T[]> {
@@ -56,7 +60,7 @@ export async function listAllPages<T>(
       "pagination[page]": String(page),
       "pagination[limit]": String(pageSize),
     });
-    const res = await fetch(`${config.baseUrl}${path}?${query}`, {
+    const res = await pocketIdFetch(`GET ${path}`, `${config.baseUrl}${path}?${query}`, {
       headers: { "X-API-KEY": config.apiKey },
     });
 
@@ -90,7 +94,7 @@ export function listPocketIdUsers(config: PocketIdConfig): Promise<PocketIdUser[
 
 /* v8 ignore start -- exercised by the integration suite (real container), not unit mocks */
 export async function getPocketIdUser(config: PocketIdConfig, id: string): Promise<PocketIdUser> {
-  const res = await fetch(`${config.baseUrl}/api/users/${id}`, {
+  const res = await pocketIdFetch("GET /api/users/{id}", `${config.baseUrl}/api/users/${id}`, {
     headers: { "X-API-KEY": config.apiKey },
   });
 
@@ -148,7 +152,7 @@ export async function getPocketIdUserGroups(
   config: PocketIdConfig,
   userId: string,
 ): Promise<PocketIdUserGroup[]> {
-  const res = await fetch(`${config.baseUrl}/api/users/${userId}`, {
+  const res = await pocketIdFetch("GET /api/users/{id}", `${config.baseUrl}/api/users/${userId}`, {
     headers: { "X-API-KEY": config.apiKey },
   });
 
@@ -182,11 +186,15 @@ export async function addUserToGroup(
   const current = await getPocketIdUserGroupIds(config, userId);
   const userGroupIds = [...new Set([...current, groupId])];
 
-  const res = await fetch(`${config.baseUrl}/api/users/${userId}/user-groups`, {
-    method: "PUT",
-    headers: { "X-API-KEY": config.apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ userGroupIds }),
-  });
+  const res = await pocketIdFetch(
+    "PUT /api/users/{id}/user-groups",
+    `${config.baseUrl}/api/users/${userId}/user-groups`,
+    {
+      method: "PUT",
+      headers: { "X-API-KEY": config.apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ userGroupIds }),
+    },
+  );
 
   if (!res.ok) {
     throw new Error(`PocketID add user to group failed: ${res.status} ${res.statusText}`);

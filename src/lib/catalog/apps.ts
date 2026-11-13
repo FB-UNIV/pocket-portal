@@ -8,6 +8,7 @@ import {
 } from "@/lib/pocketid/client";
 import { hasAccessToClient } from "./access";
 import { safeLaunchUrl } from "./launch-url";
+import { withSpan } from "@/lib/observability/tracing";
 
 export interface CatalogApp {
   id: string;
@@ -33,26 +34,32 @@ export interface UserCatalogApp {
 }
 
 /* v8 ignore start -- exercised by the integration suite (real PocketID + Postgres), not unit mocks */
-async function fetchClientsWithOverrides(
+// One span per catalog build (#16): PocketID's client list and the
+// overrides are read in parallel under it, so a slow page shows which.
+function fetchClientsWithOverrides(
   pocketId: PocketIdConfig,
   db: Db,
+  view: "admin" | "user",
 ): Promise<{
   clients: PocketIdOidcClient[];
   hiddenIds: Set<string>;
   categories: Map<string, string>;
 }> {
-  const [clients, overrides] = await Promise.all([
-    listPocketIdOidcClients(pocketId),
-    db.select().from(appOverrides),
-  ]);
+  return withSpan("catalog.build", { "portal.catalog.view": view }, async (span) => {
+    const [clients, overrides] = await Promise.all([
+      listPocketIdOidcClients(pocketId),
+      db.select().from(appOverrides),
+    ]);
+    span.setAttribute("portal.catalog.clients", clients.length);
 
-  return {
-    clients,
-    hiddenIds: new Set(overrides.filter((o) => o.hidden).map((o) => o.pocketIdClientId)),
-    categories: new Map(
-      overrides.flatMap((o) => (o.category ? [[o.pocketIdClientId, o.category] as const] : [])),
-    ),
-  };
+    return {
+      clients,
+      hiddenIds: new Set(overrides.filter((o) => o.hidden).map((o) => o.pocketIdClientId)),
+      categories: new Map(
+        overrides.flatMap((o) => (o.category ? [[o.pocketIdClientId, o.category] as const] : [])),
+      ),
+    };
+  });
 }
 
 // See docs/adr/0007-pocketid-live-catalog.md: the catalog is read live
@@ -62,7 +69,7 @@ export async function listAdminCatalogApps(
   pocketId: PocketIdConfig,
   db: Db,
 ): Promise<CatalogApp[]> {
-  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db);
+  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db, "admin");
 
   return clients.map((client) => ({
     id: client.id,
@@ -87,7 +94,7 @@ export async function listUserCatalogApps(
   db: Db,
   userGroups: string[],
 ): Promise<UserCatalogApp[]> {
-  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db);
+  const { clients, hiddenIds, categories } = await fetchClientsWithOverrides(pocketId, db, "user");
 
   return clients.flatMap((client) => {
     const launchUrl = safeLaunchUrl(client.launchURL);
