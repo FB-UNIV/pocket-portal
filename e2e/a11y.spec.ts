@@ -48,7 +48,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       test.describe("as a user", () => {
         test.use({ storageState: sessionFile("e2e-user") });
 
-        for (const path of ["/", "/apps"]) {
+        for (const path of ["/", "/apps", "/news"]) {
           test(path, async ({ page }) => {
             await page.goto(path);
             await expect(page).toHaveURL(path);
@@ -61,7 +61,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       test.describe("as an admin", () => {
         test.use({ storageState: sessionFile("e2e-admin") });
 
-        for (const path of ["/admin/apps", "/admin/requests", "/admin/audit"]) {
+        for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new"]) {
           test(path, async ({ page }) => {
             await page.goto(path);
             await expect(page).toHaveURL(path);
@@ -80,7 +80,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.describe("as a user", () => {
       test.use({ storageState: sessionFile("e2e-user") });
 
-      for (const path of ["/", "/apps"]) {
+      for (const path of ["/", "/apps", "/news"]) {
         test(path, async ({ page }) => {
           await page.goto(path);
           // The saved session must still be live, or axe would be checking a
@@ -95,7 +95,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.describe("as an admin", () => {
       test.use({ storageState: sessionFile("e2e-admin") });
 
-      for (const path of ["/admin/apps", "/admin/requests", "/admin/audit"]) {
+      for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new"]) {
         test(path, async ({ page }) => {
           await page.goto(path);
           // Guards against a silent redirect home, which would pass axe while

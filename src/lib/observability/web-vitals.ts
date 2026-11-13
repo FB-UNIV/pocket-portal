@@ -22,7 +22,11 @@ export const PAGE_ROUTES = [
   "/admin/apps",
   "/admin/apps/[id]",
   "/admin/audit",
+  "/admin/news",
+  "/admin/news/new",
+  "/admin/news/[id]",
   "/admin/requests",
+  "/news",
 ] as const;
 
 const SEGMENT = /^[A-Za-z0-9._~-]+$/;

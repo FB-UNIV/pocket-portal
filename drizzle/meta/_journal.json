@@ -113,6 +113,13 @@
       "when": 1794578381338,
       "tag": "0015_add-user-onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794579433976,
+      "tag": "0016_add-news-posts",
+      "breakpoints": true
     }
   ]
 }

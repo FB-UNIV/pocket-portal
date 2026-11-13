@@ -54,6 +54,14 @@ project-specific policy on when to bump what.
   signing out), each lighting up its part of the page. Fully usable with a
   keyboard and a screen reader, and calmer with reduced motion. Built in,
   with no new dependency.
+- **News on the dashboard.** Admins post news under the new **News** admin
+  tab: to everyone, or only to the groups they tick ("Grafana maintenance
+  tonight" for engineering), pinned to the top, or shown until a date. The
+  dashboard shows the latest five, with **All the news** on `/news`. Posts
+  are plain text with a little formatting (headings, lists, bold, italic,
+  links), turned into the page on the server: nothing typed in a post can
+  become a script, and links only go to web or mail addresses. Every change
+  is in History. Adds the `news_posts` table.
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

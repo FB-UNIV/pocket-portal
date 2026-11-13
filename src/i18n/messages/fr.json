@@ -38,6 +38,12 @@
     "accountTitle": "Se déconnecter",
     "accountBody": "Déconnectez-vous ici quand vous avez fini, et changez de langue juste à côté."
   },
+  "News": {
+    "heading": "Actualités",
+    "all": "Toutes les actualités",
+    "pinned": "Épinglée",
+    "none": "Pas d’actualité pour le moment."
+  },
   "Welcome": {
     "heading": "Pour bien commencer",
     "progress": "{done} sur {total} fait",
@@ -122,7 +128,38 @@
     "requests": "Demandes",
     "catalog": "Applications",
     "history": "Historique",
-    "waiting": ", {count} en attente"
+    "waiting": ", {count} en attente",
+    "news": "Actualités"
+  },
+  "AdminNews": {
+    "title": "Actualités",
+    "new": "Nouvelle actualité",
+    "none": "Aucune actualité. Elle s’affiche sur le tableau de bord de tout le monde, ou seulement des groupes choisis.",
+    "forEveryone": "Pour tout le monde",
+    "forGroups": "Pour {groups}",
+    "pinned": "Épinglée",
+    "expired": "Plus affichée",
+    "newTitle": "Nouvelle actualité",
+    "editTitle": "Modifier l’actualité",
+    "back": "Toutes les actualités",
+    "saved": "Enregistré.",
+    "delete": "Supprimer cette actualité",
+    "preview": "Comme on la voit",
+    "titleLabel": "Titre",
+    "bodyLabel": "Ce qu’elle dit",
+    "bodyHint": "Texte simple. Une ligne vide commence un paragraphe. Aussi : # titre, - liste, **gras**, *italique*, [texte du lien](https://…).",
+    "audienceLegend": "Qui la voit",
+    "audienceHint": "Rien de coché : tout le monde. Sinon seulement les membres des groupes cochés.",
+    "untilLabel": "Affichée jusqu’au (facultatif)",
+    "pinnedLabel": "L’épingler en haut",
+    "save": "Enregistrer",
+    "publish": "Publier",
+    "problemTitleRequired": "Donnez-lui un titre.",
+    "problemTitleTooLong": "Le titre doit faire moins de 120 caractères.",
+    "problemBodyRequired": "Écrivez ce qu’elle dit.",
+    "problemBodyTooLong": "Elle doit faire moins de 10 000 caractères.",
+    "problemBadDate": "Cette date de fin n’est pas une date.",
+    "problemUnknownGroup": "L’un de ces groupes n’est plus dans PocketID."
   },
   "AdminApps": {
     "title": "Catalogue des applications",
@@ -236,7 +273,11 @@
     "noMatch": "Rien de tel dans l’historique pour l’instant.",
     "pagesLabel": "Pages de l’historique",
     "newest": "Revenir aux plus récents",
-    "older": "Voir plus ancien"
+    "older": "Voir plus ancien",
+    "somePost": "une actualité",
+    "evNewsCreated": "{actor} <muted>a publié</muted> {title}",
+    "evNewsUpdated": "{actor} <muted>a modifié</muted> {title}",
+    "evNewsDeleted": "{actor} <muted>a supprimé</muted> {title}"
   },
   "SecretsBanner": {
     "label": "Avertissement de sécurité",

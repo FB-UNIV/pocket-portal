@@ -37,3 +37,36 @@ test("an admin links two apps and the user is told what else they need", async (
     await user.close();
   }
 });
+
+// #22, end to end: an admin posts news for the media group; the e2e user
+// (in media) reads it on the dashboard, rendered from Markdown; the admin
+// deletes it.
+test("an admin posts news that its audience reads on the dashboard", async ({ browser }) => {
+  const admin = await browser.newContext({ storageState: sessionFile("e2e-admin") });
+  const user = await browser.newContext({ storageState: sessionFile("e2e-user") });
+  const adminPage = await admin.newPage();
+  const userPage = await user.newPage();
+  const title = `Media maintenance ${Date.now()}`;
+
+  await adminPage.goto("/admin/news/new");
+  await adminPage.getByLabel("Title").fill(title);
+  await adminPage.getByLabel("What it says").fill("Back by **10pm**.\n\n<script>alert(1)</script>");
+  await adminPage.getByRole("group", { name: "Who sees it" }).getByLabel("media", { exact: false }).check();
+  await adminPage.getByRole("button", { name: "Publish" }).click();
+  await expect(adminPage.getByRole("status")).toHaveText("Saved.");
+
+  try {
+    await userPage.goto("/");
+    const article = userPage.getByRole("region", { name: "News" }).getByRole("article", { name: title });
+    await expect(article.locator("strong")).toHaveText("10pm");
+    // Shown as text, never run. (The probe is this test's own string, not
+    // data reaching a page: Semgrep's script-tag rule can't tell.)
+    // nosemgrep: javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag
+    await expect(article.getByText("<script>alert(1)</script>")).toBeVisible();
+  } finally {
+    await adminPage.getByRole("button", { name: "Delete this post" }).click();
+    await expect(adminPage).toHaveURL(/\/admin\/news$/);
+    await admin.close();
+    await user.close();
+  }
+});

@@ -120,8 +120,10 @@ Before going live:
 |---|---|---|
 | `/` | anyone | Sign in; once signed in, the dashboard: launchers for your apps |
 | `/apps` | signed in | Browse the catalog, request access |
+| `/news` | signed in | All the news this person may see (the dashboard shows the latest five) |
 | `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
+| `/admin/news` | admins | Post news to everyone or to chosen groups; pin it, or show it until a date |
 | `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
 | `/admin/audit` | admins | History: every request and decision, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
