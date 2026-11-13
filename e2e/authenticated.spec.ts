@@ -17,6 +17,24 @@ test("completes a real OIDC sign-in and lands on the portal home", async ({ page
 test.describe("authenticated portal journeys", () => {
   test.use({ storageState: sessionFile("e2e-user") });
 
+  // #21: the welcome checklist. Ticks the passkey item and undoes it, so the
+  // run leaves the person as it found them.
+  test("the dashboard starts with a welcome checklist the person can tick", async ({ page }) => {
+    await page.goto("/");
+
+    const welcome = page.getByRole("region", { name: "Getting started" });
+    await expect(welcome.getByRole("heading", { name: "Add a backup passkey" })).toBeVisible();
+    await expect(welcome.getByRole("link", { name: "Open your account" })).toHaveAttribute(
+      "href",
+      /\/settings\/account$/,
+    );
+
+    await welcome.getByRole("button", { name: "I’ve done it" }).click();
+    await expect(welcome.getByRole("button", { name: "Undo" })).toBeVisible();
+    await welcome.getByRole("button", { name: "Undo" }).click();
+    await expect(welcome.getByRole("button", { name: "I’ve done it" })).toBeVisible();
+  });
+
   test("the dashboard launches the apps this user can open, and only those", async ({ page }) => {
     await page.goto("/");
 

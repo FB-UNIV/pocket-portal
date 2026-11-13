@@ -42,6 +42,12 @@ project-specific policy on when to bump what.
   but can't use yet, **Ask for VPN** asks in one click (not when a reason
   is required). A needed app can be asked for and granted even when it's
   hidden from the Apps page.
+- **A welcome checklist on the dashboard.** New people see what to do
+  first: add a backup passkey (in their PocketID account; they tick it
+  themselves, since the portal can't see it), get the apps their apps need
+  (the VPN), and ask for an app. Items tick themselves as things happen,
+  and the card goes once everything's done or when they hide it. Kept per
+  person in Postgres (`user_onboarding`), so it follows them across devices.
 - **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
   access requests, instead of every PocketID admin with an address.
 

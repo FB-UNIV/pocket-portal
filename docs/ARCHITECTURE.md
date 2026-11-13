@@ -214,7 +214,7 @@ section per source:
 
 | Section | Source | Status |
 |---|---|---|
-| Onboarding checklist | Postgres (`user_onboarding`), the user's requests and groups | planned, #21 |
+| Welcome checklist | Postgres (`user_onboarding`), the user's requests and apps, computed each time | live (#21) |
 | Your apps | PocketID catalog + `app_overrides` | live |
 | News | Postgres (`news_posts`), filtered by the user's groups | planned, #22 |
 | Integration widgets | Each linked app's own API (Jellyfin first), server-side | planned, #23 |

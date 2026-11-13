@@ -190,3 +190,20 @@ export const notificationOutbox = pgTable(
   ],
 );
 /* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// A person's onboarding (#21), keyed by PocketID subject so it follows them
+// across devices and replicas; never browser storage. Only what the portal
+// can't work out itself: whether they hid the welcome checklist, the items
+// they ticked by hand (a passkey added in PocketID), and the guided tour.
+export const userOnboarding = pgTable("user_onboarding", {
+  subject: text("subject").primaryKey(),
+  checklistDismissedAt: timestamp("checklist_dismissed_at", { withTimezone: true }),
+  tickedItems: jsonb("ticked_items").$type<string[]>().notNull().default([]),
+  tourCompletedAt: timestamp("tour_completed_at", { withTimezone: true }),
+  // Which version of the tour they finished; a later version shows only
+  // what's new.
+  tourVersion: integer("tour_version"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */
