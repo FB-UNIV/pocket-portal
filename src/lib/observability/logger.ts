@@ -75,6 +75,17 @@ function destination(stream?: Stream): Stream {
   };
 }
 
+// Top level and one level down (`config.apiKey`, `headers.authorization`).
+const SECRET_KEYS = ["apiKey", "clientSecret", "password", "pass", "secret", "token"];
+const HEADER_KEYS = ["authorization", "cookie", '"x-api-key"', '"set-cookie"'];
+const REDACTED_PATHS = [
+  ...SECRET_KEYS,
+  ...SECRET_KEYS.map((key) => `*.${key}`),
+  ...SECRET_KEYS.map((key) => `*.*.${key}`),
+  ...HEADER_KEYS.map((key) => `headers.${key.startsWith('"') ? `[${key}]` : key}`),
+  ...HEADER_KEYS.map((key) => `*.headers.${key.startsWith('"') ? `[${key}]` : key}`),
+];
+
 export function createLogger(name: string, stream?: Stream) {
   return pino(
     {
@@ -86,6 +97,10 @@ export function createLogger(name: string, stream?: Stream) {
       // trace_id/span_id on every line written inside a request, so a log
       // line leads to its trace and back (#16). Nothing outside a span.
       mixin: () => traceFields(),
+      // Defence in depth (#4): nothing logs a credential on purpose, but a
+      // config or a headers object passed to a log call won't carry one
+      // into the logs either.
+      redact: { paths: REDACTED_PATHS, censor: "[redacted]" },
     },
     destination(stream),
   );

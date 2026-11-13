@@ -5,6 +5,7 @@ import { warnIfOriginNotPinned } from "@/lib/auth/origin";
 import { nonDefaultFlags, readLogRequests, validateConfig } from "@/lib/config";
 import { logger, syncLogLevel } from "@/lib/observability/logger";
 import { RequestLogProcessor } from "@/lib/observability/request-log";
+import { QueryRedactionProcessor } from "@/lib/observability/redact-spans";
 import { warnIfPocketIdSecretsReadable } from "@/lib/pocketid/secret-exposure";
 import { warnIfPocketIdTooOld } from "@/lib/pocketid/version";
 
@@ -24,7 +25,9 @@ export async function register() {
 
   // "auto" keeps tracing's own export; the request log and the request
   // metrics read the same spans, so lines, metrics and traces agree.
-  const spanProcessors: SpanProcessorOrName[] = ["auto"];
+  // Query strings never leave in a trace (the OIDC callback's carries the
+  // sign-in code; #4). Both runtimes: it needs nothing from Node.
+  const spanProcessors: SpanProcessorOrName[] = [new QueryRedactionProcessor(), "auto"];
   if (nodejs) {
     // Imported here, not at the top: prom-client needs Node.
     const { RequestMetricsProcessor } = await import("@/lib/observability/request-metrics");
