@@ -253,3 +253,17 @@ export const newsImages = pgTable("news_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 /* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// Integrations (#23, ADR-0013): one row per type (Jellyfin first) with what
+// an admin sets: where it is, which app people must be able to open to see
+// it, and whether it's on. Never its API key, which comes from the
+// environment (JELLYFIN_API_KEY or _FILE), like POCKETID_API_KEY.
+export const integrations = pgTable("integrations", {
+  type: text("type").primaryKey(),
+  baseUrl: text("base_url").notNull(),
+  linkedClientId: text("linked_client_id").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */

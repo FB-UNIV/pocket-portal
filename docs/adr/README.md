@@ -14,3 +14,4 @@
 | [0010](0010-inherit-pocketid-branding-not-theme.md) | Inherit PocketID's branding, not its theme | accepted | 2026-11-06 |
 | [0011](0011-email-notifications-through-an-outbox.md) | Email notifications through a Postgres outbox | accepted | 2026-11-13 |
 | [0012](0012-app-dependencies.md) | App dependencies are portal-side links between PocketID clients | accepted | 2026-11-13 |
+| [0013](0013-integrations-server-side.md) | Integrations run on the server, keys stay in the environment | accepted | 2026-11-13 |

@@ -22,6 +22,7 @@ export const PAGE_ROUTES = [
   "/admin/apps",
   "/admin/apps/[id]",
   "/admin/audit",
+  "/admin/integrations",
   "/admin/news",
   "/admin/news/new",
   "/admin/news/[id]",

@@ -370,6 +370,7 @@ fixed set, never from a request, so the number of series stays small.
 | `portal_pocketid_grants_total` | `outcome`: `granted`, `failed` (PocketID errored), `refused` (not a grantable group of a visible app) | Every attempt to add someone to a PocketID group |
 | `portal_notifications_total` | `kind`: `new_request`, `decision`; `outcome`: `queued`, `sent`, `retried` (an attempt failed, another is scheduled), `failed` (given up on, or never queued) | Notification emails, one per recipient |
 | `portal_pocketid_request_duration_seconds` | `endpoint` (a pattern: `GET /api/users/{id}`, never a URL), `outcome`: `2xx`, `4xx`, `5xx`, `error` (no answer) | PocketID API calls and their latency. Not the OIDC sign-in calls, and not the cached branding read |
+| `portal_integration_request_duration_seconds` | `integration` (`jellyfin`), `operation` (`status`, `recently_added`, `poster`, `test`), `outcome`: `2xx`, `4xx`, `5xx`, `error` | Calls to integrated apps ([ADR-0013](adr/0013-integrations-server-side.md)) |
 | `portal_web_vitals_seconds` | `name`: `TTFB`, `LCP`, `INP`; `route`: a page pattern | What people's browsers measured: time to first byte, when the main content appeared, and how long an interaction took to respond. See [Web Vitals](#web-vitals) |
 
 Starting points for alerts (thresholds are yours, see [Your decisions](#your-decisions)):
@@ -442,7 +443,7 @@ request). With Grafana:
 The portal is stateless; the only thing worth backing up is Postgres: the
 `postgres-data` volume in the compose stack, or the chart's PVC (which the
 chart itself never backs up). It holds `access_requests`,
-`app_overrides`, `app_dependencies`, `audit_log`, `news_posts`, `news_images`,
+`app_overrides`, `app_dependencies`, `audit_log`, `integrations`, `news_posts`, `news_images`,
 `notification_outbox`, `session_claims`, `user_onboarding` and
 `user_preferences`.
 `notification_outbox` holds emails waiting to be sent (sent ones are

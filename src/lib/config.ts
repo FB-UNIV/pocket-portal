@@ -83,6 +83,7 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "SMTP_TLS", required: false, secret: false, yaml: "smtp.tls" },
   { name: "SMTP_USER", required: false, secret: false, yaml: "smtp.user" },
   { name: "SMTP_PASSWORD", required: false, secret: true, yaml: "smtp.password" },
+  { name: "JELLYFIN_API_KEY", required: false, secret: true, yaml: "integrations.jellyfin.apiKey" },
   // Feature flags.
   { name: "FEATURE_ACCESS_REQUESTS", required: false, secret: false, yaml: "features.accessRequests" },
   {
@@ -155,6 +156,13 @@ export function readDatabaseUrl(source: ConfigSource = configSource()): string {
 export function readAuthUrl(source: ConfigSource = configSource()): string | undefined {
   const url = optional(source, "AUTH_URL");
   return url && trimSlashes(url);
+}
+
+// Jellyfin's server-wide API key (#23), from the environment or a _FILE
+// secret, never the database; the integration's other settings are in
+// Postgres. Unset: the Jellyfin widget stays off.
+export function readJellyfinApiKey(source: ConfigSource = configSource()): string | undefined {
+  return optional(source, "JELLYFIN_API_KEY");
 }
 
 export function readMetricsToken(source: ConfigSource = configSource()): string | undefined {

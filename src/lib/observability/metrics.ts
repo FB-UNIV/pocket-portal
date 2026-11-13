@@ -69,8 +69,19 @@ function createMetrics() {
     registers: [register],
   });
 
+  // Integrations (#23): each call to an integrated app, by integration,
+  // operation and outcome, so a slow or failing one shows up.
+  const integrationRequestDuration = new Histogram({
+    name: "portal_integration_request_duration_seconds",
+    help: "Calls to integrated apps (Jellyfin…) by integration, operation and outcome (2xx, 4xx, 5xx, error), in seconds",
+    labelNames: ["integration", "operation", "outcome"] as const,
+    buckets: [0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    registers: [register],
+  });
+
   return {
     register,
+    integrationRequestDuration,
     webVitals,
     httpRequestsTotal,
     httpRequestDuration,
@@ -143,4 +154,10 @@ export function recordPocketIdCall(endpoint: string, outcome: string, durationSe
 // never a path a browser sent.
 export function recordWebVital(name: string, route: string, seconds: number): void {
   metrics.webVitals.observe({ name, route }, seconds);
+}
+
+// `operation` is a fixed name in the integration's code (lib/integrations),
+// never request input.
+export function recordIntegrationCall(integration: string, operation: string, outcome: string, seconds: number): void {
+  metrics.integrationRequestDuration.observe({ integration, operation, outcome }, seconds);
 }

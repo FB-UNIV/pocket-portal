@@ -44,6 +44,12 @@
     "pinned": "Épinglée",
     "none": "Pas d’actualité pour le moment."
   },
+  "Media": {
+    "heading": "Nouveautés sur {app}",
+    "unavailable": "{app} ne répond pas pour le moment.",
+    "unavailableDetail": "C’est généralement bref, et le reste de la page fonctionne.",
+    "tryAgain": "Réessayer"
+  },
   "Welcome": {
     "heading": "Pour bien commencer",
     "progress": "{done} sur {total} fait",
@@ -129,7 +135,8 @@
     "catalog": "Applications",
     "history": "Historique",
     "waiting": ", {count} en attente",
-    "news": "Actualités"
+    "news": "Actualités",
+    "integrations": "Intégrations"
   },
   "AdminNews": {
     "title": "Actualités",
@@ -173,6 +180,25 @@
     "problemNoPicture": "Choisissez une image à envoyer.",
     "problemTooBig": "Cette image dépasse 5 Mo.",
     "problemNotAnImage": "Ce n’est pas une image PNG, JPEG, WebP ou GIF."
+  },
+  "AdminIntegrations": {
+    "title": "Intégrations",
+    "jellyfinHint": "Affiche les nouveautés de Jellyfin sur le tableau de bord des personnes qui peuvent l’ouvrir.",
+    "keySet": "Clé d’API : définie (JELLYFIN_API_KEY).",
+    "keyMissing": "Clé d’API : absente. Créez-en une dans Jellyfin (Tableau de bord → Clés d’API) et donnez-la au portail comme JELLYFIN_API_KEY (ou JELLYFIN_API_KEY_FILE) ; d’ici là, rien ne s’affiche.",
+    "baseUrlLabel": "Adresse de Jellyfin",
+    "linkedLabel": "Affiché aux personnes qui peuvent ouvrir",
+    "linkedHint": "En général, l’application Jellyfin elle-même dans PocketID.",
+    "enabledLabel": "L’afficher sur le tableau de bord",
+    "save": "Enregistrer",
+    "saved": "Enregistré.",
+    "test": "Tester la connexion",
+    "testOk": "Connecté : {detail}.",
+    "testFail": "Connexion impossible : {detail}.",
+    "testNoKey": "aucune clé d’API n’est définie",
+    "testNotSetUp": "enregistrez d’abord l’adresse de Jellyfin",
+    "problemBadUrl": "Donnez une adresse qui commence par https:// ou http://, sans mot de passe.",
+    "problemUnknownApp": "Cette application n’est plus dans PocketID."
   },
   "AdminApps": {
     "title": "Catalogue des applications",
@@ -290,7 +316,8 @@
     "somePost": "une actualité",
     "evNewsCreated": "{actor} <muted>a publié</muted> {title}",
     "evNewsUpdated": "{actor} <muted>a modifié</muted> {title}",
-    "evNewsDeleted": "{actor} <muted>a supprimé</muted> {title}"
+    "evNewsDeleted": "{actor} <muted>a supprimé</muted> {title}",
+    "evIntegrationUpdated": "{actor} <muted>a modifié les réglages d’une intégration</muted>"
   },
   "SecretsBanner": {
     "label": "Avertissement de sécurité",

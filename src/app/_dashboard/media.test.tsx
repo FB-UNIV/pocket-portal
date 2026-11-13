@@ -14,6 +14,8 @@ vi.mock("@/lib/integrations/jellyfin", async (original) => ({
   createJellyfin: vi.fn(),
 }));
 vi.mock("@/lib/observability/logger", () => ({ logger: { error: vi.fn() } }));
+// No memory between tests: each one asks afresh.
+vi.mock("@/lib/integrations/cache", () => ({ cached: (_key: string, _ttl: number, load: () => unknown) => load() }));
 
 const JELLYFIN_APP = {
   id: "jf",
@@ -54,7 +56,8 @@ describe("MediaWidget (dashboard section)", () => {
     const region = screen.getByRole("region", { name: "New on Jellyfin" });
     const link = within(region).getByRole("link", { name: /Dune/ });
     expect(link).toHaveAttribute("href", `https://tv.example.test/web/#/details?id=${ITEM.id}&serverId=abc`);
-    expect(within(link).getByRole("img", { hidden: true })).toHaveAttribute("src", `/api/integrations/jellyfin/posters/${ITEM.id}`);
+    // Decorative (alt=""), so the link is named by the title alone.
+    expect(link.querySelector("img")).toHaveAttribute("src", `/api/integrations/jellyfin/posters/${ITEM.id}`);
   });
 
   it.each([

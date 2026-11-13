@@ -61,7 +61,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       test.describe("as an admin", () => {
         test.use({ storageState: sessionFile("e2e-admin") });
 
-        for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new"]) {
+        for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new", "/admin/integrations"]) {
           test(path, async ({ page }) => {
             await page.goto(path);
             await expect(page).toHaveURL(path);
@@ -95,7 +95,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.describe("as an admin", () => {
       test.use({ storageState: sessionFile("e2e-admin") });
 
-      for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new"]) {
+      for (const path of ["/admin/apps", "/admin/requests", "/admin/audit", "/admin/news", "/admin/news/new", "/admin/integrations"]) {
         test(path, async ({ page }) => {
           await page.goto(path);
           // Guards against a silent redirect home, which would pass axe while
