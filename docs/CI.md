@@ -41,7 +41,8 @@ flowchart LR
 On a push to `main`, the same checks as on a PR run again (test, audit, e2e,
 compose, Semgrep), next to the image pipeline. CodeQL (GitHub's default
 setup, no workflow file) and Dependabot (weekly, 7-day cooldown) run on
-their own.
+their own, and so does the [docs site](#docs-site) build when the docs
+change.
 
 ## Pull request checks
 
@@ -166,6 +167,16 @@ the Actions tab), because advisories are published between pushes. A new
 high or critical advisory in a production dependency then fails a run named
 after the problem, and GitHub emails about the failed scheduled run,
 instead of first showing up as unrelated PRs turning red.
+
+## Docs site
+
+`docs.yml` builds `docs/` with VitePress on every PR and push to `main` that
+touches `docs/`, `README.md` or the workflow itself, and on `main` publishes
+it to GitHub Pages. The docs are their own package (`docs/package.json`,
+installed with `--ignore-scripts`), so the app's dependencies never enter
+the job; only the `deploy` job holds Pages write permission, and it runs no
+dependency code. It isn't a required check: a docs-only break never blocks
+an app change.
 
 ## Supply-chain guarantees
 

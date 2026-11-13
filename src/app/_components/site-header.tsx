@@ -89,7 +89,7 @@ export async function SiteHeader({
           <nav aria-label={t("navLabel")}>
             <ul className="flex flex-wrap items-center gap-1">
               <li>
-                <Link href="/apps" className={navLinkClass}>
+                <Link href="/apps" data-tour="nav-apps" className={navLinkClass}>
                   {t("apps")}
                 </Link>
               </li>
@@ -139,6 +139,7 @@ export async function SiteHeader({
 
           {user && (
             <form
+              data-tour="account"
               action={async () => {
                 "use server";
                 await signOut();

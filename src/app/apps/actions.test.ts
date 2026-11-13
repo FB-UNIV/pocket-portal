@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { requestAccessAction, requestAppAccessAction } from "./actions";
+import { recordAccessRequestEvent } from "@/lib/observability/metrics";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdUserGroups } from "@/lib/pocketid/client";
@@ -33,6 +34,7 @@ vi.mock("@/lib/audit/log", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/notifications/access-requests", () => ({ notifyNewAccessRequest: vi.fn() }));
+vi.mock("@/lib/observability/metrics", () => ({ recordAccessRequestEvent: vi.fn() }));
 
 const mockRequireUser = vi.mocked(requireUser);
 const mockGetDb = vi.mocked(getDb);
@@ -67,6 +69,7 @@ const CATALOG_APP = {
   iconUrl: null,
   category: null,
   hasAccess: false,
+  requires: [],
   allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
 };
 
@@ -82,6 +85,7 @@ function storedRequest(status: string, decidedAt: Date | null) {
     status,
     createdAt: new Date(Date.now() - 60_000),
     decidedAt,
+    parentRequestId: null,
   };
 }
 
@@ -177,6 +181,14 @@ describe("requestAccessAction", () => {
         targetId: "req-created",
       }),
     );
+  });
+
+  it("counts the new request (#16)", async () => {
+    vi.mocked(recordAccessRequestEvent).mockReset();
+
+    await requestAccessAction("client-1", "g1");
+
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("created");
   });
 
   it("handles a requester with no email — records null on the request, undefined on the audit", async () => {
@@ -313,6 +325,7 @@ describe("requestAccessAction", () => {
       TX,
       expect.objectContaining({ action: "access_request.reopened", targetId: "req-1" }),
     );
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("reopened");
   });
 
   // The revoked card carries a reason field, so whatever the user just typed
@@ -429,7 +442,7 @@ describe("requestAccessAction", () => {
     );
   });
 
-  // ADR-0009: admins hear about a request once it exists, after the
+  // ADR-0011: admins hear about a request once it exists, after the
   // response, so a slow mail server never holds up the requester.
   it("notifies admins after a new request is filed", async () => {
     const formData = new FormData();
@@ -557,5 +570,99 @@ describe("requestAccessAction", () => {
       expect(since.getTime()).toBeLessThanOrEqual(Date.now() - 60 * 60 * 1000 + 1000);
       expect(mockCreateAccessRequest).toHaveBeenCalled();
     });
+  });
+});
+
+// ADR-0012 / #19: asking for an app also asks for what it needs. One
+// request per missing prerequisite, linked to the app's, each for one group
+// like any other request.
+describe("requestAccessAction with prerequisites", () => {
+  const VPN_GROUP = { id: "g-vpn", name: "vpn", friendlyName: "VPN" };
+  const GRAFANA = {
+    ...CATALOG_APP,
+    id: "grafana",
+    name: "Grafana",
+    allowedGroups: [{ id: "g-eng", name: "engineering", friendlyName: "Engineering" }],
+    requires: [{ id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [VPN_GROUP] }],
+  };
+
+  beforeEach(() => {
+    mockRequireUser.mockReset().mockResolvedValue({
+      user: { id: "user-1", email: "user@example.test", groups: [] },
+      expires: "",
+    } as never);
+    mockGetDb.mockReset().mockReturnValue(DB as never);
+    mockListUserCatalogApps.mockReset().mockResolvedValue([GRAFANA]);
+    mockCreateAccessRequest
+      .mockReset()
+      .mockImplementation(async (_db, input) => ({ id: input.pocketIdClientId === "vpn" ? "req-vpn" : "req-grafana" }) as never);
+    mockListUserAccessRequests.mockReset().mockResolvedValue([]);
+    mockAfter.mockReset();
+    mockCountRecent.mockReset().mockResolvedValue(0);
+    mockNotifyNew.mockReset();
+    mockWriteAudit.mockReset();
+  });
+
+  it("files a linked request for each missing prerequisite, for its everyday role", async () => {
+    await expect(requestAccessAction("grafana", "g-eng")).resolves.toEqual({ ok: true });
+
+    expect(mockCreateAccessRequest).toHaveBeenCalledWith(
+      DB,
+      expect.objectContaining({ pocketIdClientId: "grafana", pocketIdGroupId: "g-eng" }),
+    );
+    expect(mockCreateAccessRequest).toHaveBeenCalledWith(
+      DB,
+      expect.objectContaining({
+        pocketIdClientId: "vpn",
+        pocketIdGroupId: "g-vpn",
+        pocketIdGroupName: "vpn",
+        parentRequestId: "req-grafana",
+      }),
+    );
+    expect(mockWriteAudit).toHaveBeenCalledWith(
+      DB,
+      expect.objectContaining({ action: "access_request.created", targetId: "req-vpn", metadata: expect.objectContaining({ parentRequestId: "req-grafana" }) }),
+    );
+  });
+
+  it("tells admins about both in one email", async () => {
+    await requestAccessAction("grafana", "g-eng");
+    await runAfterCallbacks();
+
+    expect(mockNotifyNew).toHaveBeenCalledTimes(1);
+    expect(mockNotifyNew).toHaveBeenCalledWith(expect.objectContaining({ id: "req-grafana", alsoAsks: ["VPN"] }));
+  });
+
+  it("skips a prerequisite the user already has", async () => {
+    mockListUserCatalogApps.mockResolvedValue([{ ...GRAFANA, requires: [{ ...GRAFANA.requires[0], hasAccess: true }] }]);
+
+    await requestAccessAction("grafana", "g-eng");
+
+    expect(mockCreateAccessRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses a prerequisite request that's already waiting", async () => {
+    mockListUserAccessRequests.mockResolvedValue([
+      { ...storedRequest("pending", null), id: "req-vpn-old", pocketIdClientId: "vpn", pocketIdGroupId: "g-vpn", pocketIdGroupName: "vpn" },
+    ]);
+
+    await requestAccessAction("grafana", "g-eng");
+
+    expect(mockCreateAccessRequest).toHaveBeenCalledTimes(1);
+  });
+
+  // A prerequisite is often hidden, with no row on /apps: it can still be
+  // asked for on its own, from the note under the app that needs it.
+  it("lets the user ask for a prerequisite on its own", async () => {
+    await expect(requestAccessAction("vpn", "g-vpn")).resolves.toEqual({ ok: true });
+
+    expect(mockCreateAccessRequest).toHaveBeenCalledWith(
+      DB,
+      expect.objectContaining({ pocketIdClientId: "vpn", pocketIdGroupId: "g-vpn" }),
+    );
+  });
+
+  it("still refuses a group that isn't the prerequisite's", async () => {
+    await expect(requestAccessAction("vpn", "g-eng")).resolves.toEqual({ ok: false, reason: "not_allowed" });
   });
 });

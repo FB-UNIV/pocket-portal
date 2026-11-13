@@ -115,11 +115,20 @@ sequenceDiagram
     Note over U: /apps says "Approved, may take a few minutes"<br/>until the session refresh (<= 5 min) lands the group
 ```
 
-Admins are emailed about each new request the same way. Emails go out after
-the response, best-effort, and never fail the action
-([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). With
+Admins are emailed about each new request the same way (or the addresses in
+`NOTIFY_ADMIN_EMAILS`). Emails are queued after the response, never fail
+the action, and are sent from a Postgres outbox with retries, by whichever
+replica gets there first
+([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)). With
 `FEATURE_ACCESS_REQUESTS=false` none of this appears: `/apps` lists only
 what the user can open.
+
+An app can need another app (Grafana needs the VPN;
+[ADR-0012](adr/0012-app-dependencies.md)). Asking for it files a linked
+request (`parent_request_id`) for each missing prerequisite, and the queue's
+**Approve both** grants prerequisites first through the same guarded path,
+stopping at the first one that isn't granted. A prerequisite is grantable
+while a visible app needs it, even when it's hidden itself.
 
 Three deliberate properties:
 
@@ -166,6 +175,10 @@ transaction as the change it records wherever that coupling matters:
 | `access_request.reopened` | a user re-requests a grant that was revoked |
 | `access_request.grant_failed` | the PocketID grant attempt failed for any reason — refusal, timeout, unreachable; the request stays pending |
 | `access_request.grant_rejected` | the target group is no longer a grantable group of its client |
+| `app_dependency.added` / `app_dependency.removed` | an admin says an app needs, or no longer needs, another ([ADR-0012](adr/0012-app-dependencies.md)); with both apps' names at the time |
+| `news.created` / `news.updated` / `news.deleted` | an admin posts, edits or deletes news, with its title at the time |
+| `integration.updated` | an admin changes an integration's settings (address, linked app, on/off; never a key) |
+| `notification.failed` | an email was given up on after its last attempt ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)); written by `system`, with the recipient and the last error |
 
 The two `grant_*` actions exist so a request that never became access still
 leaves a trace of why. Admins browse the trail at `/admin/audit`, newest
@@ -203,10 +216,10 @@ section per source:
 
 | Section | Source | Status |
 |---|---|---|
-| Onboarding checklist | Postgres (`user_onboarding`), the user's requests and groups | planned, #21 |
+| Welcome checklist | Postgres (`user_onboarding`), the user's requests and apps, computed each time | live (#21) |
 | Your apps | PocketID catalog + `app_overrides` | live |
-| News | Postgres (`news_posts`), filtered by the user's groups | planned, #22 |
-| Integration widgets | Each linked app's own API (Jellyfin first), server-side | planned, #23 |
+| News | Postgres (`news_posts`), filtered by the user's groups in SQL | live (#22), pictures served by `/api/news/images/[id]` to the post's readers |
+| Integration widgets | Each linked app's own API (Jellyfin first), server-side ([ADR-0013](adr/0013-integrations-server-side.md)) | live (#23): New on Jellyfin |
 
 Every section follows one contract (`src/app/_dashboard/section.tsx`):
 

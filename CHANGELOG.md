@@ -8,6 +8,97 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-13
+
+### Added
+- **Portal metrics, and traces that cover the whole request.**
+  `/api/metrics` now also counts access requests (created, reopened,
+  approved, denied), PocketID group grants (granted, failed, refused),
+  notification emails (sent, failed), and times every PocketID API call by
+  endpoint. Traces gain a span for every database query (the statement's
+  shape, never its values), each email send (the recipient count, never an
+  address), building the catalog, and deciding a request. Every log line
+  written during a request carries its `trace_id` and `span_id`, so a log
+  line leads to its trace and back. The RUNBOOK has alert examples,
+  including one for a spike in grants, and the Grafana setup for linking
+  logs and traces.
+- **Browser Web Vitals.** With metrics on, browsers report each page's time
+  to first byte, when its main content appeared, and how long interactions
+  took to respond, as `portal_web_vitals_seconds` by page. The endpoint
+  (`/api/web-vitals`) accepts only those three timings for the portal's own
+  pages, from the portal's own pages, and is rate-limited.
+  `FEATURE_WEB_VITALS=false` keeps metrics without it.
+- **Apps that need another app.** On an app's admin page, **Needs another
+  app** says which apps it only works with, like a dashboard behind the
+  VPN (any app counts, even a hidden one with no link). People who can
+  open the app but don't have what it needs read "Needs VPN to work, which
+  you don't have yet" under its card, and someone asking for it reads what
+  else it needs. The portal tells, it doesn't block: the app still opens.
+  One level deep (an app that's needed can't need another), and every
+  change is in History. Adds the `app_dependencies` table (ADR-0012).
+- **Asking for an app asks for what it needs too.** Asking for Grafana also
+  files a request for the VPN it needs, if the person doesn't have it and
+  hasn't asked yet: one email to admins covers both, and the queue shows
+  them together with **Approve both**, which grants the VPN first. Each can
+  still be approved or declined on its own. Under an app someone can open
+  but can't use yet, **Ask for VPN** asks in one click (not when a reason
+  is required). A needed app can be asked for and granted even when it's
+  hidden from the Apps page.
+- **A welcome checklist on the dashboard.** New people see what to do
+  first: add a backup passkey (in their PocketID account; they tick it
+  themselves, since the portal can't see it), get the apps their apps need
+  (the VPN), and ask for an app. Items tick themselves as things happen,
+  and the card goes once everything's done or when they hide it. Kept per
+  person in Postgres (`user_onboarding`), so it follows them across devices.
+- **A short guided tour of the dashboard.** Offered once ("New here? A quick
+  look around takes a minute"), and from the checklist's **Look around the
+  dashboard**: four steps (your apps, all the apps, getting started,
+  signing out), each lighting up its part of the page. Fully usable with a
+  keyboard and a screen reader, and calmer with reduced motion. Built in,
+  with no new dependency.
+- **News on the dashboard.** Admins post news under the new **News** admin
+  tab: to everyone, or only to the groups they tick ("Grafana maintenance
+  tonight" for engineering), pinned to the top, or shown until a date. The
+  dashboard shows the latest five, with **All the news** on `/news`. Posts
+  are plain text with a little formatting (headings, lists, bold, italic,
+  links), turned into the page on the server: nothing typed in a post can
+  become a script, and links only go to web or mail addresses. Every change
+  is in History. Adds the `news_posts` table.
+- **Pictures in news.** On a post's editor, upload PNG, JPEG, WebP or GIF
+  pictures (up to 5 MB) and use one as the post's cover, or put one in the
+  text. Where and with what a photo was taken is removed before it's kept.
+  SVG files are refused, whatever they're named. Pictures are only shown
+  to people who can read the post, and go with it when it's deleted. Adds
+  the `news_images` table; server actions now accept bodies up to 6 MB.
+- **New on Jellyfin, on the dashboard.** With `JELLYFIN_API_KEY` set and
+  Jellyfin's address saved on the new **Integrations** admin tab (with a
+  **Test the connection** button), people who can open Jellyfin see its
+  newest films and episodes on their dashboard, each opening in Jellyfin.
+  Everything is fetched by the portal, posters included, so the key never
+  reaches a browser; if Jellyfin is down, its card says so and the rest of
+  the dashboard carries on. Adds the `integrations` table (ADR-0013).
+- **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
+  access requests, instead of every PocketID admin with an address.
+
+### Changed
+- **Emails survive restarts, and are retried.** Access-request emails now go
+  through an outbox in Postgres (ADR-0011, replacing ADR-0009): one being
+  sent when an instance stops is sent by another, and a failed send is
+  retried for about nine hours before it's given up on. An email given up
+  on shows on the admin History page under Problems ("The email to … about
+  … couldn't be sent"), with the reason. Sent emails are kept a week and
+  failed ones a month, then deleted. Adds the `notification_outbox` table
+  (migrated on start).
+
+### Security
+- **Sign-in codes no longer reach traces.** Exported request spans carried
+  the full request target, which on the sign-in callback includes the
+  one-time authorization code and state. Query strings are now dropped
+  from every exported span, as the request log already did. The logger
+  also redacts API keys, passwords, secrets, tokens and authorization
+  headers should one ever be passed to it. The RUNBOOK gains a section on
+  storing, rotating and watching the PocketID API key.
+
 ### Fixed
 - **App cards say what they show, for voice control and screen readers.**
   The app cards on the home page and the Apps page were announced as

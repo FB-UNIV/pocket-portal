@@ -103,3 +103,22 @@ describe("RequestLogProcessor lifecycle", () => {
     await expect(processor.shutdown()).resolves.toBeUndefined();
   });
 });
+
+// The request line carries its trace, like every line logged inside the
+// request (logger mixin), so a line leads to its trace and back (#16).
+describe("RequestLogProcessor trace ids", () => {
+  it("adds the request span's trace and span ids", () => {
+    const log = { info: vi.fn(), debug: vi.fn(), warn: vi.fn() };
+    const ended = {
+      ...request("/apps", "/apps", 200),
+      spanContext: () => ({ traceId: "4bf92f3577b34da6a3ce929d0e0e4736", spanId: "00f067aa0ba902b7", traceFlags: 1 }),
+    };
+
+    new RequestLogProcessor(log as never).onEnd(ended as never);
+
+    expect(log.info).toHaveBeenCalledWith(
+      expect.objectContaining({ trace_id: "4bf92f3577b34da6a3ce929d0e0e4736", span_id: "00f067aa0ba902b7" }),
+      "GET /apps 200 29ms",
+    );
+  });
+});

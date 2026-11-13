@@ -11,7 +11,7 @@ vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/pocketid/client", () => ({ getPocketIdConfig: vi.fn(() => ({})) }));
 vi.mock("@/lib/catalog/apps", () => ({ listUserCatalogApps: vi.fn() }));
 vi.mock("@/lib/requests/access-requests", () => ({ listUserAccessRequests: vi.fn() }));
-vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn() }));
+vi.mock("./actions", () => ({ requestAppAccessAction: vi.fn(), askForPrerequisiteAction: vi.fn() }));
 
 const mockRequireUser = vi.mocked(requireUser);
 const mockListUserCatalogApps = vi.mocked(listUserCatalogApps);
@@ -64,6 +64,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -91,6 +92,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
     ]);
@@ -115,6 +117,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
     ]);
@@ -136,6 +139,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -164,6 +168,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -186,6 +191,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [
           { id: "g1", name: "media", friendlyName: "Media" },
           { id: "g2", name: "media-admin", friendlyName: "Media Admin" },
@@ -215,6 +221,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [
           { id: "g-admins", name: "jellyfin-admins", friendlyName: "Jellyfin admins" },
           { id: "g-users", name: "jellyfin-users", friendlyName: "Jellyfin users" },
@@ -238,6 +245,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
     ]);
@@ -261,6 +269,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -281,6 +290,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [{ id: "g1", name: "media", friendlyName: "Media" }],
       },
     ]);
@@ -296,6 +306,7 @@ describe("AppsPage", () => {
         status: "pending",
         createdAt: new Date(),
         decidedAt: null,
+        parentRequestId: null,
       },
     ]);
 
@@ -317,6 +328,7 @@ describe("AppsPage", () => {
       iconUrl: null,
       category: null,
       hasAccess: false,
+      requires: [],
       allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
     };
 
@@ -332,6 +344,7 @@ describe("AppsPage", () => {
         status,
         createdAt: new Date(Date.now() - 60_000),
         decidedAt,
+        parentRequestId: null,
       };
     }
 
@@ -414,6 +427,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -435,6 +449,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [
           { id: "g1", name: "media", friendlyName: "Media" },
           { id: "g2", name: "media-admin", friendlyName: "Media Admin" },
@@ -453,6 +468,7 @@ describe("AppsPage", () => {
         status: "pending",
         createdAt: new Date(),
         decidedAt: null,
+        parentRequestId: null,
       },
     ]);
 
@@ -478,6 +494,7 @@ describe("AppsPage", () => {
       iconUrl: null,
       category: null,
       hasAccess: true,
+      requires: [],
       allowedGroups: [],
     };
     const RESTRICTED = {
@@ -488,6 +505,7 @@ describe("AppsPage", () => {
       iconUrl: null,
       category: null,
       hasAccess: false,
+      requires: [],
       allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
     };
 
@@ -524,6 +542,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
       },
     ]);
@@ -544,6 +563,7 @@ describe("AppsPage", () => {
       category,
       hasAccess,
       allowedGroups: hasAccess ? [] : [{ id: "g1", name: "family", friendlyName: "Family" }],
+      requires: [],
     });
     const catalog = [
       app("jf", "Jellyfin", "Watch films and series", "Watch & listen"),
@@ -622,6 +642,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
       {
@@ -632,6 +653,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: false,
+        requires: [],
         allowedGroups: [
           { id: "g1", name: "media", friendlyName: "Media" },
           { id: "g2", name: "media-admin", friendlyName: "Media Admin" },
@@ -666,6 +688,7 @@ describe("AppsPage", () => {
         iconUrl: null,
         category: null,
         hasAccess: true,
+        requires: [],
         allowedGroups: [],
       },
     ]);
@@ -673,5 +696,117 @@ describe("AppsPage", () => {
     render(await AppsPage({ searchParams: Promise.resolve({ q: "photos" }) }));
 
     expect(screen.getByText(/1 application trouvée\./)).toBeInTheDocument();
+  });
+});
+
+// ADR-0012: an app that only works with another one says so. The portal
+// doesn't enforce it: Open still works.
+describe("AppsPage: apps that need another app", () => {
+  const base = {
+    description: "",
+    iconUrl: null,
+    category: null,
+    allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
+  };
+
+  beforeEach(() => {
+    mockRequireUser.mockReset().mockResolvedValue({ user: { id: "user-1", groups: ["engineering"] }, expires: "" } as never);
+    mockListUserAccessRequests.mockReset().mockResolvedValue([]);
+  });
+
+  it("says on the card when an app needs one the user doesn't have yet", async () => {
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [] }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(openLink("Grafana")).toHaveAttribute("href", "https://grafana.example.test");
+    expect(within(usableSection()!).getByText("Needs VPN to work, which you don’t have yet.")).toBeInTheDocument();
+  });
+
+  it("says nothing once the user has it", async () => {
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: true, requires: [{ id: "vpn", name: "VPN", hasAccess: true, allowedGroups: [] }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.queryByText(/Needs VPN/)).not.toBeInTheDocument();
+  });
+
+  it("tells someone asking for an app what else it needs", async () => {
+    mockRequireUser.mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
+    mockListUserCatalogApps.mockReset().mockResolvedValue([
+      { ...base, id: "grafana", name: "Grafana", launchUrl: "https://grafana.example.test", hasAccess: false, requires: [{ id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [] }] },
+    ]);
+
+    render(await AppsPage());
+
+    expect(screen.getByText("Also needs VPN to work.")).toBeInTheDocument();
+  });
+});
+
+// #19: the note under a card offers to ask for what's missing, and says
+// once it's been asked for.
+describe("AppsPage: asking for what an app needs", () => {
+  const VPN = { id: "vpn", name: "VPN", hasAccess: false, allowedGroups: [{ id: "g-vpn", name: "vpn", friendlyName: "VPN" }] };
+  const GRAFANA = {
+    id: "grafana",
+    name: "Grafana",
+    description: "",
+    iconUrl: null,
+    category: null,
+    launchUrl: "https://grafana.example.test",
+    hasAccess: true,
+    allowedGroups: [{ id: "g1", name: "engineering", friendlyName: "Engineering" }],
+    requires: [VPN],
+  };
+
+  beforeEach(() => {
+    mockRequireUser.mockReset().mockResolvedValue({ user: { id: "user-1", groups: ["engineering"] }, expires: "" } as never);
+    mockListUserCatalogApps.mockReset().mockResolvedValue([GRAFANA]);
+    mockListUserAccessRequests.mockReset().mockResolvedValue([]);
+  });
+
+  it("offers to ask for the missing app right there", async () => {
+    render(await AppsPage());
+
+    expect(within(usableSection()!).getByRole("button", { name: "Ask for VPN" })).toBeInTheDocument();
+  });
+
+  it("says it's been asked for once it has", async () => {
+    mockListUserAccessRequests.mockResolvedValue([
+      {
+        id: "req-vpn",
+        requesterSubject: "user-1",
+        requesterEmail: null,
+        pocketIdClientId: "vpn",
+        pocketIdGroupId: "g-vpn",
+        pocketIdGroupName: "vpn",
+        message: null,
+        status: "pending",
+        createdAt: new Date(),
+        decidedAt: null,
+        parentRequestId: null,
+      },
+    ]);
+
+    render(await AppsPage());
+
+    expect(within(usableSection()!).getByText("You’ve asked for VPN.")).toBeInTheDocument();
+    expect(within(usableSection()!).queryByRole("button", { name: "Ask for VPN" })).not.toBeInTheDocument();
+  });
+
+  // A required reason can't be given with one click: say who to ask instead.
+  it("points to an admin when a reason is required", async () => {
+    vi.stubEnv("ACCESS_REQUEST_REASON", "required");
+    try {
+      render(await AppsPage());
+
+      expect(within(usableSection()!).queryByRole("button", { name: "Ask for VPN" })).not.toBeInTheDocument();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

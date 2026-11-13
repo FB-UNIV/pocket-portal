@@ -1,7 +1,7 @@
 # ADR-0007: PocketID OIDC clients are the live app catalog, not a Postgres copy
 
 **Date**: 2026-09-21
-**Status**: accepted (amended 2026-11-06)
+**Status**: accepted (amended 2026-11-06, 2026-11-13 by [ADR-0012](0012-app-dependencies.md))
 **Deciders**: François Bouju
 
 ## Context
@@ -105,3 +105,11 @@ for it, so it doesn't break the rule above. That rule still stands:
 written for people, not admins, belongs in PocketID's own `description`
 field, which the Apps page already shows as each card's headline. A row
 can now exist for a category alone, with `hidden` false.
+
+## Amendment (2026-11-13): app dependencies
+
+[ADR-0012](0012-app-dependencies.md) adds a second portal-side table,
+`app_dependencies`: which apps need which (Grafana needs the VPN), as links
+between PocketID client ids. Like `hidden` and `category`, it's something
+PocketID has no field for; which group grants a prerequisite is still read
+live from PocketID, never stored.

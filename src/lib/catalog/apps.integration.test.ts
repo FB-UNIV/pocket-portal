@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { eq } from "drizzle-orm";
 import { createDb, type Db } from "@/lib/db/client";
-import { appOverrides } from "@/lib/db/schema";
+import { appDependencies, appOverrides } from "@/lib/db/schema";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
 import { listAdminCatalogApps, listUserCatalogApps, setAppCategory, setAppHidden } from "./apps";
 
@@ -148,6 +148,30 @@ describe("catalog apps (integration)", () => {
         method: "DELETE",
         headers: { "X-API-KEY": config.apiKey },
       });
+    }
+  });
+
+  // ADR-0012: each app carries the apps it needs, named from PocketID and,
+  // for a user, whether they have each. Seeded: Grafana (engineering) and
+  // Sonarr (media).
+  it("annotates an app with the apps it needs, read live", async () => {
+    const config = getPocketIdConfig();
+    const all = await listAdminCatalogApps(config, db);
+    const grafana = all.find((a) => a.name === "Grafana (seed)")!;
+    const sonarr = all.find((a) => a.name === "Sonarr (seed)")!;
+    await db.insert(appDependencies).values({ pocketIdClientId: grafana.id, requiresPocketIdClientId: sonarr.id });
+    try {
+      const admin = await listAdminCatalogApps(config, db);
+      expect(admin.find((a) => a.id === grafana.id)!.requires).toEqual([{ id: sonarr.id, name: "Sonarr (seed)" }]);
+
+      const without = await listUserCatalogApps(config, db, ["engineering"]);
+      expect(without.find((a) => a.id === grafana.id)!.requires).toEqual([
+        { id: sonarr.id, name: "Sonarr (seed)", hasAccess: false, allowedGroups: sonarr.allowedGroups },
+      ]);
+      const withIt = await listUserCatalogApps(config, db, ["engineering", "media"]);
+      expect(withIt.find((a) => a.id === grafana.id)!.requires[0].hasAccess).toBe(true);
+    } finally {
+      await db.delete(appDependencies).where(eq(appDependencies.pocketIdClientId, grafana.id));
     }
   });
 });

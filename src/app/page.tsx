@@ -5,6 +5,15 @@ import { readSignInInviteHintEnabled, readSignInText } from "@/lib/config";
 import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
 import { getLocale, getTranslations } from "@/i18n/server";
 import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
+import { WelcomeChecklist } from "./_dashboard/welcome";
+import { News } from "./_dashboard/news";
+import { MediaWidget } from "./_dashboard/media";
+import { completeTourAction } from "./_dashboard/actions";
+import { GuidedTour } from "./_components/guided-tour";
+import { getDb } from "@/lib/db/client";
+import { getOnboarding } from "@/lib/onboarding/store";
+import { TOUR_STEPS, stepsFor } from "@/lib/onboarding/tour";
+import { logger } from "@/lib/observability/logger";
 
 // No `metadata` export: this page is the root layout's own segment, where
 // `title.template` deliberately doesn't apply, so it takes the layout's
@@ -12,7 +21,7 @@ import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ callbackUrl?: string | string[] }>;
+  searchParams?: Promise<{ callbackUrl?: string | string[]; tour?: string | string[] }>;
 } = {}) {
   // Branding is fetched once per render (React cache), so asking for it
   // here costs nothing beyond what the root layout already did.
@@ -33,6 +42,27 @@ export default async function Home({
   const firstName = session?.user?.name?.trim().split(/\s+/)[0];
 
   if (session?.user) {
+    // The guided tour (#21): offered while there are steps they haven't
+    // seen; opened at once from the checklist's /?tour=1, all steps. If the
+    // state can't be read, no offer: nothing here is worth an error.
+    const tTour = await getTranslations("Tour");
+    const askedForTour = params?.tour === "1";
+    const seen = await Promise.resolve()
+      .then(() => getOnboarding(getDb(), session.user.id))
+      .then(
+      (state) => state.tourVersion,
+      (err: unknown) => {
+        logger.error({ err }, "Dashboard: tour state failed to load");
+        return Number.MAX_SAFE_INTEGER;
+      },
+    );
+    const unseen = askedForTour ? TOUR_STEPS : stepsFor(seen);
+    const tourSteps = unseen.map((step) => ({
+      target: step.target,
+      title: tTour(`${step.id}Title` as Parameters<typeof tTour>[0]),
+      body: tTour(`${step.id}Body` as Parameters<typeof tTour>[0]),
+    }));
+
     return (
       <div className="flex flex-1 flex-col">
         <main
@@ -50,13 +80,44 @@ export default async function Home({
             </p>
           </div>
 
+          <GuidedTour
+            steps={tourSteps}
+            offer={!askedForTour && tourSteps.length > 0}
+            startOpen={askedForTour}
+            onDone={completeTourAction}
+            labels={{
+              offer: tTour("offer"),
+              start: tTour("start"),
+              decline: tTour("decline"),
+              next: tTour("next"),
+              back: tTour("back"),
+              done: tTour("done"),
+              close: tTour("close"),
+              stepOf: tTour("stepOf"),
+            }}
+          />
+
           {/* The dashboard, top to bottom: the onboarding checklist (#21),
               your apps, news (#22), integration widgets (#23). Each section
               is its own <Suspense> and follows _dashboard/section.tsx, so
               one slow or broken source never blanks the page (see
               docs/ARCHITECTURE.md, "The dashboard"). */}
+          {/* Nothing while it loads: it appears once it's ready, and only
+              while something's left to do. */}
+          <Suspense fallback={null}>
+            <WelcomeChecklist userId={session.user.id} userGroups={session.user.groups} />
+          </Suspense>
           <Suspense fallback={<YourAppsLoading />}>
             <YourApps userGroups={session.user.groups} />
+          </Suspense>
+          {/* Nothing while it loads, and nothing without news (#22). */}
+          <Suspense fallback={null}>
+            <News userGroups={session.user.groups} />
+          </Suspense>
+          {/* Integration widgets (#23): nothing while loading, nothing when
+              off or not theirs, an "isn't answering" card when it's down. */}
+          <Suspense fallback={null}>
+            <MediaWidget userGroups={session.user.groups} />
           </Suspense>
         </main>
       </div>

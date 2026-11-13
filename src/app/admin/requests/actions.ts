@@ -9,8 +9,11 @@ import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { isGrantable } from "@/lib/requests/grantable";
 import { writeAuditEvent, type AuditEvent } from "@/lib/audit/log";
 import { notifyAccessRequestDecision } from "@/lib/notifications/access-requests";
+import { recordAccessRequestEvent, recordGrant } from "@/lib/observability/metrics";
+import { withSpan } from "@/lib/observability/tracing";
 import {
   getAccessRequestById,
+  listLinkedPendingRequests,
   setAccessRequestStatus,
   type AccessRequestDecision,
 } from "@/lib/requests/access-requests";
@@ -25,7 +28,7 @@ import {
 //   3. Grant in PocketID (idempotent). On failure the request stays pending,
 //      the failure is audited, and the error reaches the admin.
 //   4. Flip status and write the audit event in one transaction.
-//   5. Email the requester, after the response (ADR-0009).
+//   5. Email the requester, after the response (ADR-0011).
 //
 // A refusal at step 2 is expected, so it's returned for the row to explain
 //. A failed grant at step 3 throws: that's PocketID failing, which the
@@ -40,7 +43,21 @@ export async function decideAccessRequestAction(
   id: string,
   decision: AccessRequestDecision,
 ): Promise<DecideAccessRequestResult> {
+  // Outside the span: a redirect to sign-in is control flow, not a failed
+  // decision.
   const session = await requireAdmin();
+  return withSpan("access_request.decide", { "portal.request.decision": decision }, () =>
+    decide(session, id, decision),
+  );
+}
+
+// Counted (#16) once each outcome is final: a decision when it commits, a
+// grant when PocketID answered or the guard refused it.
+async function decide(
+  session: Awaited<ReturnType<typeof requireAdmin>>,
+  id: string,
+  decision: AccessRequestDecision,
+): Promise<DecideAccessRequestResult> {
   const db = getDb();
 
   const request = await getAccessRequestById(db, id);
@@ -68,14 +85,19 @@ export async function decideAccessRequestAction(
   if (decision === "approved") {
     const apps = await listAdminCatalogApps(getPocketIdConfig(), db);
     if (!isGrantable(apps, request)) {
+      recordGrant("refused");
       await writeAuditEvent(db, auditEvent("access_request.grant_rejected"));
       revalidatePath("/admin/requests");
       return { ok: false, reason: "group_not_grantable" };
     }
 
     try {
-      await addUserToGroup(getPocketIdConfig(), request.requesterSubject, request.pocketIdGroupId);
+      await withSpan("access_request.grant", { "pocketid.group.name": request.pocketIdGroupName }, () =>
+        addUserToGroup(getPocketIdConfig(), request.requesterSubject, request.pocketIdGroupId),
+      );
+      recordGrant("granted");
     } catch (err) {
+      recordGrant("failed");
       await writeAuditEvent(db, auditEvent("access_request.grant_failed", { error: String(err) }));
       revalidatePath("/admin/requests");
       throw err;
@@ -86,12 +108,37 @@ export async function decideAccessRequestAction(
     await setAccessRequestStatus(tx, id, decision);
     await writeAuditEvent(tx, auditEvent(`access_request.${decision}`));
   });
+  recordAccessRequestEvent(decision);
 
   // Only now that the decision committed, and after the response
-  // (ADR-0009). after() also runs when an action throws, which is why it is
+  // (ADR-0011). after() also runs when an action throws, which is why it is
   // scheduled here rather than earlier.
   after(() => notifyAccessRequestDecision(request, decision));
 
   revalidatePath("/admin/requests");
   return { ok: true };
+}
+
+// "Approve both" (#19): an app and the prerequisites asked for with it.
+// Prerequisites are granted first, each through the same guarded path as a
+// single approval, so a VPN membership never trails the app's. The first
+// that isn't granted (refused, or PocketID failing) stops the rest: the
+// app's request stays waiting, and anything already granted stays granted
+// (harmless alone, and in the audit trail).
+export async function approveTogetherAction(parentId: string): Promise<DecideAccessRequestResult> {
+  const session = await requireAdmin();
+  return withSpan("access_request.approve_together", {}, async () => {
+    const linked = await listLinkedPendingRequests(getDb(), parentId);
+    for (const request of linked) {
+      const result = await decide(session, request.id, "approved");
+      if (!result.ok) return result;
+    }
+    return decide(session, parentId, "approved");
+  });
+}
+
+// The queue's "Approve both" button, a plain form: a refusal or failure
+// shows on the page it comes back to (the requests stay waiting).
+export async function approveTogetherFormAction(parentId: string): Promise<void> {
+  await approveTogetherAction(parentId);
 }

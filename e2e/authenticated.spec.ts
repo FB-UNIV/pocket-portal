@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { sessionFile, signInAsSeedUser } from "./helpers/auth";
 
 // Signed-in journeys against the seeded catalog, as `e2e-user` (in `media`
@@ -16,6 +17,46 @@ test("completes a real OIDC sign-in and lands on the portal home", async ({ page
 
 test.describe("authenticated portal journeys", () => {
   test.use({ storageState: sessionFile("e2e-user") });
+
+  // #21: the welcome checklist. Ticks the passkey item and undoes it, so the
+  // run leaves the person as it found them.
+  test("the dashboard starts with a welcome checklist the person can tick", async ({ page }) => {
+    await page.goto("/");
+
+    const welcome = page.getByRole("region", { name: "Getting started" });
+    await expect(welcome.getByRole("heading", { name: "Add a backup passkey" })).toBeVisible();
+    await expect(welcome.getByRole("link", { name: "Open your account" })).toHaveAttribute(
+      "href",
+      /\/settings\/account$/,
+    );
+
+    await welcome.getByRole("button", { name: "I’ve done it" }).click();
+    await expect(welcome.getByRole("button", { name: "Undo" })).toBeVisible();
+    await welcome.getByRole("button", { name: "Undo" }).click();
+    await expect(welcome.getByRole("button", { name: "I’ve done it" })).toBeVisible();
+  });
+
+  // #21 phase 2: the guided tour, opened as the checklist opens it. Checked
+  // with axe while open, then walked with the keyboard.
+  test("the guided tour walks the dashboard, accessibly", async ({ page }) => {
+    await page.goto("/?tour=1");
+
+    const step1 = page.getByRole("dialog", { name: "Your apps" });
+    await expect(step1).toBeVisible();
+    await expect(step1.getByRole("button", { name: "Next" })).toBeFocused();
+    const { violations } = await new AxeBuilder({ page })
+      .include('[role="dialog"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(violations.map((v) => v.id)).toEqual([]);
+
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog", { name: "All the apps" })).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("main")).toBeFocused();
+  });
 
   test("the dashboard launches the apps this user can open, and only those", async ({ page }) => {
     await page.goto("/");

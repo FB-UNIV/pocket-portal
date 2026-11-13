@@ -14,6 +14,8 @@ import {
   readSecretsWarningEnabled,
   readSignInInviteHintEnabled,
   readSignInText,
+  readNotifyAdminEmails,
+  readWebVitalsEnabled,
   readAuthUrl,
   readDatabaseUrl,
   readLogFormat,
@@ -249,6 +251,42 @@ describe("config", () => {
       ]);
     });
 
+    // ADR-0011: who hears about new requests, instead of every PocketID
+    // admin. Each address ends up in a To: header, so anything that could
+    // break out of one is refused.
+    it("reads NOTIFY_ADMIN_EMAILS as a list of addresses", () => {
+      expect(readNotifyAdminEmails({})).toBeUndefined();
+      expect(readNotifyAdminEmails({ NOTIFY_ADMIN_EMAILS: " " })).toBeUndefined();
+      expect(readNotifyAdminEmails({ NOTIFY_ADMIN_EMAILS: "ops@example.test, lead@example.test," })).toEqual([
+        "ops@example.test",
+        "lead@example.test",
+      ]);
+    });
+
+    it.each([
+      "not-an-address",
+      "ops@example.test\r\nBcc: x@evil.test",
+      "ops@example.test; lead@example.test",
+      "Ops <ops@example.test>",
+    ])("refuses NOTIFY_ADMIN_EMAILS=%j", (value) => {
+      const env = { ...COMPLETE, NOTIFY_ADMIN_EMAILS: value };
+      expect(validateConfig(env)).toEqual([expect.stringContaining("NOTIFY_ADMIN_EMAILS")]);
+      expect(() => readNotifyAdminEmails(env)).toThrow(/NOTIFY_ADMIN_EMAILS/);
+    });
+
+    // Web Vitals (#16): on with metrics, since that's the only place they
+    // go; with no METRICS_TOKEN there's nothing to serve them, so no beacon
+    // and no endpoint.
+    it("turns Web Vitals on with metrics, unless switched off", () => {
+      expect(readWebVitalsEnabled({})).toBe(false);
+      expect(readWebVitalsEnabled({ METRICS_TOKEN: "t" })).toBe(true);
+      expect(readWebVitalsEnabled({ METRICS_TOKEN: "t", FEATURE_WEB_VITALS: "false" })).toBe(false);
+      expect(validateConfig({ ...COMPLETE, FEATURE_WEB_VITALS: "nah" })).toEqual([
+        expect.stringContaining("FEATURE_WEB_VITALS"),
+      ]);
+      expect(nonDefaultFlags({ FEATURE_WEB_VITALS: "false" })).toEqual(["FEATURE_WEB_VITALS=false"]);
+    });
+
     // support questions start from the log, so say what's non-default.
     it("lists only the flags set away from their defaults", () => {
       expect(nonDefaultFlags({})).toEqual([]);
@@ -408,7 +446,15 @@ describe("config", () => {
     it("marks the secrets, which a config file must never hold", () => {
       const secrets = CONFIG_VARS.filter((v) => v.secret).map((v) => v.name);
       expect(secrets.sort()).toEqual(
-        ["AUTH_SECRET", "DATABASE_URL", "METRICS_TOKEN", "POCKETID_API_KEY", "POCKETID_OIDC_CLIENT_SECRET", "SMTP_PASSWORD"].sort(),
+        [
+          "AUTH_SECRET",
+          "DATABASE_URL",
+          "JELLYFIN_API_KEY",
+          "METRICS_TOKEN",
+          "POCKETID_API_KEY",
+          "POCKETID_OIDC_CLIENT_SECRET",
+          "SMTP_PASSWORD",
+        ].sort(),
       );
     });
 

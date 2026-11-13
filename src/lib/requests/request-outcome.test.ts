@@ -16,6 +16,7 @@ function request(overrides: Partial<AccessRequest> = {}): AccessRequest {
     status: "pending",
     createdAt: new Date("2026-01-01T00:00:00Z"),
     decidedAt: null,
+    parentRequestId: null,
     ...overrides,
   };
 }

@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { decideAccessRequestAction } from "./actions";
+import { approveTogetherAction, decideAccessRequestAction } from "./actions";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
 import { addUserToGroup } from "@/lib/pocketid/client";
 import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { writeAuditEvent } from "@/lib/audit/log";
-import { getAccessRequestById, setAccessRequestStatus } from "@/lib/requests/access-requests";
+import { getAccessRequestById, listLinkedPendingRequests, setAccessRequestStatus } from "@/lib/requests/access-requests";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyAccessRequestDecision } from "@/lib/notifications/access-requests";
+import { recordAccessRequestEvent, recordGrant } from "@/lib/observability/metrics";
 
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn() }));
@@ -18,10 +19,12 @@ vi.mock("@/lib/audit/log", () => ({ writeAuditEvent: vi.fn() }));
 vi.mock("@/lib/requests/access-requests", () => ({
   getAccessRequestById: vi.fn(),
   setAccessRequestStatus: vi.fn(),
+  listLinkedPendingRequests: vi.fn(),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/notifications/access-requests", () => ({ notifyAccessRequestDecision: vi.fn() }));
+vi.mock("@/lib/observability/metrics", () => ({ recordAccessRequestEvent: vi.fn(), recordGrant: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockGetDb = vi.mocked(getDb);
@@ -49,6 +52,7 @@ const PENDING = {
   status: "pending",
   createdAt: new Date(),
   decidedAt: null,
+  parentRequestId: null,
 };
 
 const APP_WITH_GROUP = {
@@ -61,6 +65,7 @@ const APP_WITH_GROUP = {
   isGroupRestricted: true,
   allowedGroups: [{ id: "group-1", name: "engineering", friendlyName: "Engineering" }],
   hidden: false,
+  requires: [],
 };
 
 describe("decideAccessRequestAction", () => {
@@ -78,6 +83,8 @@ describe("decideAccessRequestAction", () => {
     mockRevalidate.mockReset();
     mockAfter.mockReset();
     mockNotifyDecision.mockReset();
+    vi.mocked(recordAccessRequestEvent).mockReset();
+    vi.mocked(recordGrant).mockReset();
   });
 
   it("requires admin", async () => {
@@ -199,7 +206,7 @@ describe("decideAccessRequestAction", () => {
     expect(mockRevalidate).toHaveBeenCalledWith("/admin/requests");
   });
 
-  // ADR-0009: the requester hears the outcome only once it committed,
+  // ADR-0011: the requester hears the outcome only once it committed,
   // and after the response.
   it.each(["approved", "denied"] as const)("tells the requester once %s is recorded", async (decision) => {
     await decideAccessRequestAction("req-1", decision);
@@ -220,5 +227,110 @@ describe("decideAccessRequestAction", () => {
     await decideAccessRequestAction("req-1", "approved");
 
     expect(mockAfter).not.toHaveBeenCalled();
+  });
+});
+
+// Metrics (#16): decisions and grants are counted once they're final, so a
+// spike in grants, or grants failing, can be alerted on (#4).
+describe("decideAccessRequestAction metrics", () => {
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({
+      user: { id: "admin-1", email: "admin@example.test", groups: [], isAdmin: true },
+      expires: "",
+    } as never);
+    mockGetDb.mockReset().mockReturnValue({ transaction: (cb: (tx: unknown) => unknown) => cb(TX) } as never);
+    mockAddUserToGroup.mockReset().mockResolvedValue(undefined);
+    mockListAdminApps.mockReset().mockResolvedValue([APP_WITH_GROUP]);
+    mockGetById.mockReset().mockResolvedValue({ ...PENDING });
+    vi.mocked(recordAccessRequestEvent).mockReset();
+    vi.mocked(recordGrant).mockReset();
+  });
+
+  it("counts an approval and its grant", async () => {
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).toHaveBeenCalledWith("granted");
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("approved");
+  });
+
+  it("counts a denial, and no grant", async () => {
+    await decideAccessRequestAction("req-1", "denied");
+
+    expect(recordAccessRequestEvent).toHaveBeenCalledWith("denied");
+    expect(recordGrant).not.toHaveBeenCalled();
+  });
+
+  it("counts a failed grant, and no approval", async () => {
+    mockAddUserToGroup.mockRejectedValue(new Error("PocketID 503"));
+
+    await expect(decideAccessRequestAction("req-1", "approved")).rejects.toThrow();
+
+    expect(recordGrant).toHaveBeenCalledWith("failed");
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+
+  it("counts a refused grant, and no approval", async () => {
+    mockListAdminApps.mockResolvedValue([{ ...APP_WITH_GROUP, allowedGroups: [] }]);
+
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).toHaveBeenCalledWith("refused");
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+
+  it("counts nothing for a stale click", async () => {
+    mockGetById.mockResolvedValue({ ...PENDING, status: "approved" });
+
+    await decideAccessRequestAction("req-1", "approved");
+
+    expect(recordGrant).not.toHaveBeenCalled();
+    expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+});
+
+// #19: "Approve both" grants what the app needs first, then the app. If a
+// prerequisite can't be granted, the app's request stays waiting.
+describe("approveTogetherAction", () => {
+  const VPN_APP = { ...APP_WITH_GROUP, id: "vpn", name: "VPN", hidden: true, allowedGroups: [{ id: "g-vpn", name: "vpn", friendlyName: "VPN" }] };
+  const GRAFANA = { ...APP_WITH_GROUP, requires: [{ id: "vpn", name: "VPN" }] };
+  const VPN_REQUEST = { ...PENDING, id: "req-vpn", pocketIdClientId: "vpn", pocketIdGroupId: "g-vpn", pocketIdGroupName: "vpn", parentRequestId: "req-1" };
+
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({
+      user: { id: "admin-1", email: "admin@example.test", groups: [], isAdmin: true },
+      expires: "",
+    } as never);
+    mockGetDb.mockReset().mockReturnValue({ transaction: (cb: (tx: unknown) => unknown) => cb(TX) } as never);
+    mockAddUserToGroup.mockReset().mockResolvedValue(undefined);
+    mockListAdminApps.mockReset().mockResolvedValue([GRAFANA, VPN_APP]);
+    mockGetById.mockReset().mockImplementation(async (_db, id) => (id === "req-vpn" ? { ...VPN_REQUEST } : { ...PENDING }) as never);
+    vi.mocked(listLinkedPendingRequests).mockReset().mockResolvedValue([VPN_REQUEST] as never);
+    mockSetStatus.mockReset();
+    mockWriteAudit.mockReset();
+    mockAfter.mockReset();
+  });
+
+  it("grants the prerequisite first, then the app", async () => {
+    await expect(approveTogetherAction("req-1")).resolves.toEqual({ ok: true });
+
+    expect(mockAddUserToGroup.mock.calls.map(([, , group]) => group)).toEqual(["g-vpn", "group-1"]);
+    expect(mockSetStatus.mock.calls.map(([, id, status]) => [id, status])).toEqual([
+      ["req-vpn", "approved"],
+      ["req-1", "approved"],
+    ]);
+  });
+
+  it("leaves the app waiting when a prerequisite can't be granted", async () => {
+    mockAddUserToGroup.mockRejectedValueOnce(new Error("PocketID 503"));
+
+    await expect(approveTogetherAction("req-1")).rejects.toThrow("PocketID 503");
+
+    expect(mockSetStatus).not.toHaveBeenCalledWith(TX, "req-1", "approved");
+  });
+
+  it("requires admin", async () => {
+    await approveTogetherAction("req-1");
+
+    expect(mockRequireAdmin).toHaveBeenCalled();
   });
 });

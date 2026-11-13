@@ -50,6 +50,7 @@ services:
       LOG_REQUESTS: ${LOG_REQUESTS:-}
       # /api/metrics is served only to this bearer token; unset = off.
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
       # Access-request emails; unset SMTP_HOST = no email.
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
@@ -57,6 +58,7 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      NOTIFY_ADMIN_EMAILS: ${NOTIFY_ADMIN_EMAILS:-}
       # Feature flags; see .env.example.
       FEATURE_ACCESS_REQUESTS: ${FEATURE_ACCESS_REQUESTS:-}
       ACCESS_REQUEST_REASON: ${ACCESS_REQUEST_REASON:-}
@@ -64,6 +66,7 @@ services:
       FEATURE_POCKETID_BRANDING: ${FEATURE_POCKETID_BRANDING:-}
       PORTAL_NAME: ${PORTAL_NAME:-}
       FEATURE_AUDIT_LOG_PAGE: ${FEATURE_AUDIT_LOG_PAGE:-}
+      FEATURE_WEB_VITALS: ${FEATURE_WEB_VITALS:-}
       WARN_POCKETID_SECRETS_READABLE: ${WARN_POCKETID_SECRETS_READABLE:-}
       # Optional YAML config file; mount it with the volume below.
       CONFIG_FILE: ${CONFIG_FILE:-}

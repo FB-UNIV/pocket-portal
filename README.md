@@ -1,5 +1,7 @@
 # pocket-portal
 
+**Docs:** <https://fb-univ.github.io/pocket-portal/> (deploying, settings, development, architecture and decisions).
+
 A self-hosted portal for a homelab or small team, built on
 [PocketID](https://pocket-id.org). People sign in with a passkey, see the
 apps they can reach, and request access to the rest — an admin approves
@@ -42,6 +44,7 @@ PocketID. nginx and Traefik examples are in the
 Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 [config file](#config-file).
 
+<!-- #region settings -->
 <!-- AUTO-GENERATED: every variable in src/lib/config.ts's CONFIG_VARS must
      appear here; src/lib/config.test.ts fails otherwise. -->
 | Variable | Required | Default | Purpose |
@@ -55,8 +58,10 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `POCKET_PORTAL_TAG` | yes | | Image tag to run, a release such as `vX.Y.Z` |
 | `AUTH_URL` | recommended | Host header | Public origin, pins OIDC redirects |
 | `METRICS_TOKEN` | no | metrics off | Bearer token that unlocks `/api/metrics` |
+| `JELLYFIN_API_KEY` | no | Jellyfin widget off | Server-wide API key (Jellyfin: Dashboard → API Keys) for the "New on Jellyfin" dashboard widget; address and linked app are set on `/admin/integrations`. `JELLYFIN_API_KEY_FILE` for a secret file |
 | `SMTP_HOST` | no | email off | SMTP server for access-request emails |
 | `SMTP_FROM` | with `SMTP_HOST` | | Sender address |
+| `NOTIFY_ADMIN_EMAILS` | no | PocketID's admins | Comma-separated addresses that hear about new access requests, instead of every enabled PocketID admin with an address (read from PocketID on each request) |
 | `SMTP_PORT` | no | `587` (`465` for `tls`) | SMTP port |
 | `SMTP_TLS` | no | `starttls` | `starttls`, `tls` or `none` |
 | `SMTP_USER` / `SMTP_PASSWORD` | no | | SMTP credentials, set both or neither |
@@ -70,6 +75,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `SIGNIN_TAGLINE_EN` / `SIGNIN_TAGLINE_FR` | no | All our apps, one sign-in. | The line under it, per language |
 | `SIGNIN_INVITE_HINT` | no | `true` | `false` drops the sign-in page's "First time? Use the invite link" line |
 | `FEATURE_AUDIT_LOG_PAGE` | no | `true` | `false` hides `/admin/audit`; events are still recorded |
+| `FEATURE_WEB_VITALS` | no | `true` (with metrics) | Browsers report page-load timings to `/api/web-vitals`, recorded in `/api/metrics`. Only with `METRICS_TOKEN` set; `false` keeps metrics without them |
 | `WARN_POCKETID_SECRETS_READABLE` | no | `true` | `false` hides the admin banner; the startup log still warns |
 | `CONFIG_FILE` | no | | Path to an optional YAML config file (below) |
 | `MIGRATE_ON_START` | no | `true` | Apply DB migrations on start |
@@ -85,6 +91,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | `http://localhost:4318` | OTLP collector for traces |
 | `OTEL_EXPORTER_OTLP_PROTOCOL` | no | `http/protobuf` | OTLP wire format: `http/protobuf` or `http/json` |
 <!-- /AUTO-GENERATED -->
+<!-- #endregion settings -->
 
 #### Config file
 
@@ -116,14 +123,21 @@ Before going live:
 
 | Route | Who | What |
 |---|---|---|
-| `/` | anyone | Sign in; once signed in, the dashboard: launchers for your apps |
-| `/apps` | signed in | Browse the catalog, request access |
-| `/admin/requests` | admins | Approve or decline requests; each says what approving opens |
+| `/` | anyone | Sign in; once signed in, the dashboard: a welcome checklist and guided tour for newcomers, launchers for your apps, news, and what's new on Jellyfin |
+| `/apps` | signed in | Browse the catalog, ask for access (and for any app an app needs) |
+| `/news` | signed in | All the news this person may see (the dashboard shows the latest five) |
+| `/admin/requests` | admins | Approve or decline requests; each says what approving opens, and requests filed together can be approved together |
 | `/admin/apps` | admins | The catalog: show or hide each app, see who can use it and what PocketID is missing |
-| `/admin/apps/[id]` | admins | One app: shown, its category, and its PocketID details with a link to edit them there |
-| `/admin/audit` | admins | History: every request and decision, newest first |
+| `/admin/apps/[id]` | admins | One app: shown, its category, the apps it needs, and its PocketID details with a link to edit them there |
+| `/admin/news` | admins | Every post: who sees it, pinned or expired |
+| `/admin/news/new`, `/admin/news/[id]` | admins | Write or edit a post (audience, pin, end date, pictures), with a preview as people see it |
+| `/admin/integrations` | admins | Point the portal at Jellyfin, choose who sees it, test the connection |
+| `/admin/audit` | admins | History: every request and decision, app links, news, integration changes and emails given up on, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
+| `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
+| `/api/news/images/[id]` | signed in, and the post is for them | A news post's picture (`nosniff`, sandboxed, private cache) |
+| `/api/integrations/jellyfin/posters/[itemId]` | signed in, and can open the app Jellyfin is linked to | Jellyfin posters, relayed (`nosniff`, sandboxed, private cache) |
 
 ## Documentation
 

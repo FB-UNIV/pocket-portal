@@ -67,9 +67,17 @@ bold for card headlines. Geist Mono only for codes and identifiers.
 - `.data-table`: admin tables inside a `.card`, with a muted header row and
   tabular numbers.
 
-The admin pages share a layout (`src/app/admin/layout.tsx`): three tabs
-above the page (Requests, Apps, History), which gets the full width. On
-narrow screens wide tables drop to the app's name, status and switch.
+The admin pages share a layout (`src/app/admin/layout.tsx`): tabs above
+the page (Requests, Apps, News, Integrations, History), which gets the full
+width. On narrow screens wide tables drop to the app's name, status and
+switch.
+
+Dashboard sections (`src/app/_dashboard/section.tsx`) share one frame: a
+region named by an `h2`, the same while loading, loaded or failed, with
+`SectionError` (a `.bg-bad` card with "Try again") when its source is down.
+The guided tour (`src/app/_components/guided-tour.tsx`) is the one modal: a
+`.card` dialog beside the part of the page it describes, which is lit by a
+dimmed surround; focus moves into it and stays there until it closes.
 
 ## Polish rules
 

@@ -1,5 +1,18 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, boolean, jsonb, timestamp, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  boolean,
+  integer,
+  jsonb,
+  timestamp,
+  uuid,
+  index,
+  uniqueIndex,
+  primaryKey,
+  customType,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */
 // See docs/adr/0006-audit-trail-separate-from-logs.md: this is a permanent,
@@ -68,6 +81,12 @@ export const accessRequests = pgTable(
     // pending row has not been decided, and rows predating this column have
     // no honest value to backfill.
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    // Filed together with another request (#19, ADR-0012): a prerequisite
+    // (the VPN) asked for with the app that needs it (Grafana), which is
+    // this column's target. Null for a request filed on its own.
+    parentRequestId: uuid("parent_request_id").references((): AnyPgColumn => accessRequests.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => [
     // One active (pending or approved) request per requester+client+group;
@@ -104,6 +123,22 @@ export const sessionClaims = pgTable("session_claims", {
 /* v8 ignore stop */
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */
+// An app that needs another app to be usable (ADR-0012): Grafana needs the
+// VPN. Both sides are PocketID OIDC client ids; which group grants the
+// prerequisite is read live from PocketID, never stored. One level deep:
+// lib/catalog/dependencies.ts checks it under a table lock.
+export const appDependencies = pgTable(
+  "app_dependencies",
+  {
+    pocketIdClientId: text("pocket_id_client_id").notNull(),
+    requiresPocketIdClientId: text("requires_pocket_id_client_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.pocketIdClientId, table.requiresPocketIdClientId] })],
+);
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
 // Choices a person makes about the portal itself, keyed by PocketID subject
 // so they follow them across devices and replicas (#64). `locale` is null
 // until they pick a language; until then the browser's own preference is
@@ -111,6 +146,124 @@ export const sessionClaims = pgTable("session_claims", {
 export const userPreferences = pgTable("user_preferences", {
   subject: text("subject").primaryKey(),
   locale: text("locale"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// Emails waiting to be sent, sent, or given up on (ADR-0011). One row per
+// recipient, rendered in their language when queued, so a retry sends
+// exactly what would have been sent. Claimed with FOR UPDATE SKIP LOCKED
+// and a lease (`locked_until`), so replicas never send the same row at
+// once and a replica that dies mid-send gives its rows back. Holds
+// addresses and request messages, so sent rows are pruned after 7 days and
+// failed ones after 30.
+export const notificationOutbox = pgTable(
+  "notification_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // "new_request" | "decision"
+    kind: text("kind").notNull(),
+    // The access request it's about. No foreign key: the outbox outlives
+    // nothing, and a row must never block deleting a request.
+    requestId: uuid("request_id").notNull(),
+    toEmail: text("to_email").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    // For the audit event if it's given up on ("…about engineering").
+    pocketIdGroupName: text("pocket_id_group_name"),
+    // "pending" | "sent" | "failed"
+    status: text("status").notNull().default("pending"),
+    // Claims so far, each one an attempt.
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // What the sender loop asks for every 30 s on every replica: pending
+    // rows that are due. Partial, so sent and failed rows cost nothing.
+    index("notification_outbox_due_idx")
+      .on(table.nextAttemptAt)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// A person's onboarding (#21), keyed by PocketID subject so it follows them
+// across devices and replicas; never browser storage. Only what the portal
+// can't work out itself: whether they hid the welcome checklist, the items
+// they ticked by hand (a passkey added in PocketID), and the guided tour.
+export const userOnboarding = pgTable("user_onboarding", {
+  subject: text("subject").primaryKey(),
+  checklistDismissedAt: timestamp("checklist_dismissed_at", { withTimezone: true }),
+  tickedItems: jsonb("ticked_items").$type<string[]>().notNull().default([]),
+  tourCompletedAt: timestamp("tour_completed_at", { withTimezone: true }),
+  // Which version of the tour they finished; a later version shows only
+  // what's new.
+  tourVersion: integer("tour_version"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// News on the dashboard (#22), written by admins. `body` is Markdown,
+// rendered on the server into React elements (lib/news/markdown.tsx), never
+// stored or sent as HTML. `audience_groups` are PocketID group names, as in
+// the OIDC groups claim; empty means everyone.
+export const newsPosts = pgTable(
+  "news_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    authorSubject: text("author_subject").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+    pinned: boolean("pinned").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    audienceGroups: jsonb("audience_groups").$type<string[]>().notNull().default([]),
+    // A picture of the post's own, shown above it; cleared if it's deleted.
+    coverImageId: uuid("cover_image_id").references((): AnyPgColumn => newsImages.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // What the dashboard asks for: newest first.
+  (table) => [index("news_posts_published_idx").on(table.publishedAt)],
+);
+/* v8 ignore stop */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// A news post's pictures (#22), in Postgres rather than on a replica's disk
+// (the stateless rule): already checked by magic bytes (PNG, JPEG, WebP,
+// GIF; never SVG) and stripped of metadata (lib/news/images.ts). Deleted
+// with their post. Served by /api/news/images/[id] to people who may read
+// the post.
+export const newsImages = pgTable("news_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id")
+    .notNull()
+    .references((): AnyPgColumn => newsPosts.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  bytes: bytea("bytes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// Integrations (#23, ADR-0013): one row per type (Jellyfin first) with what
+// an admin sets: where it is, which app people must be able to open to see
+// it, and whether it's on. Never its API key, which comes from the
+// environment (JELLYFIN_API_KEY or _FILE), like POCKETID_API_KEY.
+export const integrations = pgTable("integrations", {
+  type: text("type").primaryKey(),
+  baseUrl: text("base_url").notNull(),
+  linkedClientId: text("linked_client_id").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 /* v8 ignore stop */

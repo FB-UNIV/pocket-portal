@@ -34,6 +34,8 @@ log:
 #   port: 587
 #   tls: starttls
 #   user: portal
+#   # Who hears about new requests; unset: every PocketID admin.
+#   notifyAdminEmails: ops@example.test, lead@example.test
 
 features:
   accessRequests: true
@@ -41,4 +43,6 @@ features:
   emailNotifications: true
   pocketIdBranding: true
   auditLogPage: true
+  # Browser Web Vitals, only with metrics on (metrics.token).
+  webVitals: true
   secretsWarning: true

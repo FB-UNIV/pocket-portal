@@ -56,3 +56,8 @@ next-env.d.ts
 
 # npm SBOM: generated in CI and attested onto the image, never committed
 /sbom.cdx.json
+
+# Docs site (#8): its own dependencies and VitePress's output
+/docs/node_modules/
+/docs/.vitepress/dist/
+/docs/.vitepress/cache/
