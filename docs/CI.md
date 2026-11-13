@@ -84,13 +84,15 @@ A newer push to the same PR cancels the PR's runs still in progress.
 
 ## Main: the image pipeline
 
-Each merge to `main` builds one multi-arch image, pushed by digest with no
-tag, and names it `dev-<sha>` only once it's been scanned, signed and
-given its SBOM. Every commit on `main` gets its own concurrency group, so
-no later push can cancel or drop its build: every commit needs its own
-image, since a release promotes exactly that one. (With one group for all
-of `main`, GitHub replaced queued runs, and 11 of 14 merges on Nov 13 got
-no image.)
+Each merge to `main` builds its image natively on two runners, one per
+platform (amd64, and arm64 on GitHub's arm64 runner instead of under QEMU).
+Each platform's image is pushed by digest with no tag and scanned; only
+when both scans pass are they joined into one multi-arch image named
+`dev-<sha>`, then signed and given its two attestations. Every commit on
+`main` gets its own concurrency group, so no later push can cancel or drop
+its build: every commit needs its own image, since a release promotes
+exactly that one. (With one group for all of `main`, GitHub replaced
+queued runs, and 11 of 14 merges on Nov 13 got no image.)
 
 ```mermaid
 flowchart TB
@@ -102,33 +104,43 @@ flowchart TB
     S1 --> S2
   end
 
-  subgraph build["build"]
-    B1["Build linux/amd64 + linux/arm64<br/>BuildKit SBOM (OS packages) + provenance"]
-    B2["Push by digest, no tag"]
-    B3["Trivy scan amd64 and arm64<br/>fails on CRITICAL / HIGH"]
-    B4["cosign sign the digest<br/>(keyless, GitHub OIDC)"]
-    B5["actions/attest-sbom<br/>npm SBOM onto the digest"]
-    B6["Tag :dev-&lt;full sha&gt;<br/>and :dev if still main's newest commit"]
-    B1 --> B2 --> B3 --> B4 --> B5 --> B6
+  subgraph legs["build-platform: amd64 and arm64, each on its own native runner"]
+    P1["Build one platform<br/>BuildKit SBOM (OS packages) + provenance"]
+    P2["Push by digest, no tag"]
+    P3["Trivy scan<br/>fails on CRITICAL / HIGH"]
+    P1 --> P2 --> P3
+  end
+
+  subgraph build["build (only if both legs passed)"]
+    B1["Join both digests into one index:<br/>:dev-&lt;full sha&gt;"]
+    B2["cosign sign the digest<br/>(keyless, GitHub OIDC)"]
+    B3["actions/attest-sbom<br/>npm SBOM onto the digest"]
+    B4["actions/attest<br/>SLSA build provenance"]
+    B5["Move :dev, if still main's newest commit"]
+    B1 --> B2 --> B3 --> B4 --> B5
   end
 
   MAIN --> S1
-  S2 -- "then (needs: npm-sbom)" --> B1
-  S2 -. "artifact: sbom.cdx.json" .-> B5
-  B6 --> OUT[("ghcr.io/fb-univ/pocket-portal<br/>:dev-&lt;sha&gt; and :dev")]
+  MAIN --> P1
+  P3 -- "artifact: the scanned digest" --> B1
+  S2 -. "artifact: sbom.cdx.json" .-> B3
+  B5 --> OUT[("ghcr.io/fb-univ/pocket-portal<br/>:dev-&lt;sha&gt; and :dev")]
 ```
 
-`npm-sbom` holds only `contents: read`; `build` holds the write
-permissions (push to GHCR, OIDC for signing, attestations) but installs
-nothing from npm itself.
+`npm-sbom` holds only `contents: read`. The `build-platform` legs can push
+to GHCR but sign nothing; `build` holds the signing and attestation
+permissions (OIDC, attestations). None of them install anything from npm
+except `npm-sbom`.
 
-The image is pushed **before** it's scanned (so the scan reads the exact
-registry digest), but by digest only: no tag points at it until every
-step has passed. A failure anywhere leaves an untagged digest, never an
-unscanned `dev-<sha>`, and `dev` on the previous good build. Since builds
-of different commits can now run side by side, `dev` moves only if the
-commit is still `main`'s newest when its build finishes; otherwise the
-newer commit's build moves it.
+Each image is pushed **before** it's scanned (so the scan reads the exact
+registry digest), but by digest only: a failed scan leaves an untagged
+digest, never a pullable unscanned image, and `dev` on the previous good
+build. `dev-<sha>` appears at the join, a moment before the signature:
+`promote-release` refuses any image without the signature `main`'s build
+made, so an unsigned one can't be released. Since builds of different
+commits can run side by side, `dev` moves only if the commit is still
+`main`'s newest when its build finishes; otherwise the newer commit's
+build moves it.
 
 ## Release
 
@@ -196,7 +208,8 @@ What a published image carries, and how to check it:
 | --- | --- | --- |
 | Signature | cosign, keyless, tied to this repo's workflow identity. Signed with cosign v3 (new bundle format): verify with **cosign v3 or later**, v2 reports "no signatures found" | `cosign verify ghcr.io/fb-univ/pocket-portal:vX.Y.Z --certificate-identity-regexp '^https://github.com/FB-UNIV/pocket-portal/' --certificate-oidc-issuer https://token.actions.githubusercontent.com` |
 | npm SBOM (CycloneDX) | signed attestation on the digest | `gh attestation verify oci://ghcr.io/fb-univ/pocket-portal:vX.Y.Z --owner FB-UNIV --predicate-type https://cyclonedx.org/bom` |
-| OS-package SBOM + build provenance | BuildKit attestations in the image index | `docker buildx imagetools inspect ghcr.io/fb-univ/pocket-portal:vX.Y.Z --format '{{json .SBOM}}'` |
+| Build provenance (SLSA, signed by GitHub) | attestation on the digest | `gh attestation verify oci://ghcr.io/fb-univ/pocket-portal:vX.Y.Z --owner FB-UNIV --predicate-type https://slsa.dev/provenance/v1` |
+| OS-package SBOM + BuildKit provenance | BuildKit attestations in the image index | `docker buildx imagetools inspect ghcr.io/fb-univ/pocket-portal:vX.Y.Z --format '{{json .SBOM}}'` |
 | npm SBOM as a file | each GitHub Release's assets | download `sbom.cdx.json` |
 | Scan | Trivy at build time, again at release time | the run's log |
 
