@@ -8,6 +8,8 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-11-13
+
 ### Security
 - **Sign-in tokens no longer reach the logs at `LOG_LEVEL=debug`.** Each
   sign-in logged an "Auth.js: authorization result" line holding the
