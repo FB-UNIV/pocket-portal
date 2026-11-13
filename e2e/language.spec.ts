@@ -52,7 +52,7 @@ test.describe("a signed-in user whose browser asks for French", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Applications" })).toBeVisible();
     await expect(page).toHaveTitle(/^Applications · /);
-    await expect(page.getByRole("link", { name: "Ouvrir Immich (seed)" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Immich \(seed\)$/ })).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Demander l’accès à Grafana (seed)" }),
     ).toBeVisible();

@@ -21,6 +21,18 @@ const asking = (id: string, more: Record<string, string> = {}) => ({
   searchParams: Promise.resolve({ ask: id, ...more }),
 });
 
+// An app the user can open is a card in the "Ready to open" section, named
+// by its own words: what it's for, then its name. Looked up in that section
+// so an "Ask for <app>" link (which also ends with the name) never matches.
+const usableSection = () => screen.queryByRole("region", { name: /^(Ready to open|Prêtes à ouvrir)$/ });
+const appNamePattern = (app: string) => new RegExp(`(^| )${app}$`);
+const openLink = (app: string) =>
+  within(usableSection()!).getByRole("link", { name: appNamePattern(app) });
+const queryOpenLink = (app: string) => {
+  const section = usableSection();
+  return section ? within(section).queryByRole("link", { name: appNamePattern(app) }) : null;
+};
+
 describe("AppsPage", () => {
   beforeEach(() => {
     mockRequireUser
@@ -58,9 +70,9 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    // SC 4.1.2 / 2.4.4: one "Open" per app in a list is ambiguous out of
-    // context, so the accessible name carries the app it opens.
-    expect(screen.getByRole("link", { name: "Open Immich" })).toHaveAttribute(
+    // SC 2.4.4 / 2.5.3: the card's own words name the link, so the name
+    // says which app it opens and contains everything the card shows.
+    expect(openLink("Immich")).toHaveAttribute(
       "href",
       "https://photos.example.test",
     );
@@ -158,10 +170,9 @@ describe("AppsPage", () => {
 
     render(await AppsPage());
 
-    // (The leading "I" is the decorative letter mark.)
-    expect(screen.getByRole("link", { name: "Open Immich" }).textContent).toBe(
-      "IYour photos, backed upImmich",
-    );
+    // What it's for, then its name; the "I" letter mark is decorative and
+    // stays out of the name.
+    expect(screen.getByRole("link", { name: "Your photos, backed up Immich" })).toBeInTheDocument();
   });
 
   it("offers one request per app, with a role picker starting on the everyday role", async () => {
@@ -369,7 +380,7 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByRole("link", { name: "Open Grafana" })).toBeInTheDocument();
+      expect(openLink("Grafana")).toBeInTheDocument();
       expect(screen.queryByText(/Approved/)).not.toBeInTheDocument();
     });
   });
@@ -486,7 +497,7 @@ describe("AppsPage", () => {
 
       render(await AppsPage());
 
-      expect(screen.getByRole("link", { name: "Open Immich" })).toBeInTheDocument();
+      expect(openLink("Immich")).toBeInTheDocument();
       expect(screen.queryByText("Grafana")).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /^Ask/ })).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Ask for more" })).not.toBeInTheDocument();
@@ -567,7 +578,7 @@ describe("AppsPage", () => {
     it("filters both sections by the search, and says how many matched", async () => {
       render(await AppsPage(params({ q: "photos" })));
 
-      expect(screen.queryByRole("link", { name: "Open Jellyfin" })).not.toBeInTheDocument();
+      expect(queryOpenLink("Jellyfin")).not.toBeInTheDocument();
       expect(screen.getByRole("heading", { level: 3, name: "Immich" })).toBeInTheDocument();
       expect(screen.getByText(/1 app found\./)).toBeInTheDocument();
       expect(screen.getByRole("searchbox", { name: "Search apps" })).toHaveValue("photos");
@@ -578,8 +589,8 @@ describe("AppsPage", () => {
     it("filters by category, marks it current, and keeps it when searching again", async () => {
       const { container } = render(await AppsPage(params({ category: "Files" })));
 
-      expect(screen.getByRole("link", { name: "Open Nextcloud" })).toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: "Open Jellyfin" })).not.toBeInTheDocument();
+      expect(openLink("Nextcloud")).toBeInTheDocument();
+      expect(queryOpenLink("Jellyfin")).not.toBeInTheDocument();
       const nav = screen.getByRole("navigation", { name: "Categories" });
       expect(within(nav).getByRole("link", { name: "Files" })).toHaveAttribute("aria-current", "page");
       expect(container.querySelector('form[role="search"] input[name="category"]')).toHaveValue("Files");
@@ -588,7 +599,7 @@ describe("AppsPage", () => {
     it("ignores a category no app has, rather than showing nothing", async () => {
       render(await AppsPage(params({ category: "Games" })));
 
-      expect(screen.getByRole("link", { name: "Open Jellyfin" })).toBeInTheDocument();
+      expect(openLink("Jellyfin")).toBeInTheDocument();
       expect(screen.queryByText(/found|Nothing matches/)).not.toBeInTheDocument();
     });
 
@@ -637,7 +648,7 @@ describe("AppsPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Applications" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Prêtes à ouvrir" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "En demander d’autres" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ouvrir Immich" })).toBeInTheDocument();
+    expect(openLink("Immich")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Envoyer la demande pour Sonarr" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Annuler" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Rôle" })).toBeInTheDocument();

@@ -84,7 +84,7 @@ describe("getTranslations", () => {
     const t = await getTranslations("YourApps");
 
     expect(t("heading")).toBe("Vos applications");
-    expect(t("open", { name: "Immich" })).toBe("Ouvrir Immich");
+    expect(t("seeAll")).toBe("Voir toutes les applications");
   });
 
   it("translates into English by default", async () => {

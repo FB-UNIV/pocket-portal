@@ -8,6 +8,15 @@ project-specific policy on when to bump what.
 
 ## [Unreleased]
 
+### Fixed
+- **App cards say what they show, for voice control and screen readers.**
+  The app cards on the home page and the Apps page were announced as
+  "Open Immich", hiding what the card says the app is for; a voice-control
+  user saying the words on the card couldn't reach it (WCAG 2.5.3, label in
+  name). They are now named by their own words, the app and what it's for.
+  The admin **Fix in PocketID** link is now "Fix in PocketID: Grafana"
+  rather than "Fix Grafana in PocketID", so it starts with what's on screen.
+
 ## [1.6.0] - 2026-11-10
 
 ### Changed

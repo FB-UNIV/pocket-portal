@@ -111,18 +111,18 @@ export async function YourApps({ userGroups }: { userGroups: string[] }) {
       <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr))]">
         {usable.map((app) => (
           <li key={app.id} className="flex">
-            {/* The accessible name carries the app, as on /apps: a list of
-                bare "Open"s is ambiguous out of context (SC 2.4.4). The
-                description stays visible, since people here may not know
-                the app by its name. */}
+            {/* The card's own words are its accessible name (the app, then
+                what it's for), so the name says where the link goes (SC
+                2.4.4) and contains everything the card shows (SC 2.5.3,
+                label in name: a voice user says what they see). The space
+                between the spans keeps the two apart in that name. */}
             <a
               href={app.launchUrl}
-              aria-label={t("open", { name: app.name })}
               className="card card-link flex flex-1 items-center gap-3.5 p-4 text-ink"
             >
               <AppMark name={app.name} iconUrl={app.iconUrl} size="sm" />
               <span className="flex min-w-0 flex-col">
-                <span className="truncate text-[17px] font-bold tracking-tight">{app.name}</span>
+                <span className="truncate text-[17px] font-bold tracking-tight">{app.name}</span>{" "}
                 {app.description && (
                   <span className="line-clamp-2 text-sm text-ink-muted">{app.description}</span>
                 )}

@@ -59,10 +59,10 @@ describe("YourApps (dashboard section)", () => {
 
     render(await YourApps({ userGroups: [] }));
 
-    const open = screen.getByRole("link", { name: "Open Immich" });
+    const open = screen.getByRole("link", { name: "Immich Your photos and videos" });
     expect(open).toHaveAttribute("href", "https://photos.example.test");
     expect(within(open).getByText("Your photos and videos")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Jellyfin" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Jellyfin" })).toHaveAttribute(
       "href",
       "https://tv.example.test",
     );
@@ -149,7 +149,7 @@ describe("YourApps (dashboard section)", () => {
     render(await YourApps({ userGroups: [] }));
 
     expect(screen.getByRole("region", { name: "Vos applications" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ouvrir Immich" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Immich / })).toHaveAttribute(
       "href",
       "https://photos.example.test",
     );

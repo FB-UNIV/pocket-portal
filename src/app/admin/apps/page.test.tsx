@@ -140,7 +140,7 @@ describe("AdminAppsPage", () => {
     expect(fix).toHaveTextContent("Kids has no link to open it and doesn’t say what it’s for.");
     expect(fix).toHaveTextContent("Grafana doesn’t say what it’s for, so people only see its name.");
     expect(fix).toHaveTextContent("Wiki has no link to open it, so it can’t be on the Apps page.");
-    expect(within(fix).getByRole("link", { name: "Fix Kids in PocketID" })).toHaveAttribute(
+    expect(within(fix).getByRole("link", { name: "Fix in PocketID: Kids" })).toHaveAttribute(
       "href",
       "https://id.example.test/settings/admin/oidc-clients/c2",
     );
