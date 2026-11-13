@@ -22,6 +22,12 @@ const nextConfig: NextConfig = {
   // ...and the optimisation route off, so /_next/image answers 404 rather
   // than failing every image without sharp.
   images: { unoptimized: true },
+  // News pictures (#22) are uploaded through a server action: up to 5 MB,
+  // plus the form's own overhead. Every action gets this limit, so it stays
+  // just above what a picture needs.
+  experimental: {
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   // No `X-Powered-By: Next.js` advertising the stack.
   poweredByHeader: false,
   // On every response, static assets included; the per-request CSP is set

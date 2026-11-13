@@ -159,7 +159,20 @@
     "problemBodyRequired": "Écrivez ce qu’elle dit.",
     "problemBodyTooLong": "Elle doit faire moins de 10 000 caractères.",
     "problemBadDate": "Cette date de fin n’est pas une date.",
-    "problemUnknownGroup": "L’un de ces groupes n’est plus dans PocketID."
+    "problemUnknownGroup": "L’un de ces groupes n’est plus dans PocketID.",
+    "picturesHeading": "Images",
+    "picturesHint": "PNG, JPEG, WebP ou GIF, jusqu’à 5 Mo. Le lieu et l’appareil d’une photo sont retirés avant qu’elle soit gardée. Seules les personnes qui peuvent lire l’actualité voient ses images.",
+    "pictureAdded": "Image ajoutée.",
+    "pictureLabel": "Ajouter une image",
+    "upload": "Envoyer",
+    "pictureNumber": "Image {n}",
+    "pictureInPost": "Pour l’afficher dans l’actualité, ajoutez cette ligne :",
+    "useAsCover": "En faire la couverture",
+    "removeCover": "Retirer la couverture",
+    "deletePicture": "Supprimer",
+    "problemNoPicture": "Choisissez une image à envoyer.",
+    "problemTooBig": "Cette image dépasse 5 Mo.",
+    "problemNotAnImage": "Ce n’est pas une image PNG, JPEG, WebP ou GIF."
   },
   "AdminApps": {
     "title": "Catalogue des applications",

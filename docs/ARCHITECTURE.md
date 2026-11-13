@@ -217,7 +217,7 @@ section per source:
 |---|---|---|
 | Welcome checklist | Postgres (`user_onboarding`), the user's requests and apps, computed each time | live (#21) |
 | Your apps | PocketID catalog + `app_overrides` | live |
-| News | Postgres (`news_posts`), filtered by the user's groups in SQL | live (#22); images to come |
+| News | Postgres (`news_posts`), filtered by the user's groups in SQL | live (#22), pictures served by `/api/news/images/[id]` to the post's readers |
 | Integration widgets | Each linked app's own API (Jellyfin first), server-side | planned, #23 |
 
 Every section follows one contract (`src/app/_dashboard/section.tsx`):

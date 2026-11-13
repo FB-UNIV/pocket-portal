@@ -120,6 +120,13 @@
       "when": 1794579433976,
       "tag": "0016_add-news-posts",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794580378299,
+      "tag": "0017_add-news-images",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  customType,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
@@ -224,10 +225,31 @@ export const newsPosts = pgTable(
     pinned: boolean("pinned").notNull().default(false),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     audienceGroups: jsonb("audience_groups").$type<string[]>().notNull().default([]),
+    // A picture of the post's own, shown above it; cleared if it's deleted.
+    coverImageId: uuid("cover_image_id").references((): AnyPgColumn => newsImages.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   // What the dashboard asks for: newest first.
   (table) => [index("news_posts_published_idx").on(table.publishedAt)],
 );
+/* v8 ignore stop */
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// A news post's pictures (#22), in Postgres rather than on a replica's disk
+// (the stateless rule): already checked by magic bytes (PNG, JPEG, WebP,
+// GIF; never SVG) and stripped of metadata (lib/news/images.ts). Deleted
+// with their post. Served by /api/news/images/[id] to people who may read
+// the post.
+export const newsImages = pgTable("news_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id")
+    .notNull()
+    .references((): AnyPgColumn => newsPosts.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  bytes: bytea("bytes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 /* v8 ignore stop */

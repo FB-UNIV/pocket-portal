@@ -95,7 +95,7 @@ describe("picture actions", () => {
   const POST = "0b1f6a2e-1c1e-4b0a-9d3c-2f6e8c9a1b2c";
   const upload = (contents: Uint8Array, name = "photo.png", type = "image/png") => {
     const data = new FormData();
-    data.set("picture", new File([contents], name, { type }));
+    data.set("picture", new File([contents as BlobPart], name, { type }));
     return data;
   };
   const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);

@@ -442,7 +442,7 @@ request). With Grafana:
 The portal is stateless; the only thing worth backing up is Postgres: the
 `postgres-data` volume in the compose stack, or the chart's PVC (which the
 chart itself never backs up). It holds `access_requests`,
-`app_overrides`, `app_dependencies`, `audit_log`, `news_posts`,
+`app_overrides`, `app_dependencies`, `audit_log`, `news_posts`, `news_images`,
 `notification_outbox`, `session_claims`, `user_onboarding` and
 `user_preferences`.
 `notification_outbox` holds emails waiting to be sent (sent ones are

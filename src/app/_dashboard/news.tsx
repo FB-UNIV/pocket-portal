@@ -19,6 +19,12 @@ export function NewsArticle({ post, t, locale }: { post: NewsPost; t: NewsT; loc
   const titleId = `news-${post.id}`;
   return (
     <article aria-labelledby={titleId} className="card flex flex-col gap-2 p-5">
+      {post.coverImageId ? (
+        // Decorative: the title and words carry the post. Served only to
+        // people who may read it (/api/news/images).
+        // eslint-disable-next-line @next/next/no-img-element -- next/image is off (no sharp); see next.config.ts
+        <img src={`/api/news/images/${post.coverImageId}`} alt="" loading="lazy" className="mb-2 max-h-72 w-full rounded-xl object-cover" />
+      ) : null}
       <h3 id={titleId} className="text-lg font-bold">
         {post.title}
       </h3>

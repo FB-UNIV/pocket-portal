@@ -14,6 +14,9 @@ const PROBLEMS = {
   body_too_long: "problemBodyTooLong",
   bad_date: "problemBadDate",
   unknown_group: "problemUnknownGroup",
+  no_picture: "problemNoPicture",
+  too_big: "problemTooBig",
+  not_an_image: "problemNotAnImage",
 } as const;
 
 export function problemMessage(problem: unknown, t: AdminNewsT): string | null {

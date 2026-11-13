@@ -17,6 +17,7 @@ const post = (overrides = {}) => ({
   pinned: false,
   expiresAt: null,
   audienceGroups: [],
+  coverImageId: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
