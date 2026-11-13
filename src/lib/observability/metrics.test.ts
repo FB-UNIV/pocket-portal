@@ -7,6 +7,7 @@ import {
   recordGrant,
   recordNotification,
   recordPocketIdCall,
+  recordWebVital,
 } from "./metrics";
 
 describe("metrics registry", () => {
@@ -125,5 +126,22 @@ describe("portal metrics", () => {
     expect(body).toMatch(
       /portal_pocketid_request_duration_seconds_count\{endpoint="GET \/api\/users\/\{id\}",outcome="5xx"\} 1/,
     );
+  });
+});
+
+// Browser-side page load (#16): what server latency can't see.
+describe("web vitals", () => {
+  beforeEach(() => {
+    register.resetMetrics();
+  });
+
+  it("records each vital by name and route pattern, in seconds", async () => {
+    recordWebVital("LCP", "/apps", 1.9);
+    recordWebVital("INP", "/admin/apps/[id]", 0.15);
+
+    const body = await register.metrics();
+
+    expect(body).toMatch(/portal_web_vitals_seconds_bucket\{le="2.5",name="LCP",route="\/apps"\} 1/);
+    expect(body).toMatch(/portal_web_vitals_seconds_bucket\{le="0.2",name="INP",route="\/admin\/apps\/\[id\]"\} 1/);
   });
 });

@@ -14,6 +14,7 @@ import {
   readSecretsWarningEnabled,
   readSignInInviteHintEnabled,
   readSignInText,
+  readWebVitalsEnabled,
   readAuthUrl,
   readDatabaseUrl,
   readLogFormat,
@@ -247,6 +248,19 @@ describe("config", () => {
       expect(validateConfig({ ...COMPLETE, [name]: "nah" })).toEqual([
         expect.stringContaining(name),
       ]);
+    });
+
+    // Web Vitals (#16): on with metrics, since that's the only place they
+    // go; with no METRICS_TOKEN there's nothing to serve them, so no beacon
+    // and no endpoint.
+    it("turns Web Vitals on with metrics, unless switched off", () => {
+      expect(readWebVitalsEnabled({})).toBe(false);
+      expect(readWebVitalsEnabled({ METRICS_TOKEN: "t" })).toBe(true);
+      expect(readWebVitalsEnabled({ METRICS_TOKEN: "t", FEATURE_WEB_VITALS: "false" })).toBe(false);
+      expect(validateConfig({ ...COMPLETE, FEATURE_WEB_VITALS: "nah" })).toEqual([
+        expect.stringContaining("FEATURE_WEB_VITALS"),
+      ]);
+      expect(nonDefaultFlags({ FEATURE_WEB_VITALS: "false" })).toEqual(["FEATURE_WEB_VITALS=false"]);
     });
 
     // support questions start from the log, so say what's non-default.
