@@ -15,8 +15,9 @@ never by hand and never committed:
     --owner FB-UNIV --predicate-type https://cyclonedx.org/bom
   ```
 
-- **Every GitHub Release** gets it as a `sbom.cdx.json` asset
-  (`release-sbom.yml`).
+- **Every GitHub Release** gets it as a `sbom.cdx.json` asset, attached by
+  `docker-build.yml`'s `github-release` job before the release is
+  published (`release-sbom.yml` only backfills older releases).
 - The OS/base-image level is covered by BuildKit's own SBOM attestation
   (`sbom: true` in the same build).
 

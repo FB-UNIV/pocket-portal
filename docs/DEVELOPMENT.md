@@ -262,12 +262,18 @@ Every push to `main` and every PR runs:
   personal account)
 - `docker-build.yml` — on a PR, a build-only check (no scan, no push) so a
   broken multi-stage build surfaces before merge, not after; on push to
-  `main`, the real build: scans with Trivy (fails on CRITICAL/HIGH), signs
-  it, attests the npm SBOM onto its digest, and only then moves `dev` to it.
-  `main` builds queue rather than cancel each other: every commit needs its
-  own image for a tag on it to have something to promote
-- `release-sbom.yml` — attaches the npm SBOM to each published GitHub
-  Release (or a given tag, by manual dispatch)
+  `main`, the real build: each platform on its own native runner (amd64,
+  arm64), pushed by digest and scanned with Trivy (fails on CRITICAL/HIGH);
+  then both joined as `dev-<sha>`, signed, given its npm SBOM and SLSA
+  build-provenance attestations, and `dev` moved if it's still `main`'s
+  newest commit.
+  Each `main` commit has its own concurrency group, so no build is ever
+  dropped: every commit needs its own image for a tag on it to have
+  something to promote. On a `v*` tag, `promote-release` checks and
+  re-scans that image and tags it, then `github-release` publishes the
+  GitHub Release with its changelog notes and the npm SBOM
+- `release-sbom.yml` — backfill only: attaches the npm SBOM to a release
+  published before `github-release` existed (manual dispatch)
 
 All jobs have a `timeout-minutes` cap and cancel superseded runs on the
 same PR (`concurrency`). Branch protection on `main` requires these
