@@ -24,6 +24,9 @@ export default defineConfig({
   // Links that leave docs/ (to source files, the README, .claude/rules)
   // point into the repository, not the site; localhost is a dev address.
   ignoreDeadLinks: [/^\.\.\//, /^\.\/\.\.\//, /^https?:\/\/localhost\b/],
+  // An inline PostCSS config, so Vite doesn't walk up to the app's own
+  // (postcss.config.mjs, Tailwind), which this package doesn't install.
+  vite: { css: { postcss: {} } },
   themeConfig: {
     search: { provider: "local" },
     nav: [
