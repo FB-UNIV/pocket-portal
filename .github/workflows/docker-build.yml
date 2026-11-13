@@ -83,7 +83,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: npm-sbom
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The arm64 half builds under QEMU: 1 to 21 minutes with a warm cache,
+    # but a cold one hit the old 30-minute limit three times (Nov 10 twice,
+    # Nov 13), leaving those commits without an image.
+    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
