@@ -58,11 +58,12 @@ jobs:
   # newest commit). Never `latest` or a version: those come only from
   # promote-release below, on a release tag.
   # The npm-level SBOM (CycloneDX) for this commit, attested onto its image
-  # by `build` below. A job of its own, holding no write permission: it
+  # by `build` below, and attached to the GitHub Release on a tag. A job of its own, holding no write permission: it
   # installs the dependency tree (`--ignore-scripts`, so no package code
   # runs) and only hands the JSON on as an artifact.
+  # On a release tag too: github-release attaches it to the release.
   npm-sbom:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -243,6 +244,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    outputs:
+      latest: ${{ steps.float.outputs.latest }}
     steps:
       # The `v*` trigger also matches e.g. "vfoo": refuse anything that
       # isn't a semver release or pre-release before touching the registry.
@@ -396,3 +399,54 @@ jobs:
             exit 1
           fi
           cosign sign --yes "$IMAGE@$SCANNED"
+
+  # The GitHub Release, once the image is promoted: notes from the
+  # version's CHANGELOG.md section, the npm SBOM attached while it's still a
+  # draft, then published. Immutable releases lock a published release's
+  # assets, hence draft first. Write access, but no dependency code runs:
+  # it reads CHANGELOG.md and uploads a file built by npm-sbom.
+  github-release:
+    needs: [promote-release, npm-sbom]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: npm-sbom
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+          LATEST: ${{ needs.promote-release.outputs.latest }}
+        run: |
+          version=${TAG_NAME#v}
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 { f = 1; next }
+            f && /^## \[/ { exit }
+            f { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no section for $version; add one, then re-run this job."
+            exit 1
+          fi
+          flags=(--latest="$LATEST")
+          [[ "$TAG_NAME" == *-* ]] && flags+=(--prerelease)
+          # A re-run finds the draft it left, or a release already out.
+          if draft=$(gh release view "$TAG_NAME" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" = false ]; then
+              echo "::notice::$TAG_NAME is already published."
+              exit 0
+            fi
+          else
+            gh release create "$TAG_NAME" --draft --verify-tag --title "$TAG_NAME" --notes-file notes.md "${flags[@]}"
+          fi
+          gh release upload "$TAG_NAME" sbom.cdx.json --clobber
+          gh release edit "$TAG_NAME" --draft=false "${flags[@]}"
+          echo "### Released [$TAG_NAME]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG_NAME)" >> "$GITHUB_STEP_SUMMARY"

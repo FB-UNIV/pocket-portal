@@ -77,19 +77,15 @@ A PR that changes the version:
    registry tag at content its release notes didn't describe (this
    happened twice in practice: v0.4.0 and v0.4.1 each briefly pointed at
    later, undocumented commits before the fix).
-4. Create a **GitHub Release** for that tag with the version's `CHANGELOG.md`
-   section as the notes — a pushed git tag alone does not create one, so the
-   changelog wouldn't otherwise show up on the Releases page. Extract the
-   section (dropping its `## [X.Y.Z] - date` header line) and pipe it in:
-
-   ```bash
-   awk '/^## \[X\.Y\.Z\]/{f=1;next} f&&/^## \[/{exit} f{print}' CHANGELOG.md \
-     | gh release create vX.Y.Z --title "vX.Y.Z" --verify-tag --notes-file -
-   ```
-
-   The `--verify-tag` guards against publishing a release for a tag that was
-   never pushed (step 3). Publishing it triggers `release-sbom.yml`, which
-   attaches the npm SBOM (`sbom.cdx.json`) to the release.
+4. Nothing more to do: once `promote-release` passes, the same run's
+   `github-release` job publishes the **GitHub Release** for the tag. Its
+   notes are the version's `CHANGELOG.md` section (without the
+   `## [X.Y.Z] - date` line), and `sbom.cdx.json` is attached while it's
+   still a draft. Releases are immutable once published (repository
+   setting), so nothing can be added or swapped afterwards. The notes are
+   read from `CHANGELOG.md` *at the tagged commit*, so the section must be
+   in the release PR (step 2). Without it the job fails, and since a tag
+   can't be moved, the fix is the next patch version, with its section.
 
 Not every PR needs a version bump — routine chores, CI tweaks, and
 docs-only changes don't need one. Bump when the change is something a

@@ -1,14 +1,12 @@
 name: Release SBOM
 
-# Attaches the npm SBOM (CycloneDX) to a GitHub Release, for anyone who
-# wants it without registry tooling. The signed copy is the attestation on
-# the image (docker-build.yml); this is the same file, generated from the
-# release tag's lockfile.
+# Backfill only: attaches the npm SBOM (CycloneDX) to a GitHub Release that
+# was published without one. New releases get it from docker-build.yml's
+# github-release job, attached while the release is still a draft: once
+# immutable releases are on, a published release's assets can't change, so
+# this only works on releases from before then.
 
 on:
-  release:
-    types: [published]
-  # Backfill a release published before this workflow existed.
   workflow_dispatch:
     inputs:
       tag:
