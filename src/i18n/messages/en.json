@@ -38,6 +38,12 @@
     "accountTitle": "Signing out",
     "accountBody": "Sign out here when you’re done, and change the language next to it."
   },
+  "News": {
+    "heading": "News",
+    "all": "All the news",
+    "pinned": "Pinned",
+    "none": "No news right now."
+  },
   "Welcome": {
     "heading": "Getting started",
     "progress": "{done} of {total} done",
@@ -122,7 +128,38 @@
     "requests": "Requests",
     "catalog": "Apps",
     "history": "History",
-    "waiting": ", {count} waiting"
+    "waiting": ", {count} waiting",
+    "news": "News"
+  },
+  "AdminNews": {
+    "title": "News",
+    "new": "New post",
+    "none": "No posts yet. A post shows on everyone’s dashboard, or only for the groups you choose.",
+    "forEveryone": "For everyone",
+    "forGroups": "For {groups}",
+    "pinned": "Pinned",
+    "expired": "No longer shown",
+    "newTitle": "New post",
+    "editTitle": "Edit post",
+    "back": "All posts",
+    "saved": "Saved.",
+    "delete": "Delete this post",
+    "preview": "As people see it",
+    "titleLabel": "Title",
+    "bodyLabel": "What it says",
+    "bodyHint": "Plain text. A blank line starts a paragraph. Also: # heading, - list, **bold**, *italic*, [link text](https://…).",
+    "audienceLegend": "Who sees it",
+    "audienceHint": "Nobody ticked: everyone. Otherwise only people in the groups you tick.",
+    "untilLabel": "Shown until (optional)",
+    "pinnedLabel": "Pin it to the top",
+    "save": "Save",
+    "publish": "Publish",
+    "problemTitleRequired": "Give it a title.",
+    "problemTitleTooLong": "Keep the title under 120 characters.",
+    "problemBodyRequired": "Write what it says.",
+    "problemBodyTooLong": "Keep it under 10,000 characters.",
+    "problemBadDate": "That “shown until” date isn’t a date.",
+    "problemUnknownGroup": "One of those groups isn’t in PocketID any more."
   },
   "AdminApps": {
     "title": "App catalog",
@@ -236,7 +273,11 @@
     "noMatch": "Nothing like that in the history yet.",
     "pagesLabel": "History pages",
     "newest": "Back to the newest",
-    "older": "Show older"
+    "older": "Show older",
+    "somePost": "a post",
+    "evNewsCreated": "{actor} <muted>posted</muted> {title}",
+    "evNewsUpdated": "{actor} <muted>edited</muted> {title}",
+    "evNewsDeleted": "{actor} <muted>deleted</muted> {title}"
   },
   "SecretsBanner": {
     "label": "Security warning",

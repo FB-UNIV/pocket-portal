@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { News } from "./news";
 import { listPostsFor } from "@/lib/news/store";
+import { getDb } from "@/lib/db/client";
 
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn(() => ({})) }));
 vi.mock("@/lib/news/store", () => ({ listPostsFor: vi.fn() }));
@@ -62,11 +63,19 @@ describe("News (dashboard section)", () => {
     expect(within(region()).getByRole("link", { name: "All the news" })).toHaveAttribute("href", "/news");
   });
 
-  it("renders nothing when there's no news, or it can't be read", async () => {
+  it("renders nothing when there's no news", async () => {
     vi.mocked(listPostsFor).mockResolvedValue([]);
-    expect(await News({ userGroups: [] })).toBeNull();
 
-    vi.mocked(listPostsFor).mockRejectedValue(new Error("db down"));
+    expect(await News({ userGroups: [] })).toBeNull();
+  });
+
+  // Like any dashboard section (#20): a failure costs the section, which
+  // then isn't there, never the page.
+  it("renders nothing when the news can't be read", async () => {
+    vi.mocked(getDb).mockImplementationOnce(() => {
+      throw new Error("DATABASE_URL is not set");
+    });
+
     expect(await News({ userGroups: [] })).toBeNull();
   });
 });

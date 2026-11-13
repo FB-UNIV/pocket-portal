@@ -34,6 +34,7 @@ export async function AdminNav() {
     });
   }
   items.push({ href: "/admin/apps", label: t("catalog") });
+  items.push({ href: "/admin/news", label: t("news") });
   if (readAuditLogPageEnabled()) {
     items.push({ href: "/admin/audit", label: t("history") });
   }

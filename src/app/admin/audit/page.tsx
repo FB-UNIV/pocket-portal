@@ -49,6 +49,10 @@ const EVENTS = {
   // had then.
   "app_dependency.added": { message: "evDependencyAdded", tone: "muted", mark: "+" },
   "app_dependency.removed": { message: "evDependencyRemoved", tone: "muted", mark: "–" },
+  // News posts (#22), by the title they had then.
+  "news.created": { message: "evNewsCreated", tone: "muted", mark: "+" },
+  "news.updated": { message: "evNewsUpdated", tone: "muted", mark: "·" },
+  "news.deleted": { message: "evNewsDeleted", tone: "muted", mark: "–" },
 } as const;
 
 const TONES = {
@@ -98,6 +102,7 @@ function EventSentence({
   const recipient = metadataString(entry.metadata, "recipientEmail") ?? t("someone");
   const app = metadataString(entry.metadata, "appName") ?? t("someApp");
   const prerequisite = metadataString(entry.metadata, "requiresName") ?? t("someApp");
+  const title = metadataString(entry.metadata, "title") ?? t("somePost");
   return (
     <>
       {t.rich(EVENTS[entry.action as keyof typeof EVENTS].message, {
@@ -107,6 +112,7 @@ function EventSentence({
         recipient,
         app,
         prerequisite,
+        title,
         // The sentence is bold, so the people and the group stand out; the
         // words between them are quieter.
         muted: (chunks) => <span className="font-normal text-ink-muted">{chunks}</span>,

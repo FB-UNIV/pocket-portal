@@ -207,3 +207,27 @@ export const userOnboarding = pgTable("user_onboarding", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 /* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// News on the dashboard (#22), written by admins. `body` is Markdown,
+// rendered on the server into React elements (lib/news/markdown.tsx), never
+// stored or sent as HTML. `audience_groups` are PocketID group names, as in
+// the OIDC groups claim; empty means everyone.
+export const newsPosts = pgTable(
+  "news_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    authorSubject: text("author_subject").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+    pinned: boolean("pinned").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    audienceGroups: jsonb("audience_groups").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // What the dashboard asks for: newest first.
+  (table) => [index("news_posts_published_idx").on(table.publishedAt)],
+);
+/* v8 ignore stop */

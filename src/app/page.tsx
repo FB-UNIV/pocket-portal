@@ -6,6 +6,7 @@ import { safeCallbackUrl } from "@/lib/auth/sign-in-redirect";
 import { getLocale, getTranslations } from "@/i18n/server";
 import { YourApps, YourAppsLoading } from "./_dashboard/your-apps";
 import { WelcomeChecklist } from "./_dashboard/welcome";
+import { News } from "./_dashboard/news";
 import { completeTourAction } from "./_dashboard/actions";
 import { GuidedTour } from "./_components/guided-tour";
 import { getDb } from "@/lib/db/client";
@@ -107,6 +108,10 @@ export default async function Home({
           </Suspense>
           <Suspense fallback={<YourAppsLoading />}>
             <YourApps userGroups={session.user.groups} />
+          </Suspense>
+          {/* Nothing while it loads, and nothing without news (#22). */}
+          <Suspense fallback={null}>
+            <News userGroups={session.user.groups} />
           </Suspense>
         </main>
       </div>
