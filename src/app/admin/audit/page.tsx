@@ -28,7 +28,7 @@ const FILTERS = {
   declined: { label: "filterDeclined", actions: ["access_request.denied"] },
   problems: {
     label: "filterProblems",
-    actions: ["access_request.grant_rejected", "access_request.grant_failed"],
+    actions: ["access_request.grant_rejected", "access_request.grant_failed", "notification.failed"],
   },
 } as const;
 type Filter = keyof typeof FILTERS;
@@ -42,6 +42,9 @@ const EVENTS = {
   "access_request.denied": { message: "evDenied", tone: "muted", mark: "–" },
   "access_request.grant_rejected": { message: "evGrantRejected", tone: "bad", mark: "!" },
   "access_request.grant_failed": { message: "evGrantFailed", tone: "bad", mark: "!" },
+  // An email the outbox gave up on (ADR-0011); written by the system, so
+  // the sentence names who it was for rather than who did it.
+  "notification.failed": { message: "evEmailFailed", tone: "bad", mark: "!" },
 } as const;
 
 const TONES = {
@@ -88,12 +91,14 @@ function EventSentence({
     ? (names.get(requesterSubject) ?? entry.requesterEmail ?? requesterSubject)
     : t("someone");
   const group = metadataString(entry.metadata, "pocketIdGroupName") ?? t("someGroup");
+  const recipient = metadataString(entry.metadata, "recipientEmail") ?? t("someone");
   return (
     <>
       {t.rich(EVENTS[entry.action as keyof typeof EVENTS].message, {
         actor,
         requester,
         group,
+        recipient,
         // The sentence is bold, so the people and the group stand out; the
         // words between them are quieter.
         muted: (chunks) => <span className="font-normal text-ink-muted">{chunks}</span>,

@@ -301,7 +301,7 @@ The app emits signals and does not care what consumes them
 | Signal | Where | Notes |
 |---|---|---|
 | Metrics | `GET /api/metrics`, Prometheus text | Off unless `METRICS_TOKEN` is set; then send it as `Authorization: Bearer <token>` (Prometheus: `authorization: { credentials: <token> }` in the scrape config). Anything else gets a 404. The startup log says which state the instance is in. Exposes Node.js process metrics (CPU, memory, heap, event-loop lag, GC) and, for every request, `http_requests_total` and `http_request_duration_seconds` labelled by `method`, `status_code` and `route`, the matched route *pattern* (`/apps`, `/api/auth/[...nextauth]`, `/_not-found`), never the raw path. Counted whatever `LOG_REQUESTS` says. Plus the [portal's own metrics](#portal-metrics): access requests, grants, notification emails and PocketID API latency. Each replica exposes its own; see [per-route latency](#per-route-latency) for a query. |
-| Logs | stdout: JSON (Pino) by default, or `LOG_FORMAT=pretty` for one readable line per entry | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. One line per request (method, path, status, duration; `LOG_REQUESTS=false` turns it off), with health checks at `debug`. **Every server error** is logged with its stack and the *digest* a user's error page shows, so "digest 123" leads straight to it. Startup logs every configuration problem (`Configuration: …`), an outdated PocketID and any non-default feature flags. An email that couldn't be sent is logged at `warn` with its request id and never retried ([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). Every line written during a request, the request line included, carries `trace_id` and `span_id`; see [linking logs and traces](#linking-logs-and-traces). |
+| Logs | stdout: JSON (Pino) by default, or `LOG_FORMAT=pretty` for one readable line per entry | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. One line per request (method, path, status, duration; `LOG_REQUESTS=false` turns it off), with health checks at `debug`. **Every server error** is logged with its stack and the *digest* a user's error page shows, so "digest 123" leads straight to it. Startup logs every configuration problem (`Configuration: …`), an outdated PocketID and any non-default feature flags. Emails go through an outbox and are retried ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)): a failed attempt is logged at `warn` with its request id and when it'll be retried, and an email given up on after the last attempt at `error`, as well as on the admin History page. Every line written during a request, the request line included, carries `trace_id` and `span_id`; see [linking logs and traces](#linking-logs-and-traces). |
 | Traces | OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` | Always on: each request is a trace, with Next.js's spans (middleware, rendering, route handlers, server actions), a span for every outgoing HTTP call (all PocketID API and OIDC calls), and the portal's own: every database query (`SELECT access_requests`, with the statement's shape and never its values), each email send (`email.send`, with the recipient count and never an address), building the catalog (`catalog.build`), and deciding a request (`access_request.decide`, with the PocketID grant as `access_request.grant`). Traces need a collector to see them (e.g. Grafana Tempo, Jaeger). Unset, it targets `http://localhost:4318`, and exports fail harmlessly if nothing listens there. The per-request log line is taken from the same span. |
 
 ### Per-route latency
@@ -324,7 +324,7 @@ fixed set, never from a request, so the number of series stays small.
 |---|---|---|
 | `portal_access_requests_total` | `event`: `created`, `reopened`, `approved`, `denied` | Access requests, once each change is committed |
 | `portal_pocketid_grants_total` | `outcome`: `granted`, `failed` (PocketID errored), `refused` (not a grantable group of a visible app) | Every attempt to add someone to a PocketID group |
-| `portal_notifications_total` | `kind`: `new_request`, `decision`; `outcome`: `sent`, `failed` | Notification emails, one per recipient |
+| `portal_notifications_total` | `kind`: `new_request`, `decision`; `outcome`: `queued`, `sent`, `retried` (an attempt failed, another is scheduled), `failed` (given up on, or never queued) | Notification emails, one per recipient |
 | `portal_pocketid_request_duration_seconds` | `endpoint` (a pattern: `GET /api/users/{id}`, never a URL), `outcome`: `2xx`, `4xx`, `5xx`, `error` (no answer) | PocketID API calls and their latency. Not the OIDC sign-in calls, and not the cached branding read |
 | `portal_web_vitals_seconds` | `name`: `TTFB`, `LCP`, `INP`; `route`: a page pattern | What people's browsers measured: time to first byte, when the main content appeared, and how long an interaction took to respond. See [Web Vitals](#web-vitals) |
 
@@ -341,7 +341,9 @@ histogram_quantile(0.95, sum by (le) (rate(portal_pocketid_request_duration_seco
 sum(rate(portal_pocketid_request_duration_seconds_count{outcome=~"5xx|error"}[5m]))
   / sum(rate(portal_pocketid_request_duration_seconds_count[5m])) > 0.05
 
-# Emails not going out (they're never retried, ADR-0009).
+# Emails failing: attempts being retried (an SMTP problem now), or given
+# up on after the last one (ADR-0011).
+sum(increase(portal_notifications_total{outcome="retried"}[15m])) > 0
 sum(increase(portal_notifications_total{outcome="failed"}[1h])) > 0
 ```
 
@@ -396,8 +398,11 @@ request). With Grafana:
 The portal is stateless; the only thing worth backing up is Postgres: the
 `postgres-data` volume in the compose stack, or the chart's PVC (which the
 chart itself never backs up). It holds `access_requests`,
-`app_overrides`, `audit_log`, `session_claims` and `user_preferences`.
-`session_claims` is disposable: losing it only means each user's next
+`app_overrides`, `audit_log`, `notification_outbox`, `session_claims` and
+`user_preferences`.
+`notification_outbox` holds emails waiting to be sent (sent ones are
+pruned after a week, failed ones after a month); losing it loses only
+those. `session_claims` is disposable: losing it only means each user's next
 session refresh, at most one interval away, asks PocketID instead of
 reading a stored copy. Losing `user_preferences` resets everyone's language
 to their browser's until they pick one again. The audit log is the
@@ -472,4 +477,4 @@ project cannot see:
 | Issue | Impact |
 |---|---|
 | PocketID API key scope | The PocketID API key the portal holds can also read PocketID's `smtpPassword` and `ldapBindPassword` in plaintext. Mitigated by [`UI_CONFIG_DISABLED=true` on PocketID](#pocketid-set-ui_config_disabledtrue) |
-| Email delivery | Email notifications are best-effort: one in flight when an instance stops is lost, and a failed send isn't retried. The request itself is safe: the admin queue and `/apps` still show it, so check the queue rather than relying on the email. Failures are counted in `portal_notifications_total{outcome="failed"}` |
+| Email delivery | Emails go through an outbox in Postgres ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)), so one in flight when an instance stops is sent by another, and a failed send is retried for about nine hours (1 min, 5 min, 30 min, 2 h, 6 h) before it's given up on, in History under Problems and in `portal_notifications_total{outcome="failed"}`. Delivery is at-least-once: an instance that dies between sending and recording it lets another send it again. Nothing is queued in the instant between the response and the queueing, so a crash in exactly that window still loses an email; the request itself is always in the admin queue |

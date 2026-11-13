@@ -148,6 +148,33 @@ describe("AdminAuditPage", () => {
     expect(within(events()[0]).getByText("PocketID 503")).toBeInTheDocument();
   });
 
+  // ADR-0011: an email the outbox gave up on is a problem an admin should
+  // see, with whom it was for and why it failed.
+  it("says when an email couldn't be sent, to whom, and why", async () => {
+    mockList.mockResolvedValue({
+      entries: [
+        entry({
+          actorSubject: "system",
+          actorEmail: null,
+          action: "notification.failed",
+          metadata: {
+            kind: "new_request",
+            recipientEmail: "ops@example.test",
+            pocketIdGroupName: "engineering",
+            attempts: 6,
+            error: "550 no such user",
+          },
+        }),
+      ],
+      nextCursor: null,
+    });
+
+    await renderPage();
+
+    expect(events()[0]).toHaveTextContent("The email to ops@example.test about engineering couldn’t be sent.");
+    expect(within(events()[0]).getByText("550 no such user")).toBeInTheDocument();
+  });
+
   it("still tells an event with no metadata", async () => {
     mockList.mockResolvedValue({ entries: [entry({ metadata: null })], nextCursor: null });
 
@@ -188,7 +215,7 @@ describe("AdminAuditPage", () => {
     ["requests", ["access_request.created", "access_request.reopened"]],
     ["approved", ["access_request.approved"]],
     ["declined", ["access_request.denied"]],
-    ["problems", ["access_request.grant_rejected", "access_request.grant_failed"]],
+    ["problems", ["access_request.grant_rejected", "access_request.grant_failed", "notification.failed"]],
   ])("filters with ?show=%s", async (show, actions) => {
     await renderPage({ show });
 

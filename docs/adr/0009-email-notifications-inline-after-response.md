@@ -1,7 +1,7 @@
 # ADR-0009: Email notifications sent inline, after the response
 
 **Date**: 2026-09-24
-**Status**: accepted
+**Status**: superseded by [ADR-0011](0011-email-notifications-through-an-outbox.md)
 **Deciders**: François Bouju
 
 ## Context

@@ -115,9 +115,11 @@ sequenceDiagram
     Note over U: /apps says "Approved, may take a few minutes"<br/>until the session refresh (<= 5 min) lands the group
 ```
 
-Admins are emailed about each new request the same way. Emails go out after
-the response, best-effort, and never fail the action
-([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). With
+Admins are emailed about each new request the same way (or the addresses in
+`NOTIFY_ADMIN_EMAILS`). Emails are queued after the response, never fail
+the action, and are sent from a Postgres outbox with retries, by whichever
+replica gets there first
+([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)). With
 `FEATURE_ACCESS_REQUESTS=false` none of this appears: `/apps` lists only
 what the user can open.
 
@@ -166,6 +168,7 @@ transaction as the change it records wherever that coupling matters:
 | `access_request.reopened` | a user re-requests a grant that was revoked |
 | `access_request.grant_failed` | the PocketID grant attempt failed for any reason — refusal, timeout, unreachable; the request stays pending |
 | `access_request.grant_rejected` | the target group is no longer a grantable group of its client |
+| `notification.failed` | an email was given up on after its last attempt ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)); written by `system`, with the recipient and the last error |
 
 The two `grant_*` actions exist so a request that never became access still
 leaves a trace of why. Admins browse the trail at `/admin/audit`, newest

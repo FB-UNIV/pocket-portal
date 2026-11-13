@@ -52,6 +52,10 @@ export async function register() {
   // runtime-specific code is imported conditionally).
   const { logMetricsStatus } = await import("@/lib/observability/metrics-auth");
   logMetricsStatus();
+  // The notification outbox's sender loop (ADR-0011): retries, and emails a
+  // stopped replica queued but never sent. Imported here: it needs Node.
+  const { startOutboxSender } = await import("@/lib/notifications/outbox-runtime");
+  startOutboxSender();
   // Fire-and-forget so a slow PocketID never delays startup.
   warnIfPocketIdSecretsReadable().catch(() => {});
   warnIfPocketIdTooOld().catch(() => {});

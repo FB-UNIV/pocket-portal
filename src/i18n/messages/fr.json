@@ -167,6 +167,7 @@
     "evDenied": "{actor} <muted>a refusé</muted> {requester} <muted>pour</muted> {group}",
     "evGrantFailed": "{actor} <muted>a essayé d’ajouter</muted> {requester} <muted>à</muted> {group}<muted>, mais cela a échoué.</muted>",
     "evGrantRejected": "{actor} <muted>a essayé d’ajouter</muted> {requester} <muted>à</muted> {group}<muted>, mais PocketID a refusé.</muted>",
+    "evEmailFailed": "<muted>L’e-mail à</muted> {recipient} <muted>au sujet de</muted> {group} <muted>n’a pas pu être envoyé.</muted>",
     "evUnknown": "{actor} : {action}",
     "someone": "quelqu’un",
     "someGroup": "un groupe",

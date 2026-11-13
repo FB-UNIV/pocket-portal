@@ -26,6 +26,18 @@ project-specific policy on when to bump what.
   (`/api/web-vitals`) accepts only those three timings for the portal's own
   pages, from the portal's own pages, and is rate-limited.
   `FEATURE_WEB_VITALS=false` keeps metrics without it.
+- **`NOTIFY_ADMIN_EMAILS`**: a fixed list of addresses that hear about new
+  access requests, instead of every PocketID admin with an address.
+
+### Changed
+- **Emails survive restarts, and are retried.** Access-request emails now go
+  through an outbox in Postgres (ADR-0011, replacing ADR-0009): one being
+  sent when an instance stops is sent by another, and a failed send is
+  retried for about nine hours before it's given up on. An email given up
+  on shows on the admin History page under Problems ("The email to … about
+  … couldn't be sent"), with the reason. Sent emails are kept a week and
+  failed ones a month, then deleted. Adds the `notification_outbox` table
+  (migrated on start).
 
 ### Fixed
 - **App cards say what they show, for voice control and screen readers.**

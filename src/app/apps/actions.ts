@@ -170,7 +170,7 @@ export async function requestAccessAction(
     });
 
     // Back in the queue, so admins hear about it as they would a new one
-    //. Scheduled only once the reopen committed; see ADR-0009.
+    //. Scheduled only once the reopen committed; see ADR-0011.
     if (reopened) {
       recordAccessRequestEvent("reopened");
       after(() =>
@@ -214,7 +214,7 @@ export async function requestAccessAction(
   });
   recordAccessRequestEvent("created");
 
-  // After the response (ADR-0009): the request is already filed, so a
+  // After the response (ADR-0011): the request is already filed, so a
   // slow or broken mail server must not hold up or fail this action.
   after(() =>
     notifyNewAccessRequest({

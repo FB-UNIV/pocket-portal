@@ -14,6 +14,7 @@ import {
   readSecretsWarningEnabled,
   readSignInInviteHintEnabled,
   readSignInText,
+  readNotifyAdminEmails,
   readWebVitalsEnabled,
   readAuthUrl,
   readDatabaseUrl,
@@ -248,6 +249,29 @@ describe("config", () => {
       expect(validateConfig({ ...COMPLETE, [name]: "nah" })).toEqual([
         expect.stringContaining(name),
       ]);
+    });
+
+    // ADR-0011: who hears about new requests, instead of every PocketID
+    // admin. Each address ends up in a To: header, so anything that could
+    // break out of one is refused.
+    it("reads NOTIFY_ADMIN_EMAILS as a list of addresses", () => {
+      expect(readNotifyAdminEmails({})).toBeUndefined();
+      expect(readNotifyAdminEmails({ NOTIFY_ADMIN_EMAILS: " " })).toBeUndefined();
+      expect(readNotifyAdminEmails({ NOTIFY_ADMIN_EMAILS: "ops@example.test, lead@example.test," })).toEqual([
+        "ops@example.test",
+        "lead@example.test",
+      ]);
+    });
+
+    it.each([
+      "not-an-address",
+      "ops@example.test\r\nBcc: x@evil.test",
+      "ops@example.test; lead@example.test",
+      "Ops <ops@example.test>",
+    ])("refuses NOTIFY_ADMIN_EMAILS=%j", (value) => {
+      const env = { ...COMPLETE, NOTIFY_ADMIN_EMAILS: value };
+      expect(validateConfig(env)).toEqual([expect.stringContaining("NOTIFY_ADMIN_EMAILS")]);
+      expect(() => readNotifyAdminEmails(env)).toThrow(/NOTIFY_ADMIN_EMAILS/);
     });
 
     // Web Vitals (#16): on with metrics, since that's the only place they
