@@ -41,7 +41,10 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
-  # The docs site's own tooling (#8).
+  # The docs site's own tooling (#8). docs/package.json overrides vite to
+  # 6.4.5: VitePress 1.6.4, the latest stable, still pins vite 5, whose dev
+  # server has open advisories (esbuild too). Drop the override when a
+  # stable VitePress moves past vite 5; bump it by hand until then.
   - package-ecosystem: npm
     directory: "/docs"
     schedule:

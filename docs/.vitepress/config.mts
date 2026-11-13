@@ -27,6 +27,18 @@ export default defineConfig({
   // An inline PostCSS config, so Vite doesn't walk up to the app's own
   // (postcss.config.mjs, Tailwind), which this package doesn't install.
   vite: { css: { postcss: {} } },
+  markdown: {
+    // These are plain Markdown files, also read on GitHub: inline code such
+    // as `{{json .SBOM}}` or `${{ github.ref }}` is text, never a Vue
+    // expression (fenced code already is). `v-pre` makes Vue skip it.
+    config(md) {
+      const render = md.renderer.rules.code_inline!;
+      md.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
+        tokens[idx].attrSet("v-pre", "");
+        return render(tokens, idx, options, env, self);
+      };
+    },
+  },
   themeConfig: {
     search: { provider: "local" },
     nav: [

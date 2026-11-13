@@ -32,7 +32,15 @@ jobs:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: docs
-      - run: npm run build
+      # VitePress still exits 0 when a page throws while rendering (as one
+      # did on a `{{ }}` in inline code), so its output is checked too.
+      - run: |
+          npm run build 2>&1 | tee "$RUNNER_TEMP/docs-build.log"
+          if grep -E '^[A-Za-z]*Error\b' "$RUNNER_TEMP/docs-build.log"; then
+            echo "::error::A docs page failed to render (see above)"
+            exit 1
+          fi
+        shell: bash
         working-directory: docs
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
         if: github.event_name == 'push'
