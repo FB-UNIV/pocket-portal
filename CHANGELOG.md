@@ -39,6 +39,15 @@ project-specific policy on when to bump what.
   failed ones a month, then deleted. Adds the `notification_outbox` table
   (migrated on start).
 
+### Security
+- **Sign-in codes no longer reach traces.** Exported request spans carried
+  the full request target, which on the sign-in callback includes the
+  one-time authorization code and state. Query strings are now dropped
+  from every exported span, as the request log already did. The logger
+  also redacts API keys, passwords, secrets, tokens and authorization
+  headers should one ever be passed to it. The RUNBOOK gains a section on
+  storing, rotating and watching the PocketID API key.
+
 ### Fixed
 - **App cards say what they show, for voice control and screen readers.**
   The app cards on the home page and the Apps page were announced as

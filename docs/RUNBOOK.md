@@ -130,6 +130,50 @@ curl -sSf -H "X-API-KEY: $POCKETID_API_KEY" \
 
 Values should be `XXXXXXXXXX` or empty.
 
+### The PocketID API key
+
+**What it can do.** A PocketID API key "acts with the rights of the admin
+who created it" ([PocketID API docs](https://pocket-id.org/docs/api)): it
+can create users and groups and change any membership, not just what the
+portal needs. The portal reads OIDC clients, users and groups, and its one
+write is adding a user to a group when an admin approves a request, and
+only for a group of an app the portal shows. PocketID has no narrower key
+yet; #4 tracks using one when it does.
+
+**Store it as a secret.** Use `POCKETID_API_KEY_FILE` pointing at a Docker
+or Kubernetes secret rather than an environment variable in a compose file
+or a manifest. Create the key under PocketID's **Administration → API
+Keys** with an **Expires At** date you'll be reminded of. (A PocketID set
+up declaratively may use `STATIC_API_KEY` instead; then the same value
+goes on both sides.)
+
+**Rotate it** before it expires, or at once if it may have leaked:
+
+1. Create a new key in PocketID (the old one keeps working meanwhile).
+2. Update the portal's secret and restart the portal. A rolling restart
+   is enough: the portal is stateless, and the secret is read at start.
+3. Check: `/api/ready` reports PocketID ok, and
+   `portal_pocketid_request_duration_seconds_count{outcome="4xx"}` isn't
+   climbing (a rejected key is a 401).
+4. Remove the old key in PocketID, or, if your PocketID can't, let it
+   expire.
+
+**Where it isn't.** The key travels only in the `X-API-KEY` header to
+PocketID. Checked on a real build across the whole e2e suite (thousands of
+exported spans, dozens of keyed PocketID calls): no trace and no log line
+carries the key, the header, or the OIDC client secret. Traces never carry
+query strings (the OIDC callback's holds the sign-in code), and the logger
+redacts API keys, passwords, secrets, tokens and authorization headers
+should one ever be passed to it.
+
+**Watch it.** Grants are counted and worth an alert; see the examples in
+[Portal metrics](#portal-metrics). The portal can only count what it does:
+a membership change made with its key elsewhere shows up only in
+PocketID's own audit log. To keep a privileged group from ever being
+granted through the portal, don't make it an allowed group of an app
+people can ask for (or hide that app on `/admin/apps`): the portal only
+grants groups of apps it shows.
+
 ## Kubernetes
 
 The Helm chart in [pocket-portal-helm](https://github.com/FB-UNIV/pocket-portal-helm) maps the contract above onto
@@ -476,5 +520,5 @@ project cannot see:
 
 | Issue | Impact |
 |---|---|
-| PocketID API key scope | The PocketID API key the portal holds can also read PocketID's `smtpPassword` and `ldapBindPassword` in plaintext. Mitigated by [`UI_CONFIG_DISABLED=true` on PocketID](#pocketid-set-ui_config_disabledtrue) |
+| PocketID API key scope | The PocketID API key the portal holds is an admin key: it can change any membership, and read PocketID's `smtpPassword` and `ldapBindPassword` in plaintext. Mitigated by [`UI_CONFIG_DISABLED=true` on PocketID](#pocketid-set-ui_config_disabledtrue), [storing and rotating it as a secret, and alerting on grants](#the-pocketid-api-key). A narrower key waits on PocketID (#4) |
 | Email delivery | Emails go through an outbox in Postgres ([ADR-0011](adr/0011-email-notifications-through-an-outbox.md)), so one in flight when an instance stops is sent by another, and a failed send is retried for about nine hours (1 min, 5 min, 30 min, 2 h, 6 h) before it's given up on, in History under Problems and in `portal_notifications_total{outcome="failed"}`. Delivery is at-least-once: an instance that dies between sending and recording it lets another send it again. Nothing is queued in the instant between the response and the queueing, so a crash in exactly that window still loses an email; the request itself is always in the admin queue |
