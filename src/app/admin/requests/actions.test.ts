@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { decideAccessRequestAction } from "./actions";
+import { approveTogetherAction, decideAccessRequestAction } from "./actions";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getDb } from "@/lib/db/client";
 import { addUserToGroup } from "@/lib/pocketid/client";
 import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { writeAuditEvent } from "@/lib/audit/log";
-import { getAccessRequestById, setAccessRequestStatus } from "@/lib/requests/access-requests";
+import { getAccessRequestById, listLinkedPendingRequests, setAccessRequestStatus } from "@/lib/requests/access-requests";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyAccessRequestDecision } from "@/lib/notifications/access-requests";
@@ -19,6 +19,7 @@ vi.mock("@/lib/audit/log", () => ({ writeAuditEvent: vi.fn() }));
 vi.mock("@/lib/requests/access-requests", () => ({
   getAccessRequestById: vi.fn(),
   setAccessRequestStatus: vi.fn(),
+  listLinkedPendingRequests: vi.fn(),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/server", () => ({ after: vi.fn() }));
@@ -283,5 +284,52 @@ describe("decideAccessRequestAction metrics", () => {
 
     expect(recordGrant).not.toHaveBeenCalled();
     expect(recordAccessRequestEvent).not.toHaveBeenCalled();
+  });
+});
+
+// #19: "Approve both" grants what the app needs first, then the app. If a
+// prerequisite can't be granted, the app's request stays waiting.
+describe("approveTogetherAction", () => {
+  const VPN_APP = { ...APP_WITH_GROUP, id: "vpn", name: "VPN", hidden: true, allowedGroups: [{ id: "g-vpn", name: "vpn", friendlyName: "VPN" }] };
+  const GRAFANA = { ...APP_WITH_GROUP, requires: [{ id: "vpn", name: "VPN" }] };
+  const VPN_REQUEST = { ...PENDING, id: "req-vpn", pocketIdClientId: "vpn", pocketIdGroupId: "g-vpn", pocketIdGroupName: "vpn", parentRequestId: "req-1" };
+
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({
+      user: { id: "admin-1", email: "admin@example.test", groups: [], isAdmin: true },
+      expires: "",
+    } as never);
+    mockGetDb.mockReset().mockReturnValue({ transaction: (cb: (tx: unknown) => unknown) => cb(TX) } as never);
+    mockAddUserToGroup.mockReset().mockResolvedValue(undefined);
+    mockListAdminApps.mockReset().mockResolvedValue([GRAFANA, VPN_APP]);
+    mockGetById.mockReset().mockImplementation(async (_db, id) => (id === "req-vpn" ? { ...VPN_REQUEST } : { ...PENDING }) as never);
+    vi.mocked(listLinkedPendingRequests).mockReset().mockResolvedValue([VPN_REQUEST] as never);
+    mockSetStatus.mockReset();
+    mockWriteAudit.mockReset();
+    mockAfter.mockReset();
+  });
+
+  it("grants the prerequisite first, then the app", async () => {
+    await expect(approveTogetherAction("req-1")).resolves.toEqual({ ok: true });
+
+    expect(mockAddUserToGroup.mock.calls.map(([, , group]) => group)).toEqual(["g-vpn", "group-1"]);
+    expect(mockSetStatus.mock.calls.map(([, id, status]) => [id, status])).toEqual([
+      ["req-vpn", "approved"],
+      ["req-1", "approved"],
+    ]);
+  });
+
+  it("leaves the app waiting when a prerequisite can't be granted", async () => {
+    mockAddUserToGroup.mockRejectedValueOnce(new Error("PocketID 503"));
+
+    await expect(approveTogetherAction("req-1")).rejects.toThrow("PocketID 503");
+
+    expect(mockSetStatus).not.toHaveBeenCalledWith(TX, "req-1", "approved");
+  });
+
+  it("requires admin", async () => {
+    await approveTogetherAction("req-1");
+
+    expect(mockRequireAdmin).toHaveBeenCalled();
   });
 });

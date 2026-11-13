@@ -166,7 +166,7 @@ describe("catalog apps (integration)", () => {
 
       const without = await listUserCatalogApps(config, db, ["engineering"]);
       expect(without.find((a) => a.id === grafana.id)!.requires).toEqual([
-        { id: sonarr.id, name: "Sonarr (seed)", hasAccess: false },
+        { id: sonarr.id, name: "Sonarr (seed)", hasAccess: false, allowedGroups: sonarr.allowedGroups },
       ]);
       const withIt = await listUserCatalogApps(config, db, ["engineering", "media"]);
       expect(withIt.find((a) => a.id === grafana.id)!.requires[0].hasAccess).toBe(true);

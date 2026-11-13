@@ -18,7 +18,7 @@ vi.mock("@/lib/pocketid/client", () => ({
   listPocketIdUsers: vi.fn(),
 }));
 vi.mock("@/lib/catalog/apps", () => ({ listAdminCatalogApps: vi.fn() }));
-vi.mock("./actions", () => ({ decideAccessRequestAction: vi.fn() }));
+vi.mock("./actions", () => ({ decideAccessRequestAction: vi.fn(), approveTogetherAction: vi.fn() }));
 
 const mockRequireAdmin = vi.mocked(requireAdmin);
 const mockListAdminApps = vi.mocked(listAdminCatalogApps);
@@ -291,5 +291,27 @@ describe("AdminRequestsPage", () => {
       screen.getAllByRole("heading", { level: 2, name: "Alice Martin veut Jellyfin" }),
     ).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /^Refuser / })).toHaveLength(2);
+  });
+});
+
+// #19: requests filed together (an app and what it needs) read together.
+describe("AdminRequestsPage: linked requests", () => {
+  beforeEach(() => {
+    mockRequireAdmin.mockReset().mockResolvedValue({} as never);
+    mockListUsers.mockReset().mockResolvedValue([ALICE]);
+  });
+
+  it("says a prerequisite was asked for with the app that needs it, and offers to approve both", async () => {
+    const VPN = { ...APP, id: "vpn", name: "VPN", description: "", hidden: true, allowedGroups: [{ id: "g-vpn", name: "vpn", friendlyName: "VPN" }], requires: [] };
+    mockListAdminApps.mockReset().mockResolvedValue([{ ...APP, requires: [{ id: "vpn", name: "VPN" }] }, VPN]);
+    mockListPending.mockReset().mockResolvedValue([
+      request(),
+      request({ id: "req-vpn", pocketIdClientId: "vpn", pocketIdGroupId: "g-vpn", pocketIdGroupName: "vpn", parentRequestId: "req-1" }),
+    ]);
+
+    render(await AdminRequestsPage());
+
+    expect(screen.getByText(`Asked together with ${APP.name}, which needs it.`)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Approve both for ${ALICE.displayName}` })).toBeInTheDocument();
   });
 });

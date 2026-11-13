@@ -42,11 +42,12 @@ describe("prerequisitesOf", () => {
   ];
 
   it("names each prerequisite and says whether the user has it", () => {
+    const groups = [{ id: "g2", name: "vpn", friendlyName: "VPN" }];
     expect(prerequisitesOf(links, clients, "grafana", ["engineering"])).toEqual([
-      { id: "vpn", name: "VPN", hasAccess: false },
+      { id: "vpn", name: "VPN", hasAccess: false, allowedGroups: groups },
     ]);
     expect(prerequisitesOf(links, clients, "grafana", ["engineering", "vpn"])).toEqual([
-      { id: "vpn", name: "VPN", hasAccess: true },
+      { id: "vpn", name: "VPN", hasAccess: true, allowedGroups: groups },
     ]);
   });
 

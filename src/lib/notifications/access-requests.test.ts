@@ -282,3 +282,22 @@ describe("notification metrics", () => {
     expect(d.record).not.toHaveBeenCalled();
   });
 });
+
+// #19: one email for an app and what it needs, not one each.
+describe("linked requests in the email", () => {
+  it("says what else was asked for with the app", async () => {
+    const d = deps();
+
+    await notifyNewAccessRequest(REQUEST, d, { alsoAsks: ["VPN"] });
+
+    expect(queued(d)[0].body).toContain("They also asked for VPN, which it needs.");
+  });
+
+  it("writes it in the admin's language", async () => {
+    const d = deps({ localeOf: vi.fn().mockResolvedValue("fr") });
+
+    await notifyNewAccessRequest(REQUEST, d, { alsoAsks: ["VPN"] });
+
+    expect(queued(d)[0].body).toContain("Cette personne a aussi demandé VPN, dont l’application a besoin.");
+  });
+});
