@@ -55,3 +55,27 @@ test("metrics count real requests, by route pattern", async ({ request }) => {
   expect(body).toContain('route="/_not-found"');
   expect(body).not.toContain("e2e-made-up-path");
 });
+
+// Web Vitals (#16): a real browser measures the sign-in page and beacons
+// the timings, which /api/metrics then serves under the page's pattern.
+test("browsers report Web Vitals, recorded by page", async ({ page, request }) => {
+  await page.goto("/");
+  await expect(page.getByRole("button").first()).toBeVisible();
+  // TTFB is reported once the page has loaded; navigating away makes the
+  // browser flush the rest (LCP is final once the page is hidden).
+  await page.goto("/auth/error");
+
+  await expect(async () => {
+    const res = await request.get("/api/metrics", { headers: { Authorization: `Bearer ${TOKEN}` } });
+    expect(await res.text()).toMatch(/portal_web_vitals_seconds_count\{name="TTFB",route="\/"\} [1-9]/);
+  }).toPass({ timeout: 10_000 });
+});
+
+test("the Web Vitals endpoint refuses what isn't a vital", async ({ request }) => {
+  const res = await request.post("/api/web-vitals", {
+    data: { name: "pwned", value: 1, path: "/" },
+    headers: { "Sec-Fetch-Site": "same-origin" },
+  });
+
+  expect(res.status()).toBe(400);
+});

@@ -70,6 +70,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `SIGNIN_TAGLINE_EN` / `SIGNIN_TAGLINE_FR` | no | All our apps, one sign-in. | The line under it, per language |
 | `SIGNIN_INVITE_HINT` | no | `true` | `false` drops the sign-in page's "First time? Use the invite link" line |
 | `FEATURE_AUDIT_LOG_PAGE` | no | `true` | `false` hides `/admin/audit`; events are still recorded |
+| `FEATURE_WEB_VITALS` | no | `true` (with metrics) | Browsers report page-load timings to `/api/web-vitals`, recorded in `/api/metrics`. Only with `METRICS_TOKEN` set; `false` keeps metrics without them |
 | `WARN_POCKETID_SECRETS_READABLE` | no | `true` | `false` hides the admin banner; the startup log still warns |
 | `CONFIG_FILE` | no | | Path to an optional YAML config file (below) |
 | `MIGRATE_ON_START` | no | `true` | Apply DB migrations on start |
@@ -124,6 +125,7 @@ Before going live:
 | `/admin/audit` | admins | History: every request and decision, newest first |
 | `/api/health`, `/api/ready` | anyone | Liveness and readiness probes |
 | `/api/metrics` | bearer of `METRICS_TOKEN`; 404 otherwise, and when unset | Prometheus metrics |
+| `/api/web-vitals` | anyone, same-origin, rate-limited; 404 unless Web Vitals are on | Browser page-load timings (`POST`) |
 
 ## Documentation
 

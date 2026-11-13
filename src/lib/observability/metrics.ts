@@ -58,8 +58,20 @@ function createMetrics() {
     registers: [register],
   });
 
+  // Browser-side page load (#16), beaconed to /api/web-vitals. Buckets sit
+  // on the "good" and "poor" thresholds: INP 200/500 ms, TTFB 0.8/1.8 s,
+  // LCP 2.5/4 s.
+  const webVitals = new Histogram({
+    name: "portal_web_vitals_seconds",
+    help: "Browser Web Vitals (TTFB, LCP, INP) by page route pattern, in seconds",
+    labelNames: ["name", "route"] as const,
+    buckets: [0.05, 0.1, 0.2, 0.5, 0.8, 1.8, 2.5, 4, 10],
+    registers: [register],
+  });
+
   return {
     register,
+    webVitals,
     httpRequestsTotal,
     httpRequestDuration,
     accessRequestsTotal,
@@ -122,4 +134,10 @@ export function recordNotification(kind: NotificationKind, outcome: Notification
 // lib/pocketid/fetch.ts), never a URL: a path carries user ids.
 export function recordPocketIdCall(endpoint: string, outcome: string, durationSeconds: number): void {
   metrics.pocketIdRequestDuration.observe({ endpoint, outcome }, durationSeconds);
+}
+
+// `route` is one of the portal's page patterns (lib/observability/web-vitals),
+// never a path a browser sent.
+export function recordWebVital(name: string, route: string, seconds: number): void {
+  metrics.webVitals.observe({ name, route }, seconds);
 }

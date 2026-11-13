@@ -41,4 +41,6 @@ features:
   emailNotifications: true
   pocketIdBranding: true
   auditLogPage: true
+  # Browser Web Vitals, only with metrics on (metrics.token).
+  webVitals: true
   secretsWarning: true
