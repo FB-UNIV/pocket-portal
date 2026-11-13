@@ -25,6 +25,7 @@ const base = {
   ticked: [] as string[],
   requestsEnabled: true,
   accountUrl: "https://id.example.test/settings/account" as string | null,
+  tourTaken: false,
 };
 
 describe("buildChecklist", () => {
@@ -60,8 +61,14 @@ describe("buildChecklist", () => {
   });
 
   it("asks them to ask for an app, done after their first request", () => {
-    expect(buildChecklist(base).at(-1)).toEqual({ id: "request-app", done: false, href: "/apps" });
-    expect(buildChecklist({ ...base, requestCount: 1 }).at(-1)!.done).toBe(true);
+    expect(buildChecklist(base).find((i) => i.id === "request-app")).toEqual({ id: "request-app", done: false, href: "/apps" });
+    expect(buildChecklist({ ...base, requestCount: 1 }).find((i) => i.id === "request-app")!.done).toBe(true);
+  });
+
+  // Phase 2: the guided tour, started from here too.
+  it("ends with a look around the dashboard, done once they've taken the tour", () => {
+    expect(buildChecklist(base).at(-1)).toEqual({ id: "take-tour", done: false, href: "/?tour=1" });
+    expect(buildChecklist({ ...base, tourTaken: true }).at(-1)!.done).toBe(true);
   });
 
   it("leaves asking out while requests are off", () => {

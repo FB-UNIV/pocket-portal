@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDb, type Db } from "@/lib/db/client";
 import { userOnboarding } from "@/lib/db/schema";
-import { dismissChecklist, getOnboarding, setItemTicked } from "./store";
+import { completeTour, dismissChecklist, getOnboarding, setItemTicked } from "./store";
 
 // Requires a running test Postgres instance: npm run test-env:up.
 // Keyed by PocketID subject in Postgres, so it follows the person across
@@ -45,5 +45,13 @@ describe("onboarding store (integration)", () => {
     const state = await getOnboarding(db, subject);
     expect(state.checklistDismissedAt).toBeInstanceOf(Date);
     expect(state.tickedItems).toEqual(["backup-passkey"]);
+  });
+
+  it("remembers which version of the tour they took", async () => {
+    await completeTour(db, subject, 1);
+
+    const state = await getOnboarding(db, subject);
+    expect(state.tourVersion).toBe(1);
+    expect(state.tourCompletedAt).toBeInstanceOf(Date);
   });
 });

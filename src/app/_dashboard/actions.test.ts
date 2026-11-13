@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { dismissChecklistAction, tickChecklistItemAction } from "./actions";
+import { completeTourAction, dismissChecklistAction, tickChecklistItemAction } from "./actions";
 import { requireUser } from "@/lib/auth/require-user";
 import { getDb } from "@/lib/db/client";
-import { dismissChecklist, setItemTicked } from "@/lib/onboarding/store";
+import { completeTour, dismissChecklist, setItemTicked } from "@/lib/onboarding/store";
 import { revalidatePath } from "next/cache";
 
 vi.mock("@/lib/auth/require-user", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/db/client", () => ({ getDb: vi.fn() }));
-vi.mock("@/lib/onboarding/store", () => ({ dismissChecklist: vi.fn(), setItemTicked: vi.fn() }));
+vi.mock("@/lib/onboarding/store", () => ({ dismissChecklist: vi.fn(), setItemTicked: vi.fn(), completeTour: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 // #21: the person's own checklist, by their PocketID subject.
@@ -46,5 +46,23 @@ describe("checklist actions", () => {
     expect(requireUser).toHaveBeenCalled();
     expect(dismissChecklist).toHaveBeenCalledWith("fake-db", "user-1");
     expect(revalidatePath).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("completeTourAction", () => {
+  beforeEach(() => {
+    vi.mocked(requireUser).mockReset().mockResolvedValue({ user: { id: "user-1", groups: [] }, expires: "" } as never);
+    vi.mocked(getDb).mockReset().mockReturnValue("fake-db" as never);
+    vi.mocked(completeTour).mockReset();
+  });
+
+  // Finished, closed or declined: either way, it isn't offered again until
+  // the tour changes.
+  it("records that the person has seen this version of the tour", async () => {
+    const { TOUR_VERSION } = await import("@/lib/onboarding/tour");
+
+    await completeTourAction();
+
+    expect(completeTour).toHaveBeenCalledWith("fake-db", "user-1", TOUR_VERSION);
   });
 });
