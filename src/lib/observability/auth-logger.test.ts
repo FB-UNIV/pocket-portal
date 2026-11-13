@@ -34,11 +34,19 @@ describe("authLogger", () => {
     expect(l.warn).toHaveBeenCalledWith("Auth.js warning: debug-enabled");
   });
 
-  it("logs debug messages at debug", () => {
+  // Auth.js calls a custom logger's debug even with its debug option off
+  // (@auth/core setLogger), and its metadata carries the sign-in's tokens
+  // and profile: "authorization result" holds the access, ID and refresh
+  // tokens, the email and the groups. Only the message is ever logged.
+  it("logs a debug message alone, never Auth.js's metadata", () => {
     const l = log();
 
-    authLogger(l as never).debug("callback", { provider: "pocketid" });
+    authLogger(l as never).debug("authorization result", {
+      account: { access_token: "at-secret", id_token: "id-secret", refresh_token: "rt-secret" },
+      profile: { email: "someone@example.test", groups: ["admins"] },
+    });
 
-    expect(l.debug).toHaveBeenCalledWith({ metadata: { provider: "pocketid" } }, "Auth.js: callback");
+    expect(l.debug).toHaveBeenCalledWith("Auth.js: authorization result");
+    expect(JSON.stringify(l.debug.mock.calls)).not.toMatch(/secret|someone@example\.test|admins/);
   });
 });

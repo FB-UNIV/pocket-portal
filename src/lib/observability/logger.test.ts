@@ -131,6 +131,13 @@ describe("redaction", () => {
     [{ smtp: { auth: { pass: "pocketid-key" } } }, "smtp.auth.pass"],
     [{ clientSecret: "pocketid-key" }, "clientSecret"],
     [{ password: "pocketid-key" }, "password"],
+    // OAuth/OIDC token fields, at the depth Auth.js's sign-in result had them.
+    [{ metadata: { account: { access_token: "pocketid-key" } } }, "metadata.account.access_token"],
+    [{ metadata: { account: { refresh_token: "pocketid-key" } } }, "metadata.account.refresh_token"],
+    [{ metadata: { account: { id_token: "pocketid-key" } } }, "metadata.account.id_token"],
+    [{ account: { access_token: "pocketid-key" } }, "account.access_token"],
+    [{ code_verifier: "pocketid-key" }, "code_verifier"],
+    [{ client_secret: "pocketid-key" }, "client_secret"],
   ])("never writes %j", (fields, _where) => {
     const { lines, stream } = capture();
 
