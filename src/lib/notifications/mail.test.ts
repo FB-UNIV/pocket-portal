@@ -101,7 +101,7 @@ describe("sendMail", () => {
 // nodemailer isn't instrumented, so each send gets a span of its own (#16),
 // with how many it went to and never who.
 describe("sendMail tracing", () => {
-  const CONFIG = { host: "smtp.example.test", port: 587, tls: "starttls" as const, from: "portal@example.test" };
+  const CONFIG = { host: "smtp.example.test", port: 587, tls: "starttls" as const, auth: undefined, from: "portal@example.test" };
   const MESSAGE = { to: ["alice@example.test"], subject: "Hi", text: "Body" };
 
   afterEach(() => {

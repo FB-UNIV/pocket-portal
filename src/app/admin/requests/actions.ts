@@ -9,6 +9,8 @@ import { listAdminCatalogApps } from "@/lib/catalog/apps";
 import { isGrantable } from "@/lib/requests/grantable";
 import { writeAuditEvent, type AuditEvent } from "@/lib/audit/log";
 import { notifyAccessRequestDecision } from "@/lib/notifications/access-requests";
+import { recordAccessRequestEvent, recordGrant } from "@/lib/observability/metrics";
+import { withSpan } from "@/lib/observability/tracing";
 import {
   getAccessRequestById,
   setAccessRequestStatus,
@@ -40,7 +42,21 @@ export async function decideAccessRequestAction(
   id: string,
   decision: AccessRequestDecision,
 ): Promise<DecideAccessRequestResult> {
+  // Outside the span: a redirect to sign-in is control flow, not a failed
+  // decision.
   const session = await requireAdmin();
+  return withSpan("access_request.decide", { "portal.request.decision": decision }, () =>
+    decide(session, id, decision),
+  );
+}
+
+// Counted (#16) once each outcome is final: a decision when it commits, a
+// grant when PocketID answered or the guard refused it.
+async function decide(
+  session: Awaited<ReturnType<typeof requireAdmin>>,
+  id: string,
+  decision: AccessRequestDecision,
+): Promise<DecideAccessRequestResult> {
   const db = getDb();
 
   const request = await getAccessRequestById(db, id);
@@ -68,14 +84,19 @@ export async function decideAccessRequestAction(
   if (decision === "approved") {
     const apps = await listAdminCatalogApps(getPocketIdConfig(), db);
     if (!isGrantable(apps, request)) {
+      recordGrant("refused");
       await writeAuditEvent(db, auditEvent("access_request.grant_rejected"));
       revalidatePath("/admin/requests");
       return { ok: false, reason: "group_not_grantable" };
     }
 
     try {
-      await addUserToGroup(getPocketIdConfig(), request.requesterSubject, request.pocketIdGroupId);
+      await withSpan("access_request.grant", { "pocketid.group.name": request.pocketIdGroupName }, () =>
+        addUserToGroup(getPocketIdConfig(), request.requesterSubject, request.pocketIdGroupId),
+      );
+      recordGrant("granted");
     } catch (err) {
+      recordGrant("failed");
       await writeAuditEvent(db, auditEvent("access_request.grant_failed", { error: String(err) }));
       revalidatePath("/admin/requests");
       throw err;
@@ -86,6 +107,7 @@ export async function decideAccessRequestAction(
     await setAccessRequestStatus(tx, id, decision);
     await writeAuditEvent(tx, auditEvent(`access_request.${decision}`));
   });
+  recordAccessRequestEvent(decision);
 
   // Only now that the decision committed, and after the response
   // (ADR-0009). after() also runs when an action throws, which is why it is

@@ -6,6 +6,7 @@ type Log = Pick<typeof defaultLogger, "info" | "debug" | "warn">;
 export interface EndedSpan {
   attributes: Record<string, unknown>;
   duration: [number, number];
+  spanContext?(): { traceId: string; spanId: string; traceFlags: number };
 }
 
 export interface HandledRequest {
@@ -68,9 +69,14 @@ export class RequestLogProcessor {
 
   onStart(): void {}
 
+  // The line is written after the request span ended, outside it, so the
+  // logger's mixin can't see it: the ids come from the span itself.
   onEnd(span: EndedSpan): void {
     const entry = requestLogEntry(span);
-    if (entry) this.log[entry.level](entry.fields, entry.message);
+    if (!entry) return;
+    const context = span.spanContext?.();
+    const ids = context ? { trace_id: context.traceId, span_id: context.spanId } : {};
+    this.log[entry.level]({ ...entry.fields, ...ids }, entry.message);
   }
 
   async forceFlush(): Promise<void> {}

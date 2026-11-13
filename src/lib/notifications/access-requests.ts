@@ -1,4 +1,9 @@
 import { logger as defaultLogger } from "@/lib/observability/logger";
+import {
+  recordNotification,
+  type NotificationKind,
+  type NotificationOutcome,
+} from "@/lib/observability/metrics";
 import { getPocketIdConfig, listPocketIdUsers, type PocketIdUser } from "@/lib/pocketid/client";
 import type { AccessRequest, AccessRequestDecision } from "@/lib/requests/access-requests";
 import { readMailConfig, sendMail, type MailConfig, type MailMessage } from "./mail";
@@ -31,6 +36,9 @@ interface Deps {
   listUsers: () => Promise<Pick<PocketIdUser, "id" | "email" | "isAdmin" | "disabled">[]>;
   // The language a person reads their email in, by PocketID subject (#64).
   localeOf: (subject: string) => Promise<Locale>;
+  // portal_notifications_total: failures show up as a metric, not only in
+  // the logs (#16, #5).
+  record: (kind: NotificationKind, outcome: NotificationOutcome) => void;
 }
 
 /* v8 ignore start -- wiring only; the tests inject every dependency */
@@ -41,6 +49,7 @@ const DEFAULTS: Deps = {
   },
   log: defaultLogger,
   send: sendMail,
+  record: recordNotification,
   listUsers: () => listPocketIdUsers(getPocketIdConfig()),
   // Their saved language, else the portal's default: there's no browser to
   // ask. Unreadable falls back too: a language isn't worth a lost email.
@@ -78,6 +87,7 @@ interface Recipient {
 
 async function deliver(
   deps: Deps,
+  kind: NotificationKind,
   requestId: string,
   recipients: () => Promise<Recipient[]>,
   compose: (locale: Locale) => Omit<MailMessage, "to">,
@@ -92,6 +102,7 @@ async function deliver(
     to = await recipients();
   } catch (error) {
     deps.log.warn({ error, requestId }, "Access request notification not sent");
+    deps.record(kind, "failed");
     return;
   }
 
@@ -99,8 +110,10 @@ async function deliver(
     try {
       const message = compose(await deps.localeOf(recipient.subject));
       await deps.send(config, { ...message, to: [recipient.email] });
+      deps.record(kind, "sent");
     } catch (error) {
       deps.log.warn({ error, requestId }, "Access request notification not sent");
+      deps.record(kind, "failed");
     }
   }
 }
@@ -115,6 +128,7 @@ export function notifyNewAccessRequest(
   const review = link(deps.env, "/admin/requests");
   return deliver(
     deps,
+    "new_request",
     request.id,
     async () =>
       // A PocketID user's id is their OIDC subject (see src/auth.ts).
@@ -145,6 +159,7 @@ export function notifyAccessRequestDecision(
   const email = request.requesterEmail;
   return deliver(
     deps,
+    "decision",
     request.id,
     async () => (email ? [{ email, subject: request.requesterSubject }] : []),
     (locale) => {

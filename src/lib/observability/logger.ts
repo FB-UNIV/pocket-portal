@@ -1,5 +1,6 @@
 import pino from "pino";
 import { readLogFormat, readLogLevel } from "@/lib/config";
+import { traceFields } from "./tracing";
 
 type Stream = { write(line: string): void };
 
@@ -82,6 +83,9 @@ export function createLogger(name: string, stream?: Stream) {
       // "level":"error" rather than 50, and an ISO time rather than epoch ms.
       formatters: { level: (label) => ({ level: label }) },
       timestamp: pino.stdTimeFunctions.isoTime,
+      // trace_id/span_id on every line written inside a request, so a log
+      // line leads to its trace and back (#16). Nothing outside a span.
+      mixin: () => traceFields(),
     },
     destination(stream),
   );

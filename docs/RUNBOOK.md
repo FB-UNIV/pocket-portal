@@ -300,9 +300,9 @@ The app emits signals and does not care what consumes them
 
 | Signal | Where | Notes |
 |---|---|---|
-| Metrics | `GET /api/metrics`, Prometheus text | Off unless `METRICS_TOKEN` is set; then send it as `Authorization: Bearer <token>` (Prometheus: `authorization: { credentials: <token> }` in the scrape config). Anything else gets a 404. The startup log says which state the instance is in. Exposes Node.js process metrics (CPU, memory, heap, event-loop lag, GC) and, for every request, `http_requests_total` and `http_request_duration_seconds` labelled by `method`, `status_code` and `route`, the matched route *pattern* (`/apps`, `/api/auth/[...nextauth]`, `/_not-found`), never the raw path. Counted whatever `LOG_REQUESTS` says. Each replica exposes its own; see [per-route latency](#per-route-latency) for a query. |
-| Logs | stdout: JSON (Pino) by default, or `LOG_FORMAT=pretty` for one readable line per entry | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. One line per request (method, path, status, duration; `LOG_REQUESTS=false` turns it off), with health checks at `debug`. **Every server error** is logged with its stack and the *digest* a user's error page shows, so "digest 123" leads straight to it. Startup logs every configuration problem (`Configuration: …`), an outdated PocketID and any non-default feature flags. An email that couldn't be sent is logged at `warn` with its request id and never retried ([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). |
-| Traces | OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` | Always on: each request is a trace, with Next.js's spans (middleware, rendering, route handlers, server actions) and a span for every outgoing HTTP call, which covers all PocketID API and OIDC calls. Database queries and email sending aren't traced yet (see #16). They need a collector to see them (e.g. Grafana Tempo, Jaeger). Unset, it targets `http://localhost:4318`, and exports fail harmlessly if nothing listens there. The per-request log line is taken from the same span. |
+| Metrics | `GET /api/metrics`, Prometheus text | Off unless `METRICS_TOKEN` is set; then send it as `Authorization: Bearer <token>` (Prometheus: `authorization: { credentials: <token> }` in the scrape config). Anything else gets a 404. The startup log says which state the instance is in. Exposes Node.js process metrics (CPU, memory, heap, event-loop lag, GC) and, for every request, `http_requests_total` and `http_request_duration_seconds` labelled by `method`, `status_code` and `route`, the matched route *pattern* (`/apps`, `/api/auth/[...nextauth]`, `/_not-found`), never the raw path. Counted whatever `LOG_REQUESTS` says. Plus the [portal's own metrics](#portal-metrics): access requests, grants, notification emails and PocketID API latency. Each replica exposes its own; see [per-route latency](#per-route-latency) for a query. |
+| Logs | stdout: JSON (Pino) by default, or `LOG_FORMAT=pretty` for one readable line per entry | `docker compose logs`, or ship them anywhere that reads container stdout. `LOG_LEVEL` controls verbosity. One line per request (method, path, status, duration; `LOG_REQUESTS=false` turns it off), with health checks at `debug`. **Every server error** is logged with its stack and the *digest* a user's error page shows, so "digest 123" leads straight to it. Startup logs every configuration problem (`Configuration: …`), an outdated PocketID and any non-default feature flags. An email that couldn't be sent is logged at `warn` with its request id and never retried ([ADR-0009](adr/0009-email-notifications-inline-after-response.md)). Every line written during a request, the request line included, carries `trace_id` and `span_id`; see [linking logs and traces](#linking-logs-and-traces). |
+| Traces | OTLP to `OTEL_EXPORTER_OTLP_ENDPOINT` | Always on: each request is a trace, with Next.js's spans (middleware, rendering, route handlers, server actions), a span for every outgoing HTTP call (all PocketID API and OIDC calls), and the portal's own: every database query (`SELECT access_requests`, with the statement's shape and never its values), each email send (`email.send`, with the recipient count and never an address), building the catalog (`catalog.build`), and deciding a request (`access_request.decide`, with the PocketID grant as `access_request.grant`). Traces need a collector to see them (e.g. Grafana Tempo, Jaeger). Unset, it targets `http://localhost:4318`, and exports fail harmlessly if nothing listens there. The per-request log line is taken from the same span. |
 
 ### Per-route latency
 
@@ -314,6 +314,55 @@ histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_
 
 Buckets run from 25 ms to 10 s (25, 50, 100, 250, 500 ms, 1, 2.5, 5,
 10 s), so a percentile is only as precise as the bucket it falls in.
+
+### Portal metrics
+
+What the portal does, alongside how it serves. Every label comes from a
+fixed set, never from a request, so the number of series stays small.
+
+| Metric | Labels | Counts |
+|---|---|---|
+| `portal_access_requests_total` | `event`: `created`, `reopened`, `approved`, `denied` | Access requests, once each change is committed |
+| `portal_pocketid_grants_total` | `outcome`: `granted`, `failed` (PocketID errored), `refused` (not a grantable group of a visible app) | Every attempt to add someone to a PocketID group |
+| `portal_notifications_total` | `kind`: `new_request`, `decision`; `outcome`: `sent`, `failed` | Notification emails, one per recipient |
+| `portal_pocketid_request_duration_seconds` | `endpoint` (a pattern: `GET /api/users/{id}`, never a URL), `outcome`: `2xx`, `4xx`, `5xx`, `error` (no answer) | PocketID API calls and their latency. Not the OIDC sign-in calls, and not the cached branding read |
+
+Starting points for alerts (thresholds are yours, see [Your decisions](#your-decisions)):
+
+```promql
+# The portal's key can change group memberships, so grants are worth
+# watching (#4): more than usual in an hour, or any that failed.
+sum(increase(portal_pocketid_grants_total{outcome="granted"}[1h])) > 10
+sum(increase(portal_pocketid_grants_total{outcome="failed"}[15m])) > 0
+
+# PocketID slow or failing: every page waits on it.
+histogram_quantile(0.95, sum by (le) (rate(portal_pocketid_request_duration_seconds_bucket[5m]))) > 1
+sum(rate(portal_pocketid_request_duration_seconds_count{outcome=~"5xx|error"}[5m]))
+  / sum(rate(portal_pocketid_request_duration_seconds_count[5m])) > 0.05
+
+# Emails not going out (they're never retried, ADR-0009).
+sum(increase(portal_notifications_total{outcome="failed"}[1h])) > 0
+```
+
+Grants only ever follow an approval, so
+`portal_pocketid_grants_total{outcome="granted"}` and
+`portal_access_requests_total{event="approved"}` move together. The
+portal can only count what it does itself: a membership change made with
+its API key outside the portal (a leaked key, say) shows up only in
+PocketID's own audit log, so watch that too.
+
+### Linking logs and traces
+
+Every log line written during a request carries the request's `trace_id`
+and `span_id` (absent at startup and in background work outside a
+request). With Grafana:
+
+- **Loki to Tempo**: a *derived field* on the Loki data source, name
+  `TraceID`, regex `"trace_id":"(\w+)"`, linked to the Tempo data source
+  with `${__value.raw}`. With `LOG_FORMAT=pretty`, use `trace_id=(\w+)`.
+- **Tempo to Loki**: *Trace to logs* on the Tempo data source, filtered by
+  trace id, with the same label your log shipper puts on the portal's
+  container.
 
 ## Backups
 
@@ -396,4 +445,4 @@ project cannot see:
 | Issue | Impact |
 |---|---|
 | PocketID API key scope | The PocketID API key the portal holds can also read PocketID's `smtpPassword` and `ldapBindPassword` in plaintext. Mitigated by [`UI_CONFIG_DISABLED=true` on PocketID](#pocketid-set-ui_config_disabledtrue) |
-| Email delivery | Email notifications are best-effort: one in flight when an instance stops is lost, and a failed send isn't retried. The request itself is safe: the admin queue and `/apps` still show it, so check the queue rather than relying on the email |
+| Email delivery | Email notifications are best-effort: one in flight when an instance stops is lost, and a failed send isn't retried. The request itself is safe: the admin queue and `/apps` still show it, so check the queue rather than relying on the email. Failures are counted in `portal_notifications_total{outcome="failed"}` |

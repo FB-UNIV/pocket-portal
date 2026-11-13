@@ -13,6 +13,7 @@ import {
 } from "@/lib/requests/access-requests";
 import { deriveRequestOutcome } from "@/lib/requests/request-outcome";
 import { countRecentRequestEvents, writeAuditEvent } from "@/lib/audit/log";
+import { recordAccessRequestEvent } from "@/lib/observability/metrics";
 import { notifyNewAccessRequest } from "@/lib/notifications/access-requests";
 import { readAccessRequestReason, readAccessRequestsEnabled } from "@/lib/config";
 import { MAX_REASON_LENGTH } from "./limits";
@@ -171,6 +172,7 @@ export async function requestAccessAction(
     // Back in the queue, so admins hear about it as they would a new one
     //. Scheduled only once the reopen committed; see ADR-0009.
     if (reopened) {
+      recordAccessRequestEvent("reopened");
       after(() =>
         notifyNewAccessRequest({
           id: outcome.requestId,
@@ -210,6 +212,7 @@ export async function requestAccessAction(
     targetId: request.id,
     metadata: { pocketIdClientId, pocketIdGroupId, pocketIdGroupName: group.name },
   });
+  recordAccessRequestEvent("created");
 
   // After the response (ADR-0009): the request is already filed, so a
   // slow or broken mail server must not hold up or fail this action.
