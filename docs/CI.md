@@ -9,7 +9,7 @@ behind them are in [`git-workflow.md`](../.claude/rules/git-workflow.md),
 ## Overview
 
 Four things start a pipeline: a pull request, a merge to `main`, a pushed
-`vX.Y.Z` tag (plus the GitHub Release published after it), and the nightly
+`vX.Y.Z` tag (which also publishes the GitHub Release), and the nightly
 schedule.
 
 ```mermaid
@@ -17,7 +17,6 @@ flowchart LR
   PR(["Pull request"])
   MAIN(["Merge to main"])
   TAG(["git push tag vX.Y.Z"])
-  REL(["GitHub Release published"])
   CRON(["Nightly 05:17 UTC"])
 
   CHECKS["PR checks<br/>7 required checks"]
@@ -25,7 +24,7 @@ flowchart LR
   DEV[("ghcr.io/…:dev-&lt;sha&gt;<br/>and :dev")]
   PROMOTE["promote-release<br/>re-scan, retag, sign"]
   RELTAGS[("ghcr.io/…:vX.Y.Z<br/>vX.Y, vX, latest")]
-  RSBOM["release-sbom<br/>attach sbom.cdx.json"]
+  GHREL["github-release<br/>CHANGELOG notes + sbom.cdx.json,<br/>published once complete"]
   AUDIT["Dependency audit"]
 
   PR --> CHECKS
@@ -34,7 +33,7 @@ flowchart LR
   TAG --> PROMOTE
   DEV -. "the tagged commit's image" .-> PROMOTE
   PROMOTE --> RELTAGS
-  REL --> RSBOM
+  PROMOTE --> GHREL
   CRON --> AUDIT
 ```
 
@@ -145,7 +144,7 @@ sequenceDiagram
   participant GH as GitHub
   participant PR as promote-release<br/>(docker-build.yml)
   participant REG as ghcr.io
-  participant RS as release-sbom.yml
+  participant GR as github-release<br/>(docker-build.yml)
 
   M->>GH: git push origin vX.Y.Z
   GH->>PR: push of tag v* (waits for that commit's build)
@@ -158,16 +157,18 @@ sequenceDiagram
   PR->>REG: Trivy re-scan amd64 + arm64,<br/>against today's vulnerability database
   PR->>REG: tag the same digest vX.Y.Z (+ floating tags)
   PR->>REG: check the tag landed on the scanned digest, then cosign sign
-  M->>GH: gh release create vX.Y.Z (CHANGELOG section as notes)
-  GH->>RS: release published
-  RS->>RS: generate: npm ci --ignore-scripts, npm run sbom (read-only)
-  RS->>GH: upload: attach sbom.cdx.json to the release (no dependency code)
+  PR->>GR: promoted (needs: promote-release, npm-sbom)
+  GR->>GH: draft release vX.Y.Z, notes = its CHANGELOG.md section
+  GR->>GH: attach sbom.cdx.json (from npm-sbom, read-only)
+  GR->>GH: publish (immutable from then on)
 ```
 
 A pre-release (`v1.2.0-rc.1`) gets only its own tag. Version tags never
 move once created: `vX.Y.Z` only ever comes from its own git tag, and the
 "Release tags are immutable" ruleset stops a `v*` git tag from being moved
-or deleted.
+or deleted. Published releases are immutable too (repository setting), so
+`github-release` attaches the SBOM while the release is still a draft.
+`release-sbom.yml` remains only to backfill releases from before that.
 
 ## Nightly
 
