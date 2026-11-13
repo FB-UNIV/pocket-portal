@@ -195,6 +195,36 @@ API routes (`/api/health`, `/api/ready`, `/api/metrics`, `/api/auth/*`) sit
 outside the layout, so they answer with no PocketID configuration at all —
 which is what makes `/api/health` usable as a liveness probe.
 
+## The dashboard
+
+Signed in, `/` is the dashboard; signed out, it is the sign-in page (with
+`callbackUrl` handling). Top to bottom, the dashboard is a greeting, then one
+section per source:
+
+| Section | Source | Status |
+|---|---|---|
+| Onboarding checklist | Postgres (`user_onboarding`), the user's requests and groups | planned, #21 |
+| Your apps | PocketID catalog + `app_overrides` | live |
+| News | Postgres (`news_posts`), filtered by the user's groups | planned, #22 |
+| Integration widgets | Each linked app's own API (Jellyfin first), server-side | planned, #23 |
+
+Every section follows one contract (`src/app/_dashboard/section.tsx`):
+
+- **Its own `<Suspense>`** on `/`, with a loading state, so a slow source
+  never holds up the rest of the page.
+- **It loads through `loadSection()`**, which turns any failure into an
+  error card for that section (`SectionError`, with "Try again") and logs it
+  with the section's name. A failing source costs one section, never the
+  page, and never the error page.
+- **A stable landmark** (`DashboardSection`): a region named by an `h2`,
+  identical while loading, loaded or failed, so the page doesn't jump and
+  screen-reader users find it in the same place. `aria-busy` while loading.
+- **Server-side data only**, filtered for the signed-in user before it
+  renders: nothing another user shouldn't see reaches the browser, and the
+  CSP is unchanged.
+- **Empty means silent or helpful**: a section with nothing to show renders
+  nothing, or an empty state that says what to do next.
+
 ## Running it
 
 ```mermaid
@@ -221,6 +251,7 @@ Kubernetes, the [Helm chart](https://github.com/FB-UNIV/pocket-portal-helm) runs
 |---|---|
 | `src/app/` | Routes. Pages are server components; mutations are server actions |
 | `src/app/_components/` | Shared UI: the site header, the PocketID-secrets banner |
+| `src/app/_dashboard/` | The dashboard's sections, and the contract they share (`section.tsx`) |
 | `src/lib/config.ts` | Every setting, read through one typed module, plus the registry of variables and startup validation |
 | `src/lib/config-file.ts` | The optional YAML config file, applied once at boot |
 | `src/lib/pocketid/` | Every call to PocketID, including its public branding. Nothing else talks to it directly |

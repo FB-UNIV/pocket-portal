@@ -1,87 +1,49 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { getDb } from "@/lib/db/client";
 import { getPocketIdConfig } from "@/lib/pocketid/client";
-import { listUserCatalogApps, type UserCatalogApp } from "@/lib/catalog/apps";
+import { listUserCatalogApps } from "@/lib/catalog/apps";
 import { readAccessRequestsEnabled } from "@/lib/config";
-import { logger } from "@/lib/observability/logger";
 import { AppMark } from "@/app/_components/app-mark";
 import { getTranslations } from "@/i18n/server";
+import { DashboardSection, SectionError, loadSection } from "./section";
 
-const HEADING_ID = "your-apps-h";
-
-// The section's frame: the same landmark and heading whether it's loading,
-// loaded or failed, so the page doesn't jump and screen-reader users find
-// "Your apps" in the same place every time.
-function Frame({
-  heading,
-  action,
-  busy,
-  children,
-}: {
-  heading: string;
-  action?: ReactNode;
-  busy?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section aria-labelledby={HEADING_ID} aria-busy={busy || undefined} className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <h2 id={HEADING_ID} className="text-2xl font-bold tracking-tight">
-          {heading}
-        </h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
+const SECTION_ID = "your-apps";
 
 export async function YourAppsLoading() {
   const t = await getTranslations("YourApps");
   return (
-    <Frame heading={t("heading")} busy>
+    <DashboardSection id={SECTION_ID} heading={t("heading")} busy>
       <p className="text-ink-muted">{t("loading")}</p>
-    </Frame>
+    </DashboardSection>
   );
 }
 
 // Quick launchers for the apps the user can already open. Browsing, search
 // and asking for more stay on /apps; this is the "get straight to it" view.
 //
-// Rendered inside its own <Suspense> on the dashboard, and it catches its
-// own load failure: a slow or failing PocketID costs this one section, not
-// the whole page (#20).
+// A dashboard section (./section): its own <Suspense> on `/`, and a slow or
+// failing PocketID costs this one section an error card, not the page (#20).
 export async function YourApps({ userGroups }: { userGroups: string[] }) {
   const requestsEnabled = readAccessRequestsEnabled();
   const t = await getTranslations("YourApps");
   const heading = t("heading");
 
-  let apps: UserCatalogApp[];
-  try {
-    apps = await listUserCatalogApps(getPocketIdConfig(), getDb(), userGroups);
-  } catch (err) {
-    logger.error({ err }, "Dashboard: Your apps failed to load");
+  const loaded = await loadSection("Your apps", () =>
+    listUserCatalogApps(getPocketIdConfig(), getDb(), userGroups),
+  );
+  if (!loaded.ok) {
     return (
-      <Frame heading={heading}>
-        <div className="flex flex-col items-start gap-2 rounded-2xl border border-bad-line bg-bad px-5 py-4 text-on-bad">
-          <p className="text-[15px] font-bold">{t("loadError")}</p>
-          <p className="text-sm">
-            {t("loadErrorDetail")}{" "}
-            <Link href="/" className="font-semibold underline underline-offset-4">
-              {t("tryAgain")}
-            </Link>
-          </p>
-        </div>
-      </Frame>
+      <DashboardSection id={SECTION_ID} heading={heading}>
+        <SectionError title={t("loadError")} detail={t("loadErrorDetail")} tryAgain={t("tryAgain")} />
+      </DashboardSection>
     );
   }
 
-  const usable = apps.filter((app) => app.hasAccess);
+  const usable = loaded.value.filter((app) => app.hasAccess);
 
   if (usable.length === 0) {
     return (
-      <Frame heading={heading}>
+      <DashboardSection id={SECTION_ID} heading={heading}>
         <div className="card flex flex-col items-start gap-3 p-6">
           <p className="text-[17px] font-bold">{t("emptyTitle")}</p>
           {requestsEnabled ? (
@@ -95,12 +57,13 @@ export async function YourApps({ userGroups }: { userGroups: string[] }) {
             <p className="text-[15px] text-ink-muted">{t("emptyAskAdmin")}</p>
           )}
         </div>
-      </Frame>
+      </DashboardSection>
     );
   }
 
   return (
-    <Frame
+    <DashboardSection
+      id={SECTION_ID}
       heading={heading}
       action={
         <Link href="/apps" className="text-[15px] font-semibold text-ink underline underline-offset-4">
@@ -131,6 +94,6 @@ export async function YourApps({ userGroups }: { userGroups: string[] }) {
           </li>
         ))}
       </ul>
-    </Frame>
+    </DashboardSection>
   );
 }

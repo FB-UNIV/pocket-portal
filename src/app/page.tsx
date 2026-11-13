@@ -50,11 +50,11 @@ export default async function Home({
             </p>
           </div>
 
-          {/* The dashboard (#20), top to bottom: the onboarding checklist
-              (#21), your apps, news (#22), integration widgets (#23). Only
-              "Your apps" exists so far; the others slot in here as they
-              land, each in its own <Suspense> and handling its own
-              failure, so one slow or broken source never blanks the page. */}
+          {/* The dashboard, top to bottom: the onboarding checklist (#21),
+              your apps, news (#22), integration widgets (#23). Each section
+              is its own <Suspense> and follows _dashboard/section.tsx, so
+              one slow or broken source never blanks the page (see
+              docs/ARCHITECTURE.md, "The dashboard"). */}
           <Suspense fallback={<YourAppsLoading />}>
             <YourApps userGroups={session.user.groups} />
           </Suspense>
