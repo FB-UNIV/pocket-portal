@@ -78,6 +78,7 @@ export const CONFIG_VARS: readonly ConfigVar[] = [
   { name: "SIGNIN_INVITE_HINT", required: false, secret: false, yaml: "branding.signInInviteHint" },
   { name: "SMTP_HOST", required: false, secret: false, yaml: "smtp.host" },
   { name: "SMTP_FROM", required: false, secret: false, yaml: "smtp.from" },
+  { name: "NOTIFY_ADMIN_EMAILS", required: false, secret: false, yaml: "smtp.notifyAdminEmails" },
   { name: "SMTP_PORT", required: false, secret: false, yaml: "smtp.port" },
   { name: "SMTP_TLS", required: false, secret: false, yaml: "smtp.tls" },
   { name: "SMTP_USER", required: false, secret: false, yaml: "smtp.user" },
@@ -202,7 +203,7 @@ export function readLogRequests(source: ConfigSource = configSource()): boolean 
 
 // The portal's own SMTP settings. Deliberately not PocketID's: it can't
 // send on our behalf, and it redacts its password once UI_CONFIG_DISABLED is
-// on (see ADR-0009 for the full reasoning).
+// on (see ADR-0009, whose reasoning on this ADR-0011 keeps).
 
 // "starttls": plain connect, then upgrade, refusing to send if the server
 // can't (port 587). "tls": TLS from the first byte (port 465). "none": no
@@ -266,6 +267,27 @@ export function readMailConfig(env: ConfigSource = configSource()): MailConfig |
     auth: user && pass ? { user, pass } : undefined,
     from: env.SMTP_FROM as string,
   };
+}
+
+// Who hears about new access requests instead of every PocketID admin
+// (ADR-0011): comma-separated addresses, or undefined when unset. Each one
+// ends up in a To: header, so only a bare address is accepted, nothing
+// with spaces, commas, angle brackets or line breaks that could add a
+// header or a recipient.
+const BARE_ADDRESS = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]+$/;
+
+export function readNotifyAdminEmails(source: ConfigSource = configSource()): string[] | undefined {
+  const value = optional(source, "NOTIFY_ADMIN_EMAILS");
+  if (!value) return undefined;
+  const addresses = value
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  const bad = addresses.find((address) => !BARE_ADDRESS.test(address));
+  if (bad !== undefined) {
+    throw new Error(`NOTIFY_ADMIN_EMAILS must be comma-separated email addresses, not ${JSON.stringify(bad)}`);
+  }
+  return addresses.length > 0 ? addresses : undefined;
 }
 
 // Feature flags. Read like everything else, per call, so every replica
@@ -473,6 +495,7 @@ export function validateConfig(source: ConfigSource = configSource()): string[] 
     () => readDatabaseUrl(source),
     () => readLogLevel(source),
     () => readLogFormat(source),
+    () => readNotifyAdminEmails(source),
   ];
 
   const problems: string[] = [];

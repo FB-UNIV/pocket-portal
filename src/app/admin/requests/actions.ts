@@ -27,7 +27,7 @@ import {
 //   3. Grant in PocketID (idempotent). On failure the request stays pending,
 //      the failure is audited, and the error reaches the admin.
 //   4. Flip status and write the audit event in one transaction.
-//   5. Email the requester, after the response (ADR-0009).
+//   5. Email the requester, after the response (ADR-0011).
 //
 // A refusal at step 2 is expected, so it's returned for the row to explain
 //. A failed grant at step 3 throws: that's PocketID failing, which the
@@ -110,7 +110,7 @@ async function decide(
   recordAccessRequestEvent(decision);
 
   // Only now that the decision committed, and after the response
-  // (ADR-0009). after() also runs when an action throws, which is why it is
+  // (ADR-0011). after() also runs when an action throws, which is why it is
   // scheduled here rather than earlier.
   after(() => notifyAccessRequestDecision(request, decision));
 

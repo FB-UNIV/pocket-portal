@@ -34,7 +34,7 @@ describe("notification outbox store (integration)", () => {
   });
 
   async function queue(count = 1) {
-    const requestId = randomUUID();
+    const requestId: string = randomUUID();
     requestIds.push(requestId);
     await createOutboxStore(db).enqueue(
       Array.from({ length: count }, (_, i) => ({
@@ -49,7 +49,8 @@ describe("notification outbox store (integration)", () => {
     return requestId;
   }
 
-  const mine = (rows: { requestId: string }[], requestId: string) => rows.filter((r) => r.requestId === requestId);
+  const mine = <T extends { requestId: string }>(rows: T[], requestId: string) =>
+    rows.filter((r) => r.requestId === requestId);
 
   it("claims a queued email once, counting the attempt, and leases it", async () => {
     const requestId = await queue();

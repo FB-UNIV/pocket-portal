@@ -43,7 +43,7 @@ function createMetrics() {
 
   const notificationsTotal = new Counter({
     name: "portal_notifications_total",
-    help: "Notification emails by kind (new_request, decision) and outcome (sent, failed)",
+    help: "Notification emails by kind (new_request, decision) and outcome: queued, sent, retried (a failed attempt that will be tried again), failed (given up on, or never queued)",
     labelNames: ["kind", "outcome"] as const,
     registers: [register],
   });
@@ -124,7 +124,10 @@ export function recordGrant(outcome: GrantOutcome): void {
 }
 
 export type NotificationKind = "new_request" | "decision";
-export type NotificationOutcome = "sent" | "failed";
+// queued: in the outbox. sent: delivered to the SMTP server. retried: an
+// attempt failed and another is scheduled. failed: given up on after the
+// last attempt, or couldn't be queued at all (ADR-0011).
+export type NotificationOutcome = "queued" | "sent" | "retried" | "failed";
 
 export function recordNotification(kind: NotificationKind, outcome: NotificationOutcome): void {
   metrics.notificationsTotal.inc({ kind, outcome });

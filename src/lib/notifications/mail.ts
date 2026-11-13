@@ -18,7 +18,7 @@ export interface MailMessage {
 // nodemailer isn't instrumented, so each send is a span of its own (#16):
 // how many it went to, never who, and a failure by its type only, since
 // an SMTP refusal quotes the address it refused. Sends run after the
-// response (ADR-0009), inside the request's trace context.
+// response (ADR-0011), inside the request's trace context.
 export function sendMail(config: MailConfig, message: MailMessage): Promise<void> {
   return withSpan(
     "email.send",

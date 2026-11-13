@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, boolean, jsonb, timestamp, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, integer, jsonb, timestamp, uuid, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 /* v8 ignore start -- declarative table def, exercised by the integration suite */
 // See docs/adr/0006-audit-trail-separate-from-logs.md: this is a permanent,
@@ -113,4 +113,46 @@ export const userPreferences = pgTable("user_preferences", {
   locale: text("locale"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+/* v8 ignore stop */
+
+/* v8 ignore start -- declarative table def, exercised by the integration suite */
+// Emails waiting to be sent, sent, or given up on (ADR-0011). One row per
+// recipient, rendered in their language when queued, so a retry sends
+// exactly what would have been sent. Claimed with FOR UPDATE SKIP LOCKED
+// and a lease (`locked_until`), so replicas never send the same row at
+// once and a replica that dies mid-send gives its rows back. Holds
+// addresses and request messages, so sent rows are pruned after 7 days and
+// failed ones after 30.
+export const notificationOutbox = pgTable(
+  "notification_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // "new_request" | "decision"
+    kind: text("kind").notNull(),
+    // The access request it's about. No foreign key: the outbox outlives
+    // nothing, and a row must never block deleting a request.
+    requestId: uuid("request_id").notNull(),
+    toEmail: text("to_email").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    // For the audit event if it's given up on ("…about engineering").
+    pocketIdGroupName: text("pocket_id_group_name"),
+    // "pending" | "sent" | "failed"
+    status: text("status").notNull().default("pending"),
+    // Claims so far, each one an attempt.
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // What the sender loop asks for every 30 s on every replica: pending
+    // rows that are due. Partial, so sent and failed rows cost nothing.
+    index("notification_outbox_due_idx")
+      .on(table.nextAttemptAt)
+      .where(sql`${table.status} = 'pending'`),
+  ],
+);
 /* v8 ignore stop */

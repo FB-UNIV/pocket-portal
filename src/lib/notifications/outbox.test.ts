@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { processOutbox, retryDelaySeconds, MAX_ATTEMPTS, type OutboxRow, type OutboxStore } from "./outbox";
+import { processOutbox, retryDelaySeconds, MAX_ATTEMPTS, type OutboxRow } from "./outbox";
 
 const MAIL = { host: "smtp.example.test", port: 587, tls: "starttls" as const, auth: undefined, from: "portal@example.test" };
 const NOW = new Date("2026-11-13T10:00:00Z");
@@ -17,7 +17,7 @@ const row = (overrides: Partial<OutboxRow> = {}): OutboxRow => ({
   ...overrides,
 });
 
-function store(rows: OutboxRow[]): OutboxStore & Record<string, ReturnType<typeof vi.fn>> {
+function store(rows: OutboxRow[]) {
   return {
     claimDue: vi.fn().mockResolvedValueOnce(rows).mockResolvedValue([]),
     markSent: vi.fn().mockResolvedValue(undefined),

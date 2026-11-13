@@ -203,7 +203,7 @@ describe("decideAccessRequestAction", () => {
     expect(mockRevalidate).toHaveBeenCalledWith("/admin/requests");
   });
 
-  // ADR-0009: the requester hears the outcome only once it committed,
+  // ADR-0011: the requester hears the outcome only once it committed,
   // and after the response.
   it.each(["approved", "denied"] as const)("tells the requester once %s is recorded", async (decision) => {
     await decideAccessRequestAction("req-1", decision);

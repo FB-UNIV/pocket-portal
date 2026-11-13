@@ -440,7 +440,7 @@ describe("requestAccessAction", () => {
     );
   });
 
-  // ADR-0009: admins hear about a request once it exists, after the
+  // ADR-0011: admins hear about a request once it exists, after the
   // response, so a slow mail server never holds up the requester.
   it("notifies admins after a new request is filed", async () => {
     const formData = new FormData();

@@ -57,6 +57,7 @@ Set in `.env` ([`.env.example`](.env.example) explains each one), or in a
 | `METRICS_TOKEN` | no | metrics off | Bearer token that unlocks `/api/metrics` |
 | `SMTP_HOST` | no | email off | SMTP server for access-request emails |
 | `SMTP_FROM` | with `SMTP_HOST` | | Sender address |
+| `NOTIFY_ADMIN_EMAILS` | no | PocketID's admins | Comma-separated addresses that hear about new access requests, instead of every enabled PocketID admin with an address (read from PocketID on each request) |
 | `SMTP_PORT` | no | `587` (`465` for `tls`) | SMTP port |
 | `SMTP_TLS` | no | `starttls` | `starttls`, `tls` or `none` |
 | `SMTP_USER` / `SMTP_PASSWORD` | no | | SMTP credentials, set both or neither |
